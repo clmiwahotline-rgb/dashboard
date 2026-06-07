@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>サインイン設定手順 ・ みわダッシュボード</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#14132e; --ink-soft:#4d4f73; --ink-mute:#8a8db0; --line:#e7e5f2; --line-strong:#d3d0e6; --accent:#2a6fdb; --accent-deep:#1c4f9c; --accent-soft:#eaf1fc; --bg:#eef1f6; --card-2:#f6f7fb; --warn-bg:#fff7ed; --warn-line:#fed7aa; --warn-ink:#9a3412; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Zen Kaku Gothic New","Plus Jakarta Sans",system-ui,sans-serif; line-height: 1.75; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 34px 22px 90px; }
+  .back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--accent-deep); text-decoration: none; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; }
+  .h-eyebrow { font-family: "Plus Jakarta Sans",sans-serif; font-size: 12px; font-weight: 800; letter-spacing: .14em; color: var(--accent); text-transform: uppercase; margin-top: 22px; }
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: -.02em; margin: 6px 0 4px; }
+  .lead { font-size: 14px; color: var(--ink-soft); margin-bottom: 8px; }
+  .meta { font-size: 12.5px; color: var(--ink-mute); margin-bottom: 24px; }
+
+  .callout { display: flex; gap: 12px; background: var(--accent-soft); border: 1px solid #cfe0f8; border-radius: 14px; padding: 15px 17px; font-size: 13px; color: var(--accent-deep); line-height: 1.7; margin-bottom: 26px; }
+  .callout.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+  .callout .ic { font-size: 18px; flex-shrink: 0; }
+
+  .step { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(20,19,46,.05); }
+  .step-head { display: flex; align-items: center; gap: 13px; margin-bottom: 12px; }
+  .step-no { width: 36px; height: 36px; flex-shrink: 0; border-radius: 11px; background: var(--accent); color: #fff; font-family: "Plus Jakarta Sans",sans-serif; font-size: 17px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .step-title { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+  .step-body { font-size: 13.5px; color: var(--ink-soft); }
+  .step-body ol, .step-body ul { margin: 8px 0 0; padding-left: 22px; }
+  .step-body li { margin-bottom: 7px; }
+  .step-body a { color: var(--accent-deep); font-weight: 700; word-break: break-all; }
+  code { background: #f1f3f8; border: 1px solid var(--line); border-radius: 6px; padding: 1.5px 6px; font-size: 12.5px; font-family: ui-monospace, monospace; word-break: break-all; }
+  .field-box { background: var(--card-2); border: 1px dashed var(--line-strong); border-radius: 11px; padding: 11px 14px; margin-top: 10px; font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--ink); word-break: break-all; }
+  .pill { display: inline-block; background: #fff; border: 1px solid var(--line-strong); border-radius: 7px; padding: 1px 8px; font-size: 12px; font-weight: 700; margin: 0 1px; }
+  .copy-btn { margin-left: 8px; font-family: inherit; font-size: 11.5px; font-weight: 700; color: #fff; background: var(--accent); border: 0; border-radius: 7px; padding: 4px 10px; cursor: pointer; }
+  .copy-btn.done { background: #1e8e3e; }
+  .tip { font-size: 12px; color: var(--ink-mute); margin-top: 8px; }
+  .done-box { background: #e6f4ea; border: 1px solid #b6e2c4; border-radius: 14px; padding: 18px 20px; margin-top: 24px; font-size: 13.5px; color: #1e6b32; }
+  .done-box b { color: #155726; }
+  hr.soft { border: 0; border-top: 1px solid var(--line); margin: 30px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← ダッシュボードへ戻る</a>
+
+  <div class="h-eyebrow">Setup Guide</div>
+  <h1>サインイン設定手順</h1>
+  <div class="lead">Google アカウントでのログインを有効にするための、最初の1回だけの設定です。</div>
+  <div class="meta">所要時間：約10分 ／ 作業する人：管理者（Googleアカウントが必要）</div>
+
+  <div class="callout">
+    <span class="ic">💡</span>
+    <div>この設定では <b>「クライアント ID」</b> という文字列を1つ発行し、<code>auth-config.js</code> に貼るだけです。難しい知識は要りません。下の手順どおり進めてください。</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="step-head"><div class="step-no">1</div><div class="step-title">Google Cloud のプロジェクトを作る</div></div>
+    <div class="step-body">
+      <ol>
+        <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">https://console.cloud.google.com/</a> を開く（管理者のGoogleアカウントでログイン）。</li>
+        <li>画面上部の<span class="pill">プロジェクトを選択</span>→<span class="pill">新しいプロジェクト</span>。</li>
+        <li>名前を「<b>みわダッシュボード</b>」などにして<span class="pill">作成</span>。作成後、そのプロジェクトを選択。</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="step-head"><div class="step-no">2</div><div class="step-title">同意画面（OAuth）を設定する</div></div>
+    <div class="step-body">
+      <ol>
+        <li>左メニュー <span class="pill">APIとサービス</span> → <span class="pill">OAuth 同意画面</span>。</li>
+        <li>User Type は <b>外部</b> を選び<span class="pill">作成</span>。</li>
+        <li>アプリ名「<b>みわダッシュボード</b>」、ユーザーサポートメールに管理者のメール、デベロッパー連絡先にも同じメールを入力 → <span class="pill">保存して次へ</span> を最後まで。</li>
+        <li>「対象（テストユーザー）」の画面で、<b>ログインする社員のメールを追加</b>するか、公開ステータスを<b>本番環境</b>にします（本番にすると誰でもボタンは押せますが、実際に入れるのは「アカウント管理」で許可した人だけです）。</li>
+      </ol>
+      <div class="tip">※「アプリは確認されていません」と出ても、内部利用なので「続行」で問題ありません。</div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="step-head"><div class="step-no">3</div><div class="step-title">クライアント ID を発行する</div></div>
+    <div class="step-body">
+      <ol>
+        <li>左メニュー <span class="pill">APIとサービス</span> → <span class="pill">認証情報</span>。</li>
+        <li>上の <span class="pill">＋ 認証情報を作成</span> → <span class="pill">OAuth クライアント ID</span>。</li>
+        <li>アプリケーションの種類：<b>ウェブアプリケーション</b>。</li>
+        <li><b>承認済みの JavaScript 生成元</b> に、下のアドレスを<b>そのまま追加</b>（末尾スラッシュなし）：
+          <div class="field-box">https://statuesque-beignet-f1be04.netlify.app<button class="copy-btn" data-copy="https://statuesque-beignet-f1be04.netlify.app">コピー</button></div>
+          <div class="tip">独自ドメインを使う場合は、そのアドレスも同様に追加してください。</div>
+        </li>
+        <li><span class="pill">作成</span> を押すと <b>クライアント ID</b> が表示されます（<code>…apps.googleusercontent.com</code> で終わる文字列）。これをコピー。</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <div class="step-head"><div class="step-no">4</div><div class="step-title">クライアント ID を貼り付ける</div></div>
+    <div class="step-body">
+      <ol>
+        <li>このサイトのファイル <code>auth-config.js</code> を開く。</li>
+        <li>先頭の <code>CLIENT_ID: ""</code> の <code>""</code> の中に、コピーした ID を貼り付ける：
+          <div class="field-box">CLIENT_ID: "1234567890-abcdefg.apps.googleusercontent.com",</div>
+        </li>
+        <li>保存して、サイトを<b>再アップロード</b>（Netlify に上げ直す）。</li>
+      </ol>
+      <div class="tip">※ <code>GAS_URL</code> はすでに設定済みなので変更不要です。</div>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step">
+    <div class="step-head"><div class="step-no">5</div><div class="step-title">GAS（共有API）を最新にして再デプロイ</div></div>
+    <div class="step-body">
+      ログイン照合は共有API（Apps Script）が行います。最新の <code>みわ共有API.gs</code> を貼り替え、
+      <span class="pill">authorizeAll</span> を1回実行して権限を許可 → <b>新バージョンで再デプロイ</b>してください。
+      <ul>
+        <li>許可アカウントは、スプレッドシートに自動でできる <b>「ユーザー」シート</b> で管理されます。</li>
+        <li>最初の管理者（<code>clmiwa.hotline@gmail.com</code> ／ <code>satoshi.3104service@gmail.com</code>）は自動登録されます。</li>
+        <li>以降の追加・削除は、ダッシュボードの <b>「アカウント管理」</b> ページから行えます。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="done-box">
+    <b>完了後の動き：</b> サイトを開くと最初にログイン画面が出ます。許可されたGoogleアカウントでサインインすると入室でき、「次回からサインインを省略する」にチェックしておけば、次回からは手動でログアウトするまで自動で入れます。許可していないアカウントは入室できません。
+  </div>
+
+  <hr class="soft">
+  <div class="meta">うまくいかない時：「このアプリはブロックされます」→ 同意画面のテストユーザーに自分のメールを追加。ログインボタンが出ない→ JavaScript生成元のアドレスが正しいか確認（末尾スラッシュなし・https）。それでも困ったら担当へご連絡ください。</div>
+</div>
+
+<script>
+  document.querySelectorAll(".copy-btn").forEach((b) => {
+    b.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(b.dataset.copy); } catch (e) {}
+      const t = b.textContent; b.textContent = "コピーしました"; b.classList.add("done");
+      setTimeout(() => { b.textContent = t; b.classList.remove("done"); }, 1800);
+    });
+  });
+</script>
+</body>
+</html>
