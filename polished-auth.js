@@ -204,7 +204,12 @@
     var remember = !!(document.getElementById("ma-remember-cb") || {}).checked;
     try { sessionStorage.setItem("miwa.auth.redir", remember ? "1" : "0"); } catch (e) {}
     var nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    var redirectUri = location.origin + location.pathname;
+    // リダイレクト先は「現在のフォルダ（ルート）」に固定する。
+    // ページごとの完全URLにすると Google 側に全ページ分の登録が必要になり redirect_uri_mismatch の原因になる。
+    // フォルダのルート（末尾 /）= index.html に統一すれば、登録すべきURIは1つで済む。
+    var dir = location.pathname.replace(/[^/]*$/, "");
+    if (!dir) dir = "/";
+    var redirectUri = location.origin + dir;
     var url = "https://accounts.google.com/o/oauth2/v2/auth"
       + "?client_id=" + encodeURIComponent(CFG.CLIENT_ID)
       + "&redirect_uri=" + encodeURIComponent(redirectUri)
