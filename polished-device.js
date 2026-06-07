@@ -17,7 +17,15 @@
     return phoneUA || narrowTouch;
   }
 
+  // 認証処理(polished-auth.js)がログイン後に端末振り分けを行えるよう公開
+  window.MiwaDevice = { isMobile: isMobile, MOBILE_PAGE: MOBILE_PAGE };
+
   try {
+    // リダイレクト方式サインインで #id_token=… を載せて戻ってきた時は、
+    // 認証処理がトークンを消費するまで振り分けない。ここで飛ばすと URL の
+    // #id_token が消えてしまい、スマホで永久にログインできなくなる。
+    if (/[#&]id_token=/.test(window.location.hash || "")) return;
+
     var params = new URLSearchParams(window.location.search);
     var view = params.get("view"); // "pc" | "mobile" | null
     var here = decodeURIComponent((window.location.pathname.split("/").pop() || ""));

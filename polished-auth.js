@@ -195,7 +195,24 @@
     var idToken = resp && resp.credential;
     if (!idToken) { setMsg("サインインに失敗しました。もう一度お試しください。", "err"); return; }
     var remember = !!(document.getElementById("ma-remember-cb") || {}).checked;
-    verifyAndEnter(idToken, remember);
+    verifyAndEnter(idToken, remember, false);
+  }
+
+  // ---- ログイン成功後の端末振り分け ----
+  // リダイレクト方式サインインはフォルダのルート(index.html)に戻ってくるため、
+  // スマホの場合はセッション保存後にモバイル版へ送る（セッションは保存済みなので素通り）。
+  // 画面遷移を起こした場合は true を返す（ゲートを消さず画面のチラつきを防ぐ）。
+  function routeAfterLogin() {
+    try {
+      var D = window.MiwaDevice;
+      if (!D || !D.isMobile) return false;
+      var here = decodeURIComponent((location.pathname.split("/").pop() || ""));
+      if (D.isMobile() && here !== D.MOBILE_PAGE) {
+        location.replace(D.MOBILE_PAGE);
+        return true;
+      }
+    } catch (e) {}
+    return false;
   }
 
   // ---- リダイレクト方式サインイン（ポップアップ/Cookieが効かない端末向け）----
@@ -236,11 +253,11 @@
     try { remember = sessionStorage.getItem("miwa.auth.redir") !== "0"; sessionStorage.removeItem("miwa.auth.redir"); } catch (e) {}
     injectStyles();
     showLogin();
-    verifyAndEnter(idToken, remember);
+    verifyAndEnter(idToken, remember, true);
     return true;
   }
 
-  function verifyAndEnter(idToken, remember) {
+  function verifyAndEnter(idToken, remember, viaRedirect) {
     showVerifying();
     gasVerify(idToken).then(function (res) {
       if (res && res.ok) {
@@ -249,6 +266,8 @@
           role: res.role || "staff", idToken: idToken, ts: Date.now(),
         };
         writeSession(currentUser, remember);
+        // リダイレクト戻りでスマホなら、ゲートを残したままモバイル版へ遷移
+        if (viaRedirect && routeAfterLogin()) return;
         revealPage();
         // 画面にユーザー情報を反映させたいページ向け
         try { window.dispatchEvent(new CustomEvent("miwa-auth", { detail: currentUser })); } catch (e) {}
