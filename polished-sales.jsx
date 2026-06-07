@@ -244,6 +244,9 @@ const SalesReport = () => {
   // 他店は将来 API 自動取得予定のためクラウドには上げない。
   const MANUAL_STORE = "マミー川口安行店";
   const SALES_SHEET = "売上_マミー安行";
+  // CSV取込データ（マミー以外の全店）と取込履歴も全端末で共有するための専用シート
+  const SALES_IMPORT_SHEET = "売上_取込";
+  const SALES_IMPORT_META_SHEET = "売上_取込履歴";
   const NUM_SKIP = React.useRef(new Set(["date", "store", "ts"])).current;
   const coerceSalesRow = React.useCallback((r) => {
     const o = { ...r };
@@ -261,21 +264,69 @@ const SalesReport = () => {
     const manual = allRows.filter((r) => r.store === MANUAL_STORE);
     cloudReplaceAll(SALES_SHEET, manual);
   }, [cloudOn]);
+  // CSV取込（マミー以外の全店）＋取込履歴をクラウドへ反映→全端末共有
+  const syncImportsToCloud = React.useCallback((allRows, importsList) => {
+    if (!cloudOn) return;
+    const imported = allRows.filter((r) => r.importId && r.store !== MANUAL_STORE);
+    cloudReplaceAll(SALES_IMPORT_SHEET, imported);
+    cloudReplaceAll(SALES_IMPORT_META_SHEET, importsList || []);
+  }, [cloudOn]);
 
   React.useEffect(() => {
     if (!cloudOn) return;
     let cancelled = false;
     (async () => {
-      const remote = await cloudGet(SALES_SHEET);
-      if (cancelled || remote == null) return;
+      const [remoteManual, remoteImport, remoteMeta] = await Promise.all([
+        cloudGet(SALES_SHEET),
+        cloudGet(SALES_IMPORT_SHEET),
+        cloudGet(SALES_IMPORT_META_SHEET),
+      ]);
+      if (cancelled) return;
+
       setRows((prev) => {
-        const others = prev.filter((r) => r.store !== MANUAL_STORE);
-        if (remote.length) return [...remote.map(coerceSalesRow), ...others];
-        // 初回：ローカルのマミー分をクラウドへ移行
-        const localManual = prev.filter((r) => r.store === MANUAL_STORE);
-        if (localManual.length) cloudReplaceAll(SALES_SHEET, localManual);
-        return prev;
+        // ベース＝シード等（手動マミーでも取込でもない行）
+        let base = prev.filter((r) => r.store !== MANUAL_STORE && !r.importId);
+
+        // 取込データ（マミー以外の全店・全端末共有）
+        let importArr;
+        if (remoteImport == null) {
+          importArr = prev.filter((r) => r.importId && r.store !== MANUAL_STORE); // 取得失敗→ローカル維持
+        } else if (remoteImport.length) {
+          importArr = remoteImport.map(coerceSalesRow);
+        } else {
+          const localImport = prev.filter((r) => r.importId && r.store !== MANUAL_STORE);
+          if (localImport.length) cloudReplaceAll(SALES_IMPORT_SHEET, localImport); // 初回移行
+          importArr = localImport;
+        }
+        // 取込は (date|store) でベースを上書き
+        if (importArr.length) {
+          const ik = new Set(importArr.map((r) => `${r.date}|${r.store}`));
+          base = base.filter((r) => !ik.has(`${r.date}|${r.store}`));
+        }
+
+        // 手動マミー
+        let manualArr;
+        if (remoteManual == null) {
+          manualArr = prev.filter((r) => r.store === MANUAL_STORE);
+        } else if (remoteManual.length) {
+          manualArr = remoteManual.map(coerceSalesRow);
+        } else {
+          const localManual = prev.filter((r) => r.store === MANUAL_STORE);
+          if (localManual.length) cloudReplaceAll(SALES_SHEET, localManual); // 初回移行
+          manualArr = localManual;
+        }
+
+        return [...manualArr, ...importArr, ...base];
       });
+
+      // 取込履歴（ファイル一覧）も共有
+      if (remoteMeta != null) {
+        setImports((prevMeta) => {
+          if (remoteMeta.length) return remoteMeta;
+          if (prevMeta.length) cloudReplaceAll(SALES_IMPORT_META_SHEET, prevMeta); // 初回移行
+          return prevMeta;
+        });
+      }
     })();
     return () => {cancelled = true;};
   }, [cloudOn]); // eslint-disable-line
@@ -344,11 +395,11 @@ const SalesReport = () => {
     const stamped = newRows.map((r) => ({ ...r, id: Date.now() + Math.random(), importId }));
     const next = [...stamped, ...kept];
     setRows(next);
-    syncManualToCloud(next); // 取り込んだ中のマミー分もクラウドへ反映
-    setImports((prev) => [
-    { id: importId, name: sourceName || "CSV取り込み", ts: Date.now(), count: stamped.length },
-    ...prev]
-    );
+    const meta = { id: importId, name: sourceName || "CSV取り込み", ts: Date.now(), count: stamped.length };
+    const nextImports = [meta, ...imports];
+    setImports(nextImports);
+    syncManualToCloud(next);                // マミー分
+    syncImportsToCloud(next, nextImports);  // 取込分（全店）＋履歴 → 全端末共有
     const replaced = rows.length - kept.length;
     setToast(`${newRows.length} 件を取り込みました${replaced ? `（うち ${replaced} 件は上書き）` : ""}`);
   };
@@ -360,8 +411,10 @@ const SalesReport = () => {
     if (!confirm(`「${im.name}」で取り込んだデータ ${n} 件を削除します。よろしいですか?`)) return;
     const next = rows.filter((r) => r.importId !== im.id);
     setRows(next);
+    const nextImports = imports.filter((x) => x.id !== im.id);
+    setImports(nextImports);
     syncManualToCloud(next);
-    setImports((prev) => prev.filter((x) => x.id !== im.id));
+    syncImportsToCloud(next, nextImports);
     setToast(`「${im.name}」の取り込み分（${n} 件）を削除しました`);
   };
 
