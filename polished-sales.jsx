@@ -243,10 +243,7 @@ const SalesReport = () => {
   // ── 共有クラウド：手動入力（マミー川口安行店のみ）を全端末同期 ──
   // 他店は将来 API 自動取得予定のためクラウドには上げない。
   const MANUAL_STORE = "マミー川口安行店";
-  const SALES_SHEET = "売上_マミー安行";
-  // CSV取込データ（マミー以外の全店）と取込履歴も全端末で共有するための専用シート
-  const SALES_IMPORT_SHEET = "売上_取込";
-  const SALES_IMPORT_META_SHEET = "売上_取込履歴";
+  const SALES_SHEET = "売上_マミー安行";  // 既存シートに「マミー手動＋CSV取込（全店）」を集約（新シート不要）
   const NUM_SKIP = React.useRef(new Set(["date", "store", "ts"])).current;
   const coerceSalesRow = React.useCallback((r) => {
     const o = { ...r };
@@ -258,75 +255,44 @@ const SalesReport = () => {
     return o;
   }, []);
   const [cloudOn] = React.useState(() => typeof cloudEnabled === "function" && cloudEnabled());
-  // マミーの行だけをクラウドへ反映（追加・編集・削除・CSV取込すべて経由）
-  const syncManualToCloud = React.useCallback((allRows) => {
+  // マミー手動分＋CSV取込（全店）をまとめて既存シートへ反映（追加・編集・削除・CSV取込すべて経由）
+  // → シード以外の全データが全端末で共有される（新シートを作らない）
+  const syncSalesToCloud = React.useCallback((allRows) => {
     if (!cloudOn) return;
-    const manual = allRows.filter((r) => r.store === MANUAL_STORE);
-    cloudReplaceAll(SALES_SHEET, manual);
-  }, [cloudOn]);
-  // CSV取込（マミー以外の全店）＋取込履歴をクラウドへ反映→全端末共有
-  const syncImportsToCloud = React.useCallback((allRows, importsList) => {
-    if (!cloudOn) return;
-    const imported = allRows.filter((r) => r.importId && r.store !== MANUAL_STORE);
-    cloudReplaceAll(SALES_IMPORT_SHEET, imported);
-    cloudReplaceAll(SALES_IMPORT_META_SHEET, importsList || []);
+    const cloudRows = allRows.filter((r) => r.store === MANUAL_STORE || r.importId);
+    cloudReplaceAll(SALES_SHEET, cloudRows);
   }, [cloudOn]);
 
   React.useEffect(() => {
     if (!cloudOn) return;
     let cancelled = false;
     (async () => {
-      const [remoteManual, remoteImport, remoteMeta] = await Promise.all([
-        cloudGet(SALES_SHEET),
-        cloudGet(SALES_IMPORT_SHEET),
-        cloudGet(SALES_IMPORT_META_SHEET),
-      ]);
+      const remote = await cloudGet(SALES_SHEET);
       if (cancelled) return;
-
       setRows((prev) => {
-        // ベース＝シード等（手動マミーでも取込でもない行）
-        let base = prev.filter((r) => r.store !== MANUAL_STORE && !r.importId);
-
-        // 取込データ（マミー以外の全店・全端末共有）
-        let importArr;
-        if (remoteImport == null) {
-          importArr = prev.filter((r) => r.importId && r.store !== MANUAL_STORE); // 取得失敗→ローカル維持
-        } else if (remoteImport.length) {
-          importArr = remoteImport.map(coerceSalesRow);
+        const seed = prev.filter((r) => r.store !== MANUAL_STORE && !r.importId);
+        const localCloud = prev.filter((r) => r.store === MANUAL_STORE || r.importId);
+        let cloudRows;
+        if (remote == null) {
+          cloudRows = localCloud;                       // 取得失敗→ローカル維持
+        } else if (remote.length) {
+          cloudRows = remote.map(coerceSalesRow);
+          // ローカルにしか無い取込分は初回マージしてクラウドへ移行
+          const rk = new Set(cloudRows.map((r) => `${r.date}|${r.store}`));
+          const localOnly = localCloud.filter((r) => !rk.has(`${r.date}|${r.store}`));
+          if (localOnly.length) {
+            cloudRows = [...cloudRows, ...localOnly];
+            cloudReplaceAll(SALES_SHEET, cloudRows);
+          }
         } else {
-          const localImport = prev.filter((r) => r.importId && r.store !== MANUAL_STORE);
-          if (localImport.length) cloudReplaceAll(SALES_IMPORT_SHEET, localImport); // 初回移行
-          importArr = localImport;
+          cloudRows = localCloud;
+          if (localCloud.length) cloudReplaceAll(SALES_SHEET, localCloud); // 初回移行
         }
-        // 取込は (date|store) でベースを上書き
-        if (importArr.length) {
-          const ik = new Set(importArr.map((r) => `${r.date}|${r.store}`));
-          base = base.filter((r) => !ik.has(`${r.date}|${r.store}`));
-        }
-
-        // 手動マミー
-        let manualArr;
-        if (remoteManual == null) {
-          manualArr = prev.filter((r) => r.store === MANUAL_STORE);
-        } else if (remoteManual.length) {
-          manualArr = remoteManual.map(coerceSalesRow);
-        } else {
-          const localManual = prev.filter((r) => r.store === MANUAL_STORE);
-          if (localManual.length) cloudReplaceAll(SALES_SHEET, localManual); // 初回移行
-          manualArr = localManual;
-        }
-
-        return [...manualArr, ...importArr, ...base];
+        // クラウド分（マミー＋取込）が (date|store) でシードを上書き
+        const ck = new Set(cloudRows.map((r) => `${r.date}|${r.store}`));
+        const seedKept = seed.filter((r) => !ck.has(`${r.date}|${r.store}`));
+        return [...cloudRows, ...seedKept];
       });
-
-      // 取込履歴（ファイル一覧）も共有
-      if (remoteMeta != null) {
-        setImports((prevMeta) => {
-          if (remoteMeta.length) return remoteMeta;
-          if (prevMeta.length) cloudReplaceAll(SALES_IMPORT_META_SHEET, prevMeta); // 初回移行
-          return prevMeta;
-        });
-      }
     })();
     return () => {cancelled = true;};
   }, [cloudOn]); // eslint-disable-line
@@ -375,7 +341,7 @@ const SalesReport = () => {
       setToast(filtered.length === rows.length ? "売上データを追加しました" : "同日・同店舗のデータを更新しました");
     }
     setRows(next);
-    syncManualToCloud(next);
+    syncSalesToCloud(next);
     setEditing(null);
   };
 
@@ -383,7 +349,7 @@ const SalesReport = () => {
     if (!confirm("この行を削除しますか?")) return;
     const next = rows.filter((r) => r.id !== id);
     setRows(next);
-    syncManualToCloud(next);
+    syncSalesToCloud(next);
     setToast("削除しました");
   };
 
@@ -395,11 +361,11 @@ const SalesReport = () => {
     const stamped = newRows.map((r) => ({ ...r, id: Date.now() + Math.random(), importId }));
     const next = [...stamped, ...kept];
     setRows(next);
-    const meta = { id: importId, name: sourceName || "CSV取り込み", ts: Date.now(), count: stamped.length };
-    const nextImports = [meta, ...imports];
-    setImports(nextImports);
-    syncManualToCloud(next);                // マミー分
-    syncImportsToCloud(next, nextImports);  // 取込分（全店）＋履歴 → 全端末共有
+    setImports((prev) => [
+    { id: importId, name: sourceName || "CSV取り込み", ts: Date.now(), count: stamped.length },
+    ...prev]
+    );
+    syncSalesToCloud(next); // マミー手動＋取込（全店）を全端末共有
     const replaced = rows.length - kept.length;
     setToast(`${newRows.length} 件を取り込みました${replaced ? `（うち ${replaced} 件は上書き）` : ""}`);
   };
@@ -411,10 +377,8 @@ const SalesReport = () => {
     if (!confirm(`「${im.name}」で取り込んだデータ ${n} 件を削除します。よろしいですか?`)) return;
     const next = rows.filter((r) => r.importId !== im.id);
     setRows(next);
-    const nextImports = imports.filter((x) => x.id !== im.id);
-    setImports(nextImports);
-    syncManualToCloud(next);
-    syncImportsToCloud(next, nextImports);
+    setImports((prev) => prev.filter((x) => x.id !== im.id));
+    syncSalesToCloud(next);
     setToast(`「${im.name}」の取り込み分（${n} 件）を削除しました`);
   };
 
@@ -605,3 +569,5 @@ const SalesReport = () => {
 };
 
 window.SalesReport = SalesReport;
+// 新コードが本番で動いているか確認用（ブラウザのコンソールに緑文字で出ます）
+console.log("%c[売上レポート] 同期v2 稼働中：手動入力＋CSV取込（全店）を全端末共有", "color:#1e8e3e;font-weight:bold;font-size:12px");
