@@ -28,6 +28,15 @@ const MApp = () => {
   const [view, setView] = React.useState(initial);
   const [header, setHeader] = React.useState(null); // {title, sub}
   const [fab, setFab] = React.useState(null);        // fn | null
+  const [fsOpen, setFsOpen] = React.useState(false);
+  const FS_KEY = "miwa.fontscale.v1";
+  const FS_LEVELS = [{ id: "s", label: "標準", z: 1 }, { id: "l", label: "大", z: 1.15 }, { id: "xl", label: "特大", z: 1.30 }];
+  const [fsLevel, setFsLevel] = React.useState(() => { try { const v = localStorage.getItem(FS_KEY); return FS_LEVELS.some((l) => l.id === v) ? v : "s"; } catch (e) { return "s"; } });
+  React.useEffect(() => {
+    const z = (FS_LEVELS.find((l) => l.id === fsLevel) || {}).z || 1;
+    try { document.body.style.zoom = z === 1 ? "" : String(z); } catch (e) {}
+    try { localStorage.setItem(FS_KEY, fsLevel); } catch (e) {}
+  }, [fsLevel]);
   const scrollRef = React.useRef(null);
 
   const go = React.useCallback((v) => { setHeader(null); setFab(null); setView(v); }, []);
@@ -71,6 +80,25 @@ const MApp = () => {
           {(sub || view === "home") && <div className="m-header-sub">{sub || "クリーニングみわ 管理ダッシュボード"}</div>}
         </div>
         <div className="m-header-spacer"></div>
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <button className="m-header-icon" onClick={() => setFsOpen((v) => !v)} title="文字サイズ" aria-label="文字サイズ">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17 7 7l4 10" /><path d="M4.2 13.5h5.6" /><path d="M14 17l3-7 3 7" /><path d="M14.9 14.4h4.2" /></svg>
+          </button>
+          {fsOpen && (
+            <React.Fragment>
+              <div onClick={() => setFsOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 55 }}></div>
+              <div className="m-fs-pop">
+                <div className="m-fs-head">文字サイズ</div>
+                {FS_LEVELS.map((l) => (
+                  <button key={l.id} className={`m-fs-opt ${l.id} ${fsLevel === l.id ? "on" : ""}`} onClick={() => { setFsLevel(l.id); setFsOpen(false); }}>
+                    <span className="lab">{l.label}</span>
+                    <svg className="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  </button>
+                ))}
+              </div>
+            </React.Fragment>
+          )}
+        </div>
         <button className="m-header-icon" onClick={() => go("about")} title="アカウント・その他" aria-label="アカウント・その他">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6" /></svg>
         </button>
