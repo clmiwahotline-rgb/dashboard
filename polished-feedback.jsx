@@ -568,15 +568,26 @@ const FeedbackPage = () => {
   // ── 共有クラウド（読み書き）─ 全端末で同じ最新を表示・入力も反映 ──
   const [cloudOn] = React.useState(() => typeof cloudEnabled === "function" && cloudEnabled());
   const [cloudState, setCloudState] = React.useState(cloudOn ? "loading" : "off"); // off|loading|ok|error
+  // クラウドの応答待ち中に追加された新規投稿を保持するための基準時刻（id=Date.now() と比較）
+  const loadStartRef = React.useRef(Date.now());
+  // remote で全置換する際、「読込開始後にこの端末で追加された未取得の投稿」は消さずに残す
+  const mergeFresh = React.useCallback((remote) => {
+    setRows((prev) => {
+      const ids = new Set((remote || []).map((r) => String(r.id)));
+      const freshLocal = prev.filter((r) => Number(r.id) > loadStartRef.current && !ids.has(String(r.id)));
+      return freshLocal.length ? [...freshLocal, ...remote] : remote;
+    });
+  }, [setRows]);
   React.useEffect(() => {
     if (!cloudOn) return;
     let cancelled = false;
+    loadStartRef.current = Date.now();
     (async () => {
       const remote = await cloudGet("フィードバック");
       if (cancelled) return;
       if (remote == null) { setCloudState("error"); return; }
       if (remote.length) {
-        setRows(remote);                       // クラウドが正：全端末で同じ
+        mergeFresh(remote);                    // クラウドが正（ただし読込中の新規投稿は保持）
       } else if (rows.length) {
         await cloudReplaceAll("フィードバック", rows); // 初回：空シードをクラウドへ移行
       }
@@ -590,11 +601,12 @@ const FeedbackPage = () => {
   const cloudRefresh = React.useCallback(async () => {
     if (!cloudOn) return;
     setSyncing(true);
+    loadStartRef.current = Date.now();
     const remote = await cloudGet("フィードバック");
-    if (remote != null) { setRows(remote); setLastSync(Date.now()); setToast(`${remote.length} 件を取得しました`); }
+    if (remote != null) { mergeFresh(remote); setLastSync(Date.now()); setToast(`${remote.length} 件を取得しました`); }
     else setToast("取得に失敗しました");
     setSyncing(false);
-  }, [cloudOn]);
+  }, [cloudOn, mergeFresh]);
 
   // Core sync function— GAS(JSON) と 公開CSV の両対応
   const syncNow = React.useCallback(async () => {

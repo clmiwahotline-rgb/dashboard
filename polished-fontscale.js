@@ -49,6 +49,13 @@
     var t = (document.title || "").split(/\s*[・｜|]\s*/)[0].trim();
     return { title: t || "みわダッシュボード", sub: "" };
   }
+  function curFile() {
+    try { return decodeURIComponent((location.pathname || "").split("/").pop() || ""); } catch (e) { return ""; }
+  }
+  function isHome() {
+    var f = curFile();
+    return f === "" || f === "index.html";
+  }
 
   function getLevel() {
     try { var v = localStorage.getItem(KEY); return v && LEVELS.some(function (l) { return l.id === v; }) ? v : "s"; }
@@ -82,6 +89,13 @@
       "box-shadow:0 2px 14px rgba(11,90,60,.28);" +
       "font-family:'Plus Jakarta Sans','Zen Kaku Gothic New',-apple-system,sans-serif;}" +
       "#miwa-header .mh-inner{max-width:1480px;height:100%;margin:0 auto;padding:0 28px;display:flex;align-items:center;gap:12px;}" +
+      // 戻るボタン（左端）
+      "#miwa-header .mh-back{width:38px;height:38px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;" +
+      "color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.34);text-decoration:none;cursor:pointer;padding:0;" +
+      "transition:background .14s,transform .12s;}" +
+      "#miwa-header .mh-back:hover{background:rgba(255,255,255,.28);}" +
+      "#miwa-header .mh-back:active{transform:scale(.94);}" +
+      "#miwa-header .mh-back svg{width:20px;height:20px;}" +
       // タイトル
       "#miwa-header .mh-titles{min-width:0;display:flex;flex-direction:column;justify-content:center;}" +
       "#miwa-header .mh-title{font-size:19px;font-weight:800;color:#fff;letter-spacing:-0.01em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}" +
@@ -131,6 +145,8 @@
       "body{padding-top:var(--mh-h)!important;}" +
       ".app{min-height:calc(100vh - var(--mh-h))!important;}" +
       ".app{padding-top:16px!important;}" +
+      // ページ内の旧「戻る」リンクは共通ヘッダーに統一したため非表示
+      "a.back,a.cl-back{display:none!important;}" +
       // 旧：浮動ヘッダー用の余白指定は不要
       "@media (max-width:560px){#miwa-header .mh-inner{padding:0 14px;gap:8px;}#miwa-header .mh-title{font-size:17px;}}" +
       "@media print{#miwa-header{display:none!important;}body{padding-top:0!important;}}";
@@ -160,6 +176,11 @@
       '<div class="mh-titles"><div class="mh-title">' + esc(info.title) + '</div>' +
       (info.sub ? '<div class="mh-sub">' + esc(info.sub) + '</div>' : '') + '</div>';
 
+    // 戻るボタン（ホーム以外の全ページ）
+    var backHtml = isHome() ? '' :
+      '<a class="mh-back" href="index.html" aria-label="ダッシュボードへ戻る" title="ダッシュボードへ戻る">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>';
+
     // 文字サイズ ポップアップ
     var fsOptsHtml = LEVELS.map(function (l) {
       return '<button type="button" class="mh-fs-opt ' + l.id + (l.id === cur ? ' on' : '') +
@@ -170,12 +191,10 @@
       '<button type="button" class="mh-btn" id="mh-fs-btn" aria-label="文字サイズ" aria-haspopup="true" aria-expanded="false">' + fsIcon() + '</button>' +
       '<div class="mh-pop" role="menu"><div class="mh-fs-head">文字サイズ</div>' + fsOptsHtml + '</div></div>';
 
-    // アカウント
+    // アカウント（ボタンは常に人マークで統一）
     var initial = (user && (user.name || user.email) ? (user.name || user.email).slice(0, 1) : "");
-    var avHtml = user && user.picture
-      ? '<img src="' + esc(user.picture) + '" alt="" referrerpolicy="no-referrer">'
-      : (initial ? '<span style="font-weight:800;font-size:15px">' + esc(initial) + '</span>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg>');
+    var personSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg>';
+    var avHtml = personSvg;
     var menuRows = "";
     if (user) {
       var idAv = user.picture ? '<img src="' + esc(user.picture) + '" alt="" referrerpolicy="no-referrer">' : esc(initial || "?");
@@ -194,7 +213,7 @@
       '<button type="button" class="mh-btn" id="mh-acct-btn" aria-label="アカウント" aria-haspopup="true" aria-expanded="false">' + avHtml + '</button>' +
       '<div class="mh-pop" role="menu">' + menuRows + '</div></div>';
 
-    header.innerHTML = '<div class="mh-inner">' + titlesHtml + '<div class="mh-spacer"></div>' + fsHtml + acctHtml + '</div>';
+    header.innerHTML = '<div class="mh-inner">' + backHtml + titlesHtml + '<div class="mh-spacer"></div>' + fsHtml + acctHtml + '</div>';
     document.body.insertBefore(header, document.body.firstChild);
 
     // ── 文字サイズ ──
