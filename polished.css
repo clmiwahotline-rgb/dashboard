@@ -76,8 +76,6 @@ html, body {
   grid-template-columns: 240px 1fr;
   min-height: calc(100vh - 48px);
   overflow: hidden;
-  max-width: 1480px;
-  margin-inline: auto;
 }
 
 /* Mobile menu (hidden on desktop) */

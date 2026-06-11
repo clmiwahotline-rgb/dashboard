@@ -1,7 +1,7 @@
 // Hi-fi みわダッシュボード — main view (v2 レイアウト)
 
 // ★ アプリ版数 — 全データをフォルダ出力するたびに +0.01 する（2.01 スタート）
-const APP_VERSION = "2.08";
+const APP_VERSION = "2.09";
 
 const Sidebar = () => <AppSidebar active="dashboard" />;
 

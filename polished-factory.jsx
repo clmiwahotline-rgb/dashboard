@@ -33,12 +33,18 @@ const importFactoryCsv = (text) => {
   if (rows.length < 2) return { rows: [], columns: [] };
   const H = rows[0].map(h => (h || "").replace(/\s+/g, " ").trim());
   const idxAll = (kw) => H.map((h, i) => h.includes(kw) ? i : -1).filter(i => i >= 0);
+  const idxBy  = (pred) => H.map((h, i) => pred(h) ? i : -1).filter(i => i >= 0);
   const first = (a) => a.length ? a[0] : -1;
   const dateI = first(idxAll("報告日").concat(idxAll("日付")));
   const facI  = first(idxAll("どちらの工場").concat(idxAll("工場")));
   const tsI   = first(idxAll("タイムスタンプ"));
   const memI  = idxAll("出勤したメンバー").length ? idxAll("出勤したメンバー") : idxAll("メンバー");
-  const norI  = idxAll("通常ロット");
+  // 通常ロットは「前日まで」と「当日」の2列に分離して各々取得する
+  // （どちらも無い旧フォームの単一「通常ロット」列は前日扱いとして互換維持）
+  const norPrevI  = idxBy(h => h.includes("通常ロット") && h.includes("前日"));
+  const norTodayI = idxBy(h => h.includes("通常ロット") && (h.includes("当日") || h.includes("本日")));
+  const norPlainI = idxBy(h => h.includes("通常ロット") && !h.includes("前日") && !h.includes("当日") && !h.includes("本日"));
+  const norI  = norPrevI.length ? norPrevI : norPlainI;   // 前日（無ければレガシー単一列）= 総点数に算入
   const extI  = idxAll("ロット外");
   const advI  = idxAll("先付け");
   const stoI  = idxAll("保管処理");
@@ -62,6 +68,7 @@ const importFactoryCsv = (text) => {
       timestamp: ts, date, factory, reportID: date + "_" + factory,
       members: String(at(memI) || ""),
       normalLot: facNum(at(norI)),
+      normalLotToday: facNum(at(norTodayI)),
       extraLot:  facNum(at(extI)),
       advance:   facNum(at(advI)),
       storage:   isY ? facNum(at(stoI)) : null,
@@ -192,9 +199,14 @@ const FactoryEditModal = ({ open, record, onSave, onClose }) => {
         <div className="modal-body">
           <div className="form-grid">
             <div className="field">
-              <label className="field-label">通常ロット点数</label>
+              <label className="field-label">前日通常ロット点数</label>
               <input type="number" className="input" value={form.normalLot || 0}
                      onChange={(e) => setForm({...form, normalLot: parseInt(e.target.value) || 0})}/>
+            </div>
+            <div className="field">
+              <label className="field-label">当日通常ロット点数</label>
+              <input type="number" className="input" value={form.normalLotToday || 0}
+                     onChange={(e) => setForm({...form, normalLotToday: parseInt(e.target.value) || 0})}/>
             </div>
             <div className="field">
               <label className="field-label">ロット外点数</label>
@@ -256,10 +268,12 @@ const FactoryToast = ({ msg, onDone }) => {
 // ── Main page ─────────────────────────────────────────
 const FactoryReportPage = () => {
   const [rows, setRows] = useFbStateFactory("miwa.factory.v3", () => SEED_FACTORY);
-  const [settings, setSettings] = useFbStateFactory("miwa.factory.settings.v3", () => ({
+  // settings/lastSync を v4 に上げて、全端末が「回答スプレットシート（CSV）」を
+  // 取込元として再初期化されるようにする（GASの旧設定をリセット）
+  const [settings, setSettings] = useFbStateFactory("miwa.factory.settings.v4", () => ({
     url: FACTORY_DEFAULT_GAS, autoSync: true, intervalH: 1,
   }));
-  const [lastSync, setLastSync] = useFbStateFactory("miwa.factory.lastSync.v3", () => null);
+  const [lastSync, setLastSync] = useFbStateFactory("miwa.factory.lastSync.v4", () => null);
   const [lastError, setLastError] = React.useState("");
   const [diag, setDiag] = React.useState(null);
   const [syncing, setSyncing] = React.useState(false);
@@ -296,6 +310,11 @@ const FactoryReportPage = () => {
     }
     return matches.length ? obj[matches[0]] : null;
   };
+  // 述語に最初に一致した列の値（フォーム改変・列増減に強い）
+  const valByPred = (obj, pred) => {
+    const k = Object.keys(obj).find(pred);
+    return k !== undefined ? obj[k] : null;
+  };
   const numVal = (v) => {
     if (v === null || v === undefined || v === "") return 0;
     const n = parseFloat(String(v).replace(/,/g, ""));
@@ -321,7 +340,13 @@ const FactoryReportPage = () => {
       timestamp: ts, date, factory,
       reportID: date + "_" + factory,
       members: String(prefixVal(r, prefix, "出勤したメンバー") || ""),
-      normalLot: numVal(prefixVal(r, prefix, "通常ロット")),
+      // 通常ロット：「前日まで」と「当日」を明示的に分離（同名2列の取り違え防止）
+      normalLot: numVal(
+        valByPred(r, k => k.includes("通常ロット") && k.includes("前日")) != null
+          ? valByPred(r, k => k.includes("通常ロット") && k.includes("前日"))
+          : valByPred(r, k => k.includes("通常ロット") && !k.includes("当日") && !k.includes("本日"))
+      ),
+      normalLotToday: numVal(valByPred(r, k => k.includes("通常ロット") && (k.includes("当日") || k.includes("本日")))),
       extraLot:  numVal(prefixVal(r, prefix, "ロット外")),
       advance:   numVal(prefixVal(r, prefix, "先付け")),
       storage:   isYashio ? numVal(prefixVal(r, prefix, "保管処理")) : null,

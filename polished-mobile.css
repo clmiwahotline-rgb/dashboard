@@ -37,38 +37,30 @@ body {
   top: 0;
   z-index: 40;
   padding: calc(var(--sat) + 10px) 16px 10px;
-  background: linear-gradient(115deg,#0a7d4a 0%,#15a05a 50%,#34b36c 100%);
-  box-shadow: 0 2px 14px rgba(11,90,60,.28);
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.m-header-title { font-size: 19px; font-weight: 800; color: #fff; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
-.m-header-sub { font-size: 11.5px; color: rgba(255,255,255,.86); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70vw; }
+.m-header-title { font-size: 19px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+.m-header-sub { font-size: 11.5px; color: var(--ink-mute); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70vw; }
 .m-header-spacer { flex: 1; }
 .m-header-badge {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
-  background: rgba(255,255,255,.2); color: #fff;
+  background: var(--accent-soft); color: var(--accent-ink);
 }
 .m-header-badge .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
 .m-header-icon {
-  width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,.34);
-  background: rgba(255,255,255,.16); color: #fff;
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink-soft);
   display: flex; align-items: center; justify-content: center; cursor: pointer;
-  flex-shrink: 0; position: relative;
+  flex-shrink: 0;
 }
 .m-header-icon:active { transform: scale(0.94); }
-/* 文字サイズ ポップアップ（モバイル） */
-.m-fs-pop{ position:absolute; top:46px; right:0; z-index:60; width:168px; background:var(--card,#fff); border:1px solid var(--line,#eceaf5); border-radius:16px; box-shadow:0 16px 44px rgba(20,19,46,.22); padding:6px; }
-.m-fs-head{ font-size:10.5px; font-weight:800; color:var(--ink-mute,#8a8db0); padding:7px 10px 5px; }
-.m-fs-opt{ display:flex; align-items:center; gap:9px; width:100%; border:0; background:transparent; cursor:pointer; font-family:inherit; color:var(--ink-soft,#4d4f73); font-weight:700; text-align:left; padding:10px; border-radius:10px; }
-.m-fs-opt:active{ background:var(--bg-2,#eef0f3); }
-.m-fs-opt.on{ background:#e7f6ee; color:#0b7a45; }
-.m-fs-opt .lab{ flex:1; }
-.m-fs-opt.s .lab{ font-size:13px; } .m-fs-opt.l .lab{ font-size:15px; } .m-fs-opt.xl .lab{ font-size:17.5px; }
-.m-fs-opt .ck{ width:15px; height:15px; flex-shrink:0; opacity:0; color:#0b7a45; }
-.m-fs-opt.on .ck{ opacity:1; }
 
 /* ── スクロール本体 ─────────────────────────────────── */
 .m-scroll {

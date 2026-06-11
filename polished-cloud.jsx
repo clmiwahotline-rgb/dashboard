@@ -82,10 +82,12 @@ const cloudUploadFile = (name, type, dataBase64) =>
 const cloudImportClaimForm = () => cloudPost({ action: "importClaimForm" });
 // 車両報告フォームの回答を「給油」「整備」シートへ取込。返り値 { ok, fuel, maint, total }
 const cloudImportVehicleForm = () => cloudPost({ action: "importVehicleForm" });
+// フィードバック報告フォームの回答を「フィードバック」シートへ取込。返り値 { ok, imported, total }
+const cloudImportFeedbackForm = () => cloudPost({ action: "importFeedbackForm" });
 
 const sameId = (a, b) => String(a) === String(b);
 
 Object.assign(window, {
   CLOUD_API_URL, cloudEnabled, cloudGet,
-  cloudAdd, cloudUpdate, cloudDelete, cloudReplaceAll, cloudUploadFile, cloudImportClaimForm, cloudImportVehicleForm, sameId,
+  cloudAdd, cloudUpdate, cloudDelete, cloudReplaceAll, cloudUploadFile, cloudImportClaimForm, cloudImportVehicleForm, cloudImportFeedbackForm, sameId,
 });

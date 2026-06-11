@@ -1,7 +1,11 @@
 // 工場報告 — atoms (KPI, charts, comparison, table)
 
 // ── Constants ─────────────────────────────────────────
-const FACTORY_DEFAULT_GAS    = "https://script.google.com/macros/s/AKfycbwzozfPWs5wFYvgxsTwIH0dWwCtiKvc5gM3MN8LGGWJXKIfdp1p9reKc8jd_RHCBWZIwg/exec";
+// 【重要】取込元は「回答スプレッドシート」を使うこと。
+// このフォームは八潮/東川口で同じ設問名の列が重複しており、GASのJSONだと
+// 同名キーが衝突して八潮の数値が消える。CSV（スプレッドシート直）なら
+// 列を位置で保持でき、八潮/東川口と前日/当日を正しく分離できる。
+const FACTORY_DEFAULT_GAS    = "https://docs.google.com/spreadsheets/d/1vG_IRqtef1ZCiG1MkZgUot4Vrmj59RIfQjhRO4aKDMQ/edit";
 const FACTORY_DEFAULT_COMMENT_GAS = "https://script.google.com/macros/s/AKfycbye_DKfP4mj3TPKrxoAj1W4gNyREg70FyV_qJES67x-unRVwprbXg4j1FVm2mG51EPk/exec";
 
 const FACTORIES = [
@@ -89,8 +93,9 @@ const FactoryKpiGrid = ({ rows, selectedFactory, latestDate }) => {
     : `${(hours || 0).toFixed(1)}h × ¥${(FACTORY_RATES[selectedFactory] || 1200).toLocaleString()}`;
 
   const cards = [
-    { label: "総点数",       v: total.toLocaleString(),                u: "点",   sub: "通常+ロット外+先付け+保管", c: "var(--ink)" },
-    { label: "通常ロット",   v: sum("normalLot").toLocaleString(),     u: "点",   sub: "", c: "var(--accent)" },
+    { label: "総点数",       v: total.toLocaleString(),                u: "点",   sub: "前日通常+ロット外+先付け+保管", c: "var(--ink)" },
+    { label: "前日通常ロット", v: sum("normalLot").toLocaleString(),     u: "点",   sub: "前日までの入荷", c: "var(--accent)" },
+    { label: "当日通常ロット", v: sum("normalLotToday").toLocaleString(), u: "点",   sub: "当日の入荷", c: "#7C4DFF" },
     { label: "ロット外",     v: sum("extraLot").toLocaleString(),      u: "点",   sub: "", c: "#4285F4" },
     { label: "先付け処理",   v: sum("advance").toLocaleString(),       u: "点",   sub: "", c: "#34A853" },
     { label: "保管処理",     v: isHigashi ? "—" : sum("storage").toLocaleString(), u: isHigashi ? "" : "点", sub: isHigashi ? "対象外" : "", c: "#34A853" },
@@ -191,6 +196,7 @@ const FactoryComparison = ({ rows }) => {
           const fd = rows.filter(r => r.factory === f.name && weekDates.includes(r.date));
           const days = new Set(fd.map(r => r.date)).size || 1;
           const nl = fd.reduce((s,r)=>s+r.normalLot,0)/days;
+          const nt = fd.reduce((s,r)=>s+(r.normalLotToday||0),0)/days;
           const el = fd.reduce((s,r)=>s+r.extraLot,0)/days;
           const ad = fd.reduce((s,r)=>s+r.advance,0)/days;
           const st = fd.reduce((s,r)=>s+(r.storage||0),0)/days;
@@ -198,7 +204,7 @@ const FactoryComparison = ({ rows }) => {
           const hr = fd.reduce((s,r)=>s+r.hours,0)/days;
           const totHr = fd.reduce((s,r)=>s+r.hours,0);
           const totPt = fd.reduce((s,r)=>s+totalPointsF(r),0);
-          const maxV = Math.max(nl, el, ad, st, 1);
+          const maxV = Math.max(nl, nt, el, ad, st, 1);
 
           const bar = (label, val) => {
             const pct = (val / maxV) * 100;
@@ -226,7 +232,8 @@ const FactoryComparison = ({ rows }) => {
                 {Math.round(tot * 10) / 10}
                 <span style={{ fontSize: 12, color: "var(--ink-mute)", fontWeight: 500, marginLeft: 4 }}>点/日</span>
               </div>
-              {bar("通常ロット", Math.round(nl*10)/10)}
+              {bar("前日通常", Math.round(nl*10)/10)}
+              {bar("当日通常", Math.round(nt*10)/10)}
               {bar("ロット外",   Math.round(el*10)/10)}
               {bar("先付け",     Math.round(ad*10)/10)}
               {f.hasStorage && bar("保管処理", Math.round(st*10)/10)}
@@ -260,13 +267,13 @@ const FactoryReportTable = ({ rows, showCount, onShowMore, onEdit }) => {
           <thead>
             <tr>
               <th>日付</th><th>曜</th><th>工場</th><th>人数</th>
-              <th>通常</th><th>ロット外</th><th>先付け</th><th>保管</th>
+              <th>前日通常</th><th>当日通常</th><th>ロット外</th><th>先付け</th><th>保管</th>
               <th>総点数</th><th>時間</th><th>生産性</th><th></th>
             </tr>
           </thead>
           <tbody>
             {showing.length === 0 && (
-              <tr><td colSpan="12" style={{ padding: 32, textAlign: "center", color: "var(--ink-mute)" }}>データがありません</td></tr>
+              <tr><td colSpan="13" style={{ padding: 32, textAlign: "center", color: "var(--ink-mute)" }}>データがありません</td></tr>
             )}
             {showing.map((r, i) => {
               const tp = totalPointsF(r);
@@ -286,6 +293,7 @@ const FactoryReportTable = ({ rows, showCount, onShowMore, onEdit }) => {
                   </td>
                   <td>{countMembersF(r.members)}名</td>
                   <td className="mono" style={{ fontWeight: 700 }}>{r.normalLot}</td>
+                  <td className="mono" style={{ color: "#7C4DFF" }}>{r.normalLotToday ?? 0}</td>
                   <td className="mono">{r.extraLot}</td>
                   <td className="mono">{r.advance}</td>
                   <td className="mono" style={r.storage == null ? { color: "var(--ink-faint)" } : null}>{r.storage ?? "—"}</td>

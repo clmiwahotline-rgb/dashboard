@@ -554,6 +554,7 @@ const FeedbackPage = () => {
   const [lastError, setLastError] = React.useState("");
   const [diag, setDiag] = React.useState(null);
   const [syncing, setSyncing] = React.useState(false);
+  const [importing, setImporting] = React.useState(false);
 
   const [filter, setFilter] = React.useState({ store: "", status: "", q: "" });
   const [editing, setEditing] = React.useState(null);
@@ -583,6 +584,9 @@ const FeedbackPage = () => {
     let cancelled = false;
     loadStartRef.current = Date.now();
     (async () => {
+      // フォーム回答をクラウドへ取込（重複は自動スキップ）してから読み込む
+      try { if (typeof cloudImportFeedbackForm === "function") await cloudImportFeedbackForm(); } catch (e) {}
+      if (cancelled) return;
       const remote = await cloudGet("フィードバック");
       if (cancelled) return;
       if (remote == null) { setCloudState("error"); return; }
@@ -607,6 +611,25 @@ const FeedbackPage = () => {
     else setToast("取得に失敗しました");
     setSyncing(false);
   }, [cloudOn, mergeFresh]);
+
+  // Googleフォームの回答をクラウドへ取り込み（クレーム・車両と同じ仕組み）
+  const importFromForm = React.useCallback(async () => {
+    if (!cloudOn) return;
+    setImporting(true);
+    try {
+      const res = (typeof cloudImportFeedbackForm === "function") ? await cloudImportFeedbackForm() : { ok: false, message: "未設定" };
+      if (res && res.ok) {
+        await cloudRefresh();
+        setToast(res.imported > 0 ? `${res.imported} 件を取り込みました` : "新しい回答はありません");
+      } else {
+        setToast((res && res.message) || "取込に失敗しました");
+      }
+    } catch (e) {
+      setToast("取込に失敗しました");
+    } finally {
+      setImporting(false);
+    }
+  }, [cloudOn, cloudRefresh]);
 
   // Core sync function— GAS(JSON) と 公開CSV の両対応
   const syncNow = React.useCallback(async () => {
@@ -738,6 +761,12 @@ const FeedbackPage = () => {
               </div>
             </div>
             <div className="right">
+              {cloudOn && (
+                <button className="btn btn-ghost" onClick={importFromForm} disabled={importing} title="Googleフォームの回答を取り込む">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={importing ? { animation: "spin 1s linear infinite" } : null}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  {importing ? "取込中…" : "フォームから取込"}
+                </button>
+              )}
               <button className="btn btn-ghost" onClick={cloudOn ? cloudRefresh : syncNow} disabled={(cloudOn ? false : !settings.url) || syncing} title={cloudOn ? "クラウドから取り直す" : "今すぐスプレッドシートから取得"}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                      style={syncing ? { animation: "spin 1s linear infinite" } : null}>
