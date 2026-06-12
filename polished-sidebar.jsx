@@ -35,6 +35,7 @@ window.AppSidebar = ({ active = "dashboard" }) => {
       { id: "thanks",    label: "ありがとうカード", icon: Ico.heart, href: encodeURIComponent("ありがとうカード.html") },
       { id: "notice",    label: "お知らせ",         icon: Ico.bell, href: encodeURIComponent("お知らせ.html") },
       { id: "news",      label: "業界ニュース",     icon: Ico.news, href: encodeURIComponent("業界ニュース.html") },
+      { id: "faq",       label: "FAQ管理",          icon: Ico.faq, href: encodeURIComponent("FAQ管理.html") },
     ]},
     { group: "設定", items: [
       { id: "account",   label: "アカウント", icon: Ico.cog },
