@@ -83,7 +83,7 @@ const FbKpiRow = ({ rows }) => {
 };
 
 // ── Photo / placeholder ───────────────────────────────
-const FbPhoto = ({ fileId, item }) => {
+const FbPhoto = ({ fileId, item, onOpen }) => {
   const [srcIdx, setSrcIdx] = React.useState(0);
   const raw = String(fileId || "").trim();
   // ドライブURL / 画像直URL / ID のいずれも受け付ける
@@ -112,6 +112,14 @@ const FbPhoto = ({ fileId, item }) => {
       : [`https://picsum.photos/seed/${encodeURIComponent(raw)}/600/360`];
   const src = candidates[srcIdx];
   const href = driveId ? `https://drive.google.com/file/d/${driveId}/view` : (isHttpImg ? raw : src);
+  // ポップアップ（ライトボック）用の高解像度候補
+  const hiRes = driveId
+    ? [
+        `https://lh3.googleusercontent.com/d/${driveId}=w1600`,
+        `https://drive.google.com/thumbnail?id=${driveId}&sz=w1600`,
+        `https://drive.google.com/uc?export=view&id=${driveId}`,
+      ]
+    : isHttpImg ? [raw] : candidates;
 
   if (srcIdx >= candidates.length) {
     // All sources failed — placeholder
@@ -129,7 +137,10 @@ const FbPhoto = ({ fileId, item }) => {
   }
 
   return (
-    <a className="fb-photo" href={href} target="_blank" rel="noopener" style={{ position: "relative", display: "block" }}>
+    <div className="fb-photo" role="button" tabIndex={0}
+         onClick={() => onOpen && onOpen({ candidates: hiRes, name: item, href })}
+         onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && onOpen) { e.preventDefault(); onOpen({ candidates: hiRes, name: item, href }); } }}
+         style={{ position: "relative", display: "block", cursor: "zoom-in" }}>
       <img
         src={src}
         alt={item}
@@ -150,17 +161,43 @@ const FbPhoto = ({ fileId, item }) => {
         </svg>
         拡大
       </span>
-    </a>
+    </div>
+  );
+};
+
+// ── ライトボック（写真をポップアップ表示）──────────────
+const FbLightbox = ({ candidates, name, href, onClose }) => {
+  const [idx, setIdx] = React.useState(0);
+  React.useEffect(() => {
+    const k = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, [onClose]);
+  const list = candidates || [];
+  return (
+    <div className="lb-backdrop" onClick={onClose}>
+      <button className="lb-close" onClick={onClose}>✕</button>
+      {idx < list.length ? (
+        <img className="lb-img" src={list[idx]} alt={name || ""} referrerPolicy="no-referrer"
+             onClick={(e) => e.stopPropagation()} onError={() => setIdx(idx + 1)} />
+      ) : (
+        <div onClick={(e) => e.stopPropagation()} style={{ textAlign: "center", color: "#fff" }}>
+          <div style={{ marginBottom: 12, fontSize: 14 }}>画像を読み込めませんでした</div>
+          {href && <a href={href} target="_blank" rel="noopener" style={{ color: "#9ec5ff", fontWeight: 700 }}>Driveで開く →</a>}
+        </div>
+      )}
+      {name && idx < list.length && <div className="lb-cap">{name}</div>}
+    </div>
   );
 };
 
 // ── Card ───────────────────────────────────────────────
-const FbCard = ({ fb, onEdit, onDelete }) => {
+const FbCard = ({ fb, onEdit, onDelete, onOpenImg }) => {
   const sc = typeColor(fb.type);
 
   return (
     <div className="card fb-card-root">
-      <FbPhoto fileId={fb.fileId} item={fb.item} />
+      <FbPhoto fileId={fb.fileId} item={fb.item} onOpen={onOpenImg} />
       <div className="fb-body">
         <div className="fb-meta">
           <StoreTag name={fb.store} />
@@ -560,6 +597,7 @@ const FeedbackPage = () => {
   const [editing, setEditing] = React.useState(null);
   const [showSettings, setShowSettings] = React.useState(false);
   const [toast, setToast] = React.useState("");
+  const [lightbox, setLightbox] = React.useState(null);
   const [dark, setDark] = React.useState(false);
 
   React.useEffect(() => {
@@ -827,7 +865,7 @@ const FeedbackPage = () => {
           ) : (
             <div className="fb-grid">
               {filtered.map((fb) => (
-                <FbCard key={fb.id} fb={fb} onEdit={(r) => setEditing(r)} onDelete={deleteRow}/>
+                <FbCard key={fb.id} fb={fb} onEdit={(r) => setEditing(r)} onDelete={deleteRow} onOpenImg={(p) => setLightbox(p)}/>
               ))}
             </div>
           )}
@@ -855,6 +893,7 @@ const FeedbackPage = () => {
       )}
 
       <Toast msg={toast} onDone={() => setToast("")}/>
+      {lightbox && <FbLightbox candidates={lightbox.candidates} name={lightbox.name} href={lightbox.href} onClose={() => setLightbox(null)} />}
     </div>
   );
 };

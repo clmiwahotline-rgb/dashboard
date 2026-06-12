@@ -77,6 +77,17 @@
   var EU = function (s) { try { return encodeURIComponent(s); } catch (e) { return s; } };
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
+  // スマホ判定（device.js / フッターと同条件）→ 戻る先・ダッシュボードリンクをモバイルアプリへ
+  function isPhone() {
+    try {
+      var ua = navigator.userAgent || "";
+      var phoneUA = /Android.+Mobile|iPhone|iPod|webOS|BlackBerry|IEMobile|Opera Mini|Mobile.+Firefox/i.test(ua);
+      var narrowTouch = window.matchMedia("(max-width: 760px)").matches && (navigator.maxTouchPoints || 0) > 1;
+      return phoneUA || narrowTouch;
+    } catch (e) { return false; }
+  }
+  function homeHref() { return isPhone() ? (EU("モバイル.html") + "?view=mobile") : "index.html"; }
+
   function injectStyle() {
     if (document.getElementById("miwa-header-style")) return;
     var style = document.createElement("style");
@@ -176,9 +187,9 @@
       '<div class="mh-titles"><div class="mh-title">' + esc(info.title) + '</div>' +
       (info.sub ? '<div class="mh-sub">' + esc(info.sub) + '</div>' : '') + '</div>';
 
-    // 戻るボタン（ホーム以外の全ページ）
+    // 戻るボタン（ホーム以外の全ページ）— スマホではモバイルアプリへ
     var backHtml = isHome() ? '' :
-      '<a class="mh-back" href="index.html" aria-label="ダッシュボードへ戻る" title="ダッシュボードへ戻る">' +
+      '<a class="mh-back" href="' + homeHref() + '" aria-label="ダッシュボードへ戻る" title="ダッシュボードへ戻る">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>';
 
     // 文字サイズ ポップアップ
@@ -204,7 +215,7 @@
         (admin ? '<span class="mh-role">管理者</span>' : '') + '</div>' +
         '<div class="mh-id-mail">' + esc(user.email || "") + '</div></div></div><div class="mh-sep"></div>';
     }
-    menuRows += '<a class="mh-link" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 10v10h14V10"/></svg>ダッシュボード</a>';
+    menuRows += '<a class="mh-link" href="' + homeHref() + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 10v10h14V10"/></svg>ダッシュボード</a>';
     menuRows += '<a class="mh-link" href="' + EU("機能説明書.html") + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>機能説明書</a>';
     if (admin) menuRows += '<a class="mh-link" href="' + EU("アカウント管理.html") + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>アカウント管理</a>';
     if (user) menuRows += '<div class="mh-sep"></div><button type="button" class="mh-link danger" id="mh-logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>ログアウト</button>';

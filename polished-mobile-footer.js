@@ -21,6 +21,10 @@
   if (here === "モバイル.html") return;     // モバイルアプリ本体はスキップ
   if (!isPhone()) return;                    // スマホ以外は表示しない
 
+  // スマホでは、PC用サイドバー（ハンバーガー）と統一ヘッダーが競合するため、
+  // <html> に mf-phone を付けて PC サイドバー類を隠す（ナビは下部タブ＋共通ヘッダーに一本化）。
+  try { document.documentElement.classList.add("mf-phone"); } catch (e) {}
+
   // どのタブをハイライトするか（PC版ページ→対応するモバイルタブ）
   function activeTab() {
     if (here === "index.html" || here === "") return "home";
@@ -61,6 +65,10 @@
       "#mf-tabbar a:active{transform:translateY(1px);}",
       // PC版のサイドバー用ハンバーガーがフッターと被らないよう少し上げる
       "@media print{#mf-tabbar{display:none !important;}body{padding-bottom:0 !important;}}",
+      // スマホでは PC 用サイドバー/ハンバーガーを隠し、共通ヘッダー＋下部タブに統一
+      "html.mf-phone .mobile-menu,html.mf-phone .mobile-scrim,html.mf-phone .sidebar{display:none !important;}",
+      "html.mf-phone .shell{grid-template-columns:1fr !important;}",
+      "html.mf-phone .main{padding-left:14px !important;padding-right:14px !important;}",
     ].join("");
     document.head.appendChild(style);
 
