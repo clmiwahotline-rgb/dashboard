@@ -131,7 +131,7 @@ function parseGNews(xml, keyword) {
   }).filter((x) => x.title);
 }
 
-const normTitle = (t) => t.toLowerCase().replace(/[\s　・,、。！？!?\-–—|｜「」『』【】]/g, "");
+const normTitle = (t) => (t || "").toLowerCase().replace(/[\s　・,、。！？!?\-–—|｜「」『』【】]/g, "").replace(/[…]|\.{2,}/g, "").slice(0, 36);
 
 // ── 毎日 9 時基準のスケジューリング ───────────────────
 function lastNineAM() {
@@ -401,9 +401,17 @@ const IndustryNewsPage = () => {
 
   // ── 除外フィルタ適用後のアイテム ──
   const visibleItems = React.useMemo(() => {
-    if (!excludes.length) return items;
+    // 同じ記事の重複を除去（タイトル正規化）— 取得元に依らず効く
+    const seen = new Set();
+    const uniq = [];
+    for (const it of items) {
+      const k = normTitle(it.title) || (it.link || "");
+      if (!k || seen.has(k)) continue;
+      seen.add(k); uniq.push(it);
+    }
+    if (!excludes.length) return uniq;
     const ex = excludes.map((e) => e.toLowerCase());
-    return items.filter((it) => {
+    return uniq.filter((it) => {
       const hay = (it.title + " " + (it.source || "")).toLowerCase();
       return !ex.some((e) => e && hay.includes(e));
     });

@@ -76,6 +76,8 @@ html, body {
   grid-template-columns: 240px 1fr;
   min-height: calc(100vh - 48px);
   overflow: hidden;
+  max-width: 1480px;
+  margin-inline: auto;
 }
 
 /* Mobile menu (hidden on desktop) */
@@ -1846,6 +1848,24 @@ textarea.input {
   margin-top: 5px; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft);
   white-space: pre-wrap; word-break: break-word;
 }
+.bd-text.bd-clamp {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.bd-expand {
+  margin-top: 4px; padding: 2px 0; border: 0; background: transparent; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 700; color: var(--accent-ink);
+}
+.bd-expand:hover { text-decoration: underline; }
+.bd-confirm-row { margin-top: 10px; display: flex; }
+.bd-confirm {
+  font-size: 12.5px; font-weight: 800; color: var(--accent-ink); white-space: nowrap;
+  background: var(--accent-soft, #eaf1fd); border: 1px solid #cfe0f8; border-radius: 999px;
+  padding: 6px 16px; cursor: pointer; font-family: inherit; transition: filter .12s, transform .1s;
+}
+.bd-confirm:hover { filter: brightness(0.97); }
+.bd-confirm:active { transform: translateY(1px); }
+.bd-seen { font-size: 12px; font-weight: 700; color: var(--ink-mute); display: inline-flex; align-items: center; }
 
 /* 添付（投稿後）：コメント右側に上半分クロップ表示 */
 .bd-attach { margin-top: 10px; }

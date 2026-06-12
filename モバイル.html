@@ -4,27 +4,27 @@
 <meta charset="UTF-8">
 <title>みわ モバイル ・ クリーニングみわ</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#0a7d4a">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="みわ">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="icon" sizes="32x32" href="favicon-32.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
 <!-- ログイン（最優先・Googleサインイン必須） -->
-<script src="auth-config.js"></script>
-<script src="polished-auth.js"></script>
+<script src="auth-config.js?v=210"></script>
+<script src="polished-auth.js?v=210"></script>
 
 <!-- 端末自動判定（最優先・PCがこのページを開いたらPC版へ戻す） -->
-<script src="polished-device.js"></script>
+<script src="polished-device.js?v=210"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="polished.css">
-<link rel="stylesheet" href="polished-mobile.css">
+<link rel="stylesheet" href="polished.css?v=211">
+<link rel="stylesheet" href="polished-mobile.css?v=210">
 </head>
 <body>
 <div id="m-root">
@@ -82,21 +82,21 @@
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
 <!-- 共有データ層（PC版と同一・全端末で共有） -->
-<script src="polished-shift-seed.js"></script>
-<script type="text/babel" src="polished-cloud.jsx"></script>
-<script type="text/babel" src="polished-atoms.jsx"></script>
-<script type="text/babel" src="polished-claims-data.jsx"></script>
+<script src="polished-shift-seed.js?v=210"></script>
+<script type="text/babel" src="polished-cloud.jsx?v=210"></script>
+<script type="text/babel" src="polished-atoms.jsx?v=210"></script>
+<script type="text/babel" src="polished-claims-data.jsx?v=210"></script>
 
 <!-- モバイル各タブ（シェルより前に読み込む） -->
-<script type="text/babel" src="polished-mobile-home.jsx"></script>
-<script type="text/babel" src="polished-mobile-menu.jsx"></script>
-<script type="text/babel" src="polished-mobile-shift.jsx"></script>
-<script type="text/babel" src="polished-mobile-claims.jsx"></script>
-<script type="text/babel" src="polished-mobile-thanks.jsx"></script>
-<script type="text/babel" src="polished-mobile-news.jsx"></script>
-<script type="text/babel" src="polished-mobile-about.jsx"></script>
+<script type="text/babel" src="polished-mobile-home.jsx?v=210"></script>
+<script type="text/babel" src="polished-mobile-menu.jsx?v=210"></script>
+<script type="text/babel" src="polished-mobile-shift.jsx?v=210"></script>
+<script type="text/babel" src="polished-mobile-claims.jsx?v=210"></script>
+<script type="text/babel" src="polished-mobile-thanks.jsx?v=210"></script>
+<script type="text/babel" src="polished-mobile-news.jsx?v=211"></script>
+<script type="text/babel" src="polished-mobile-about.jsx?v=211"></script>
 
 <!-- アプリシェル（最後にマウント） -->
-<script type="text/babel" src="polished-mobile.jsx"></script>
+<script type="text/babel" src="polished-mobile.jsx?v=210"></script>
 </body>
 </html>

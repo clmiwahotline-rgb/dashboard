@@ -308,12 +308,20 @@ const SideThumbs = ({ imgs, onOpenImg }) => {
 };
 
 // ── 投稿1件 ────────────────────────────────────────────
-const BoardPost = ({ post, onDelete, onOpenImg }) => {
+const BoardPost = ({ post, onDelete, onOpenImg, clamp = false, onConfirm, confirmed = false, isToday = false }) => {
   const who = post.who || "匿名";
   const hue = avatarHue(who);
   const files = post.files || [];
   const imgs = files.filter((f) => f.isImg && f.thumb);
   const docs = files.filter((f) => !(f.isImg && f.thumb));
+  const [expanded, setExpanded] = React.useState(false);
+  const [overflowing, setOverflowing] = React.useState(false);
+  const textRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!clamp || !textRef.current) return;
+    const el = textRef.current;
+    setOverflowing(el.scrollHeight - el.clientHeight > 2);
+  }, [clamp, post.text, expanded]);
   return (
     <div className="bd-post">
       <div className="bd-av" style={{ background: `linear-gradient(135deg, oklch(0.66 0.13 ${hue}), oklch(0.55 0.15 ${(hue + 40) % 360}))` }}>
@@ -332,11 +340,23 @@ const BoardPost = ({ post, onDelete, onOpenImg }) => {
         </div>
         <div className="bd-post-body">
           <div className="bd-post-text-col">
-            {post.text && <div className="bd-text">{post.text}</div>}
+            {post.text && <div ref={textRef} className={"bd-text" + (clamp && !expanded ? " bd-clamp" : "")}>{post.text}</div>}
+            {clamp && (overflowing || expanded) && (
+              <button className="bd-expand" onClick={() => setExpanded((v) => !v)}>
+                {expanded ? "折りたたむ ▴" : "続きを読む ▾"}
+              </button>
+            )}
             <DocChips docs={docs} />
           </div>
           <SideThumbs imgs={imgs} onOpenImg={onOpenImg} />
         </div>
+        {onConfirm && (
+          <div className="bd-confirm-row">
+            {confirmed
+              ? <span className="bd-seen">✓ 確認済み{isToday ? "（本日中は表示）" : ""}</span>
+              : <button className="bd-confirm" onClick={() => onConfirm(post)}>✓ 確認した</button>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -467,35 +487,45 @@ const BoardComposer = ({ onPost }) => {
 const BOARD_SEEN_KEY = "miwa.board.seenCount.v1";
 const readSeen = () => parseInt(localStorage.getItem(BOARD_SEEN_KEY) || "0", 10);
 
+// スマホホームと同じ miwa.board.seen.v1（確認済みID配列）を共有 → 端末間で状態一致
+const BOARD_SEEN_IDS_KEY = "miwa.board.seen.v1";
+const readSeenIds = () => { try { const a = JSON.parse(localStorage.getItem(BOARD_SEEN_IDS_KEY)); return Array.isArray(a) ? a : []; } catch { return []; } };
+const boardYmd = (d) => { const z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
+
 const ShareBoard = () => {
   const { posts, addPost: addData, delPost: delData, cloudOn, cloudState } = useBoardData();
   const [lightbox, setLightbox] = React.useState(null);
   const [warn, setWarn] = React.useState("");
-  const [seen, setSeen] = React.useState(readSeen);
+  const [seenIds, setSeenIds] = React.useState(readSeenIds);
 
-  // 別タブ・サイドバーが既読数を更新したら追従
+  // 別タブ・スマホが確認状態を更新したら追従
   React.useEffect(() => {
-    const sync = () => setSeen(readSeen());
+    const sync = () => setSeenIds(readSeenIds());
     window.addEventListener("storage", sync);
     const t = setInterval(sync, 3000);
     return () => { window.removeEventListener("storage", sync); clearInterval(t); };
   }, []);
 
-  const addPost = (p) => {
-    addData(p);
-    // 自分の投稿は既読扱い（既存の未読は残す）
-    const ns = Math.min(posts.length + 1, readSeen() + 1);
-    try { localStorage.setItem(BOARD_SEEN_KEY, String(ns)); } catch {}
-    setSeen(ns);
-  };
+  const todayISO = boardYmd(new Date());
+  const boardId = (p) => String(p.id != null ? p.id : p.ts);
+  const boardDate = (p) => { const t = Number(p.ts) || (p.ts ? Date.parse(p.ts) : 0); return t ? boardYmd(new Date(t)) : todayISO; };
+  const confirmBoard = (p) => setSeenIds((prev) => {
+    const id = boardId(p);
+    const next = prev.includes(id) ? prev : [...prev, id];
+    try { localStorage.setItem(BOARD_SEEN_IDS_KEY, JSON.stringify(next)); } catch {}
+    return next;
+  });
+
+  const addPost = (p) => { addData(p); };
   const delPost = (id) => {
     if (!confirm("この投稿を削除しますか？")) return;
     delData(id);
   };
 
+  // 本日分は全件、過去分は未確認のみ（新しい順）
   const sorted = [...posts].sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  const latest = sorted.slice(0, 1);
-  const unread = Math.max(0, posts.length - seen);
+  const visible = sorted.filter((p) => boardDate(p) === todayISO || !seenIds.includes(boardId(p)));
+  const hiddenConfirmed = posts.length - visible.length;
 
   return (
     <div className="card bd-card">
@@ -514,25 +544,30 @@ const ShareBoard = () => {
 
       {warn && <div className="bd-warn">⚠ {warn}</div>}
 
-      {unread > 0 && (
-        <a className="bd-unread" href={encodeURIComponent("共有ボード.html")}>
-          <span className="bd-unread-dot"></span>
-          <span className="bd-unread-text">未読のメッセージが <b>{unread}</b> 件あります</span>
-          <span className="bd-unread-go">共有ボードで見る →</span>
-        </a>
-      )}
-
       <div className="bd-feed">
-        {latest.length === 0 ? (
-          <div className="bd-empty">まだ投稿がありません。上のフォームから共有事項を投稿しましょう。</div>
+        {visible.length === 0 ? (
+          <div className="bd-empty">
+            {posts.length === 0
+              ? "まだ投稿がありません。上のフォームから共有事項を投稿しましょう。"
+              : "新しい投稿はありません（すべて確認済み）。"}
+          </div>
         ) : (
           <>
-            {latest.map((p) => (
-              <BoardPost key={p.id} post={p} onDelete={delPost} onOpenImg={(f) => setLightbox(f)} />
+            {visible.map((p) => (
+              <BoardPost
+                key={boardId(p)}
+                post={p}
+                onDelete={delPost}
+                onOpenImg={(f) => setLightbox(f)}
+                clamp={true}
+                onConfirm={confirmBoard}
+                confirmed={seenIds.includes(boardId(p))}
+                isToday={boardDate(p) === todayISO}
+              />
             ))}
-            {posts.length > 1 && (
+            {hiddenConfirmed > 0 && (
               <a className="bd-more" href={encodeURIComponent("共有ボード.html")}>
-                ほか {posts.length - 1} 件を共有ボードで見る →
+                確認済み {hiddenConfirmed} 件を含めて共有ボードで見る →
               </a>
             )}
           </>

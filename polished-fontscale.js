@@ -90,6 +90,12 @@
 
   function injectStyle() {
     if (document.getElementById("miwa-header-style")) return;
+    // スマホ最上部のステータスバーをヘッダーと同じ緑に揃える（白バー/バーなしの不統一を解消）
+    try {
+      var tc = document.querySelector('meta[name="theme-color"]');
+      if (!tc) { tc = document.createElement("meta"); tc.setAttribute("name", "theme-color"); document.head.appendChild(tc); }
+      tc.setAttribute("content", "#0a7d4a");
+    } catch (e) {}
     var style = document.createElement("style");
     style.id = "miwa-header-style";
     style.textContent =

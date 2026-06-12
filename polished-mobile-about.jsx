@@ -1,6 +1,6 @@
 // モバイル版 ─ アカウント・その他（アカウント情報／バージョン／報告フォーム／機能説明書）
 
-const M_APP_VERSION = (typeof window !== "undefined" && window.APP_VERSION) || "2.10";
+const M_APP_VERSION = (typeof window !== "undefined" && window.APP_VERSION) || "2.11";
 const M_REPORT_FORM_URL = "https://clmiwahotline-rgb.github.io/formsite/";
 
 const mAboutHue = (s) => { let h = 0; for (let i = 0; i < (s || "").length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; };

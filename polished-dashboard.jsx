@@ -1,7 +1,7 @@
 // Hi-fi みわダッシュボード — main view (v2 レイアウト)
 
 // ★ アプリ版数 — 全データをフォルダ出力するたびに +0.01 する（2.01 スタート）
-const APP_VERSION = "2.10";
+const APP_VERSION = "2.11";
 
 const Sidebar = () => <AppSidebar active="dashboard" />;
 
@@ -566,9 +566,20 @@ const dashArticleOk = (u) => {
   if (/\.(png|jpe?g|gif|webp|svg|ico|bmp)(\?|$)/i.test(u)) return false;
   return true;
 };
+const dashNewsKey = (it) => {
+  const t = (it.title || "").toLowerCase()
+    .replace(/[\s\u3000・,、。!?！？\-–—|｜「」『』【】]/g, "")
+    .replace(/[…]|\.{2,}/g, "");
+  return t.slice(0, 36) || (it.link || "");
+};
+const dashDedupeNews = (arr) => {
+  const seen = new Set(); const out = [];
+  for (const it of arr) { const k = dashNewsKey(it); if (!k || seen.has(k)) continue; seen.add(k); out.push(it); }
+  return out;
+};
 const IndustryNewsLatest = () => {
   const items = dashLS("miwa.industry.items.v1", SAMPLE_INDUSTRY);
-  const sorted = [...items].sort((a, b) => (b.date || 0) - (a.date || 0));
+  const sorted = dashDedupeNews([...items].sort((a, b) => (b.date || 0) - (a.date || 0)));
   const [listRef, n] = useFitCount(sorted.length);
   const shown = sorted.slice(0, n);
   const linkFor = (it) => dashArticleOk(it.link) ? it.link : `https://search.yahoo.co.jp/search?p=${encodeURIComponent(it.title)}&ei=UTF-8`;
