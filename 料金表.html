@@ -147,13 +147,13 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 .pr-table tr.hidden-row .pr-hide-btn { opacity: 1; color: var(--green); }
 .pr-table tr.hidden-row .pr-hide-btn:hover { background: var(--green-light); }
 /* アクションメニュー */
-.pr-action-menu { position: fixed; z-index: 500; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.18); padding: 6px 0; min-width: 140px; }
+.pr-action-menu { position: fixed; z-index: 1300; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.18); padding: 6px 0; min-width: 140px; }
 .pr-action-menu button { display: block; width: 100%; padding: 10px 16px; border: none; background: none; text-align: left; font-size: 13.5px; font-weight: 600; cursor: pointer; color: #374151; font-family: inherit; }
 .pr-action-menu button:hover { background: #f3f4f6; }
 .pr-action-menu button.danger { color: #dc2626; }
 .pr-action-menu button.danger:hover { background: #fee2e2; }
 /* 編集モーダル */
-.pr-edit-modal { position: fixed; inset: 0; z-index: 600; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
+.pr-edit-modal { position: fixed; inset: 0; z-index: 1400; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
 .pr-edit-modal.open { display: flex; }
 .pr-edit-sheet { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 520px; padding: 24px 20px 32px; }
 .pr-edit-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
@@ -215,9 +215,7 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
   .pr-tab { padding: 9px 11px; font-size: 12px; }
   .pr-tab-badge { font-size: 9px; padding: 1px 5px; }
   .pr-content { padding: 8px 10px; }
-  /* テーブル：スマホでは商品名＋料金のみ（他列は非表示） */
-  .pr-table th:nth-child(n+4),
-  .pr-table td:nth-child(n+4) { display: none; }
+  /* テーブルは横スクロールで全コース表示（.pr-table-wrap が overflow-x: auto 済み） */
   .pr-table th, .pr-table td { padding: 11px 8px; font-size: 13px; }
   .pr-table .name-col { font-size: 13px; }
   .pr-cat-head { font-size: 13px; padding: 13px 12px; min-height: 48px; }
