@@ -45,6 +45,7 @@ window.AppSidebar = ({ active = "dashboard" }) => {
 
   const [open, setOpen] = React.useState(false);
   const [logoOk, setLogoOk] = React.useState(true);
+  const [logoLoaded, setLogoLoaded] = React.useState(false);
 
   // ログイン中ユーザー（polished-auth.js）
   const authUser = (window.MiwaAuth && window.MiwaAuth.user && window.MiwaAuth.user()) || null;
@@ -114,7 +115,9 @@ window.AppSidebar = ({ active = "dashboard" }) => {
             {logoOk
               ? <img src="logo.png" alt="クリーニングみわ"
                      onError={() => setLogoOk(false)}
-                     style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 10, display: "block" }} />
+                     onLoad={() => setLogoLoaded(true)}
+                     style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 10, display: "block",
+                              opacity: logoLoaded ? 1 : 0, transition: "opacity 0.45s ease" }} />
               : "M"}
           </div>
           <div>

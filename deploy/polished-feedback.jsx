@@ -588,6 +588,7 @@ const FeedbackPage = () => {
     url: "", autoSync: true, intervalH: 1,
   }));
   const [lastSync, setLastSync] = useFbState("miwa.feedback.lastSync", () => null);
+  const [deletedIds, setDeletedIds] = useFbState("miwa.feedback.deleted.v1", () => []);
   const [lastError, setLastError] = React.useState("");
   const [diag, setDiag] = React.useState(null);
   const [syncing, setSyncing] = React.useState(false);
@@ -614,9 +615,10 @@ const FeedbackPage = () => {
     setRows((prev) => {
       const ids = new Set((remote || []).map((r) => String(r.id)));
       const freshLocal = prev.filter((r) => Number(r.id) > loadStartRef.current && !ids.has(String(r.id)));
-      return freshLocal.length ? [...freshLocal, ...remote] : remote;
+      const filtered = (remote || []).filter(r => !deletedIds.includes(String(r.id)));
+      return freshLocal.length ? [...freshLocal, ...filtered] : filtered;
     });
-  }, [setRows]);
+  }, [setRows, deletedIds]);
   React.useEffect(() => {
     if (!cloudOn) return;
     let cancelled = false;
@@ -701,7 +703,7 @@ const FeedbackPage = () => {
       setDiag({ columns: columns || [], count: parsed ? parsed.length : 0 });
       if (errors && errors.length) throw new Error(errors.join(" / "));
       if (!parsed || !parsed.length) throw new Error("データ行が見つかりません。設定画面の「受信した列名」と公開設定をご確認ください");
-      setRows(parsed);
+      setRows(parsed.filter(r => !deletedIds.includes(String(r.id))));
       setLastSync(Date.now());
       setToast(`${parsed.length} 件を同期しました`);
     } catch (e) {
@@ -770,6 +772,7 @@ const FeedbackPage = () => {
   const deleteRow = (id) => {
     if (!confirm("このフィードバックを削除しますか?")) return;
     setRows(rows.filter((r) => r.id !== id));
+    setDeletedIds((prev) => [...new Set([...prev, String(id)])]);
     setToast("削除しました");
     if (cloudOn) cloudDelete("フィードバック", id).then((res) => {
       if (!res.ok) setToast("⚠ クラウド削除に失敗（端末内では削除済み）");
