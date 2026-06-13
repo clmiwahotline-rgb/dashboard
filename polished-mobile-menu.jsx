@@ -6,6 +6,8 @@ const M_MENU_ITEMS = [
   { key: "thanks", icon: "🙏", label: "ありがとうカード", sub: "閲覧・コメント", kind: "view", target: "thanks", accent: "#1e8e3e", bg: "#e6f4ea" },
   // external … PC版ページへ
   { key: "board", icon: "📌", label: "共有ボード", sub: "投稿・添付", kind: "page", target: "共有ボード.html", accent: "#2a6fdb", bg: "#e7f0fd" },
+  { key: "price", icon: "🏷️", label: "料金表", sub: "クリーニング・加工・物販", kind: "page", target: "料金表.html", accent: "#1e8e3e", bg: "#e6f4ea" },
+  { key: "faq", icon: "🤖", label: "FAQチャット", sub: "業務質問・AI回答", kind: "page", target: "formsite/FAQ.html", accent: "#0b8043", bg: "#d9f3ef" },
   { key: "sales", icon: "💰", label: "売上レポート", sub: "店舗別・昨対比", kind: "page", target: "売上レポート.html", accent: "#9a6700", bg: "#fef3cd" },
   { key: "stain", icon: "🧴", label: "シミ抜き報告", sub: "処理・除去率", kind: "page", target: "シミ抜き報告.html", accent: "#1a73e8", bg: "#e3f0fd" },
   { key: "factory", icon: "🏭", label: "工場報告", sub: "生産性・工数", kind: "page", target: "工場報告.html", accent: "#8430ce", bg: "#f3e8fd" },
