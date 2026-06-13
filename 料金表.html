@@ -67,8 +67,9 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 .pr-updated { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
 /* ─ タブ ─ */
-.pr-tabs { background: #fff; border-bottom: 2px solid var(--border); display: flex; padding: 0 20px; gap: 4px; position: sticky; top: 102px; z-index: 39; }
-.pr-tab { padding: 10px 16px; border: none; background: none; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; white-space: nowrap; }
+.pr-tabs { background: #fff; border-bottom: 2px solid var(--border); display: flex; padding: 0 20px; gap: 4px; position: sticky; top: 102px; z-index: 39; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.pr-tabs::-webkit-scrollbar { display: none; }
+.pr-tab { padding: 10px 16px; border: none; background: none; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s; white-space: nowrap; flex-shrink: 0;ransition: color .15s, border-color .15s; white-space: nowrap; }
 .pr-tab.active { color: var(--green); border-bottom-color: var(--green); }
 .pr-tab-badge { background: var(--green-light); color: var(--green); border-radius: 999px; padding: 1px 7px; font-size: 11px; font-weight: 800; margin-left: 5px; }
 
@@ -139,12 +140,32 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 .modal-status.err { background: #fef2f2; color: #dc2626; }
 
 /* ─ 非表示ボタン ─ */
-.pr-hide-btn { border: none; background: transparent; cursor: pointer; padding: 3px 5px; opacity: 0; transition: opacity .15s; color: var(--text-muted); border-radius: 4px; flex-shrink: 0; }
+.pr-hide-btn { border: none; background: transparent; cursor: pointer; padding: 3px 5px; opacity: 0; transition: opacity .15s; color: var(--text-muted); border-radius: 4px; flex-shrink: 0; font-size: 16px; font-weight: 700; line-height: 1; }
 .pr-table tr:hover .pr-hide-btn { opacity: 1; }
-.pr-hide-btn:hover { background: #fee2e2; color: #dc2626; }
+.pr-hide-btn:hover { background: #f3f4f6; color: #374151; }
 .pr-table tr.hidden-row td { opacity: .35; text-decoration: line-through; }
 .pr-table tr.hidden-row .pr-hide-btn { opacity: 1; color: var(--green); }
 .pr-table tr.hidden-row .pr-hide-btn:hover { background: var(--green-light); }
+/* アクションメニュー */
+.pr-action-menu { position: fixed; z-index: 500; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.18); padding: 6px 0; min-width: 140px; }
+.pr-action-menu button { display: block; width: 100%; padding: 10px 16px; border: none; background: none; text-align: left; font-size: 13.5px; font-weight: 600; cursor: pointer; color: #374151; font-family: inherit; }
+.pr-action-menu button:hover { background: #f3f4f6; }
+.pr-action-menu button.danger { color: #dc2626; }
+.pr-action-menu button.danger:hover { background: #fee2e2; }
+/* 編集モーダル */
+.pr-edit-modal { position: fixed; inset: 0; z-index: 600; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
+.pr-edit-modal.open { display: flex; }
+.pr-edit-sheet { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 520px; padding: 24px 20px 32px; }
+.pr-edit-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.pr-edit-head h3 { font-size: 16px; font-weight: 800; }
+.pr-edit-close { border: none; background: none; font-size: 22px; cursor: pointer; color: #999; }
+.pr-edit-field { margin-bottom: 14px; }
+.pr-edit-field label { display: block; font-size: 12px; font-weight: 700; color: #666; margin-bottom: 5px; }
+.pr-edit-field input { width: 100%; padding: 10px 12px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 15px; font-family: inherit; }
+.pr-edit-field input:focus { outline: none; border-color: var(--green); }
+.pr-edit-footer { display: flex; gap: 8px; margin-top: 18px; }
+.pr-edit-save { flex: 1; padding: 12px; background: var(--green); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+.pr-edit-del { padding: 12px 16px; background: #fee2e2; color: #dc2626; border: none; border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
 
 /* ─ 非表示管理バー ─ */
 .pr-hidden-bar { display: flex; align-items: center; gap: 10px; padding: 8px 20px; background: #fff8f0; border-bottom: 1px solid #fed7aa; font-size: 13px; }
@@ -154,11 +175,63 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 .pr-restore-all { padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font-size: 12px; font-weight: 700; color: var(--text-muted); cursor: pointer; margin-left: auto; }
 .pr-restore-all:hover { color: var(--green); border-color: var(--green); }
 
-/* ─ タブ名列 ─ */
-.pr-table th.action-col { width: 32px; }
+/* ── Tweaksパネル ── */
+#pr-tweaks-panel {
+  position: fixed; right: 16px; bottom: 80px; z-index: 300;
+  width: 240px; background: #fff; border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18); padding: 16px;
+  font-family: inherit; display: none;
+}
+#pr-tweaks-panel.open { display: block; }
+.prtweak-title { font-size: 12px; font-weight: 800; letter-spacing: .1em; color: #999; text-transform: uppercase; margin-bottom: 14px; }
+.prtweak-row { margin-bottom: 14px; }
+.prtweak-label { font-size: 12px; font-weight: 700; color: #444; margin-bottom: 7px; }
+.prtweak-radio { display: flex; gap: 4px; }
+.prtweak-radio button { flex: 1; padding: 7px 4px; border: 1.5px solid #e0e0e0; background: #fff; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; color: #555; transition: all .15s; }
+.prtweak-radio button.active { background: var(--green); color: #fff; border-color: var(--green); }
+.prtweak-toggle { display: flex; align-items: center; justify-content: space-between; }
+.prtweak-switch { width: 40px; height: 22px; border-radius: 11px; background: #ddd; position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; border: none; }
+.prtweak-switch.on { background: var(--green); }
+.prtweak-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.prtweak-switch.on::after { transform: translateX(18px); }
 .pr-table td.action-col { padding: 0; text-align: center; }
 /* ─ スクロール ─ */
 .pr-table-wrap { overflow-x: auto; }
+
+/* ─── スマホ対応 ─── */
+@media (max-width: 600px) {
+  .pr-toolbar { padding: 8px 10px; gap: 7px; flex-wrap: wrap; top: 0; }
+  .brand-toggle { width: 100%; justify-content: stretch; }
+  .brand-btn { flex: 1; justify-content: center; padding: 6px 10px; font-size: 12px; }
+  .pr-search-wrap { flex: 1; min-width: 0; }
+  .tax-toggle { margin-left: auto; }
+  .pr-updated { display: none; }
+  .pr-import-btn { display: none; }
+  /* テーブルの行を大きくしてタップしやすく */
+  .pr-table tbody tr { height: 48px; }
+  .pr-table td.price-col { font-size: 15px; font-weight: 800; }
+  /* タブ：ツールバーが2段になるのでtopを大きく */
+  .pr-tabs { padding: 0 8px; top: 100px; }
+  .pr-tab { padding: 9px 11px; font-size: 12px; }
+  .pr-tab-badge { font-size: 9px; padding: 1px 5px; }
+  .pr-content { padding: 8px 10px; }
+  /* テーブル：スマホでは商品名＋料金のみ（他列は非表示） */
+  .pr-table th:nth-child(n+4),
+  .pr-table td:nth-child(n+4) { display: none; }
+  .pr-table th, .pr-table td { padding: 11px 8px; font-size: 13px; }
+  .pr-table .name-col { font-size: 13px; }
+  .pr-cat-head { font-size: 13px; padding: 13px 12px; min-height: 48px; }
+  /* 非表示ボタン：タッチターゲットを大きく */
+  .pr-table .action-col { width: 40px; }
+  .pr-hide-btn { width: 36px; height: 36px; border-radius: 8px; }
+  /* ㎡計算スマホ対応 */
+  .sqm-cell { padding: 12px 10px !important; }
+  .sqm-calc-wrap { flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .sqm-w, .sqm-h { width: 80px !important; font-size: 15px; padding: 8px 10px; }
+  .sqm-btn { padding: 8px 16px; font-size: 14px; }
+  /* 広告バー非表示 */
+  .pr-hidden-bar { font-size: 12px; }
+}
   .pr-content { padding: 10px 12px; }
   .pr-toolbar { padding: 8px 12px; }
   .pr-tabs { padding: 0 12px; }
@@ -170,11 +243,6 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 
 <div id="miwa-header"></div>
 
-<header class="pr-header">
-  <a href="index.html">← ダッシュボード</a>
-  <div class="pr-title">💴 料金表</div>
-  <div class="pr-brand-badge" id="brand-badge">緑のみわ</div>
-</header>
 
 <div class="pr-toolbar">
   <div class="brand-toggle">
@@ -215,7 +283,46 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 
 <div class="pr-content" id="pr-content"></div>
 
-<!-- CSV取込モーダル -->
+<!-- 編集モーダル -->
+<div class="pr-edit-modal" id="pr-edit-modal">
+  <div class="pr-edit-sheet">
+    <div class="pr-edit-head">
+      <h3 id="pr-edit-title">編集</h3>
+      <button class="pr-edit-close" onclick="closeEditModal()">×</button>
+    </div>
+    <div class="pr-edit-field">
+      <label>商品名</label>
+      <input type="text" id="pr-edit-name" placeholder="商品名">
+    </div>
+    <div class="pr-edit-field" id="pr-edit-p1-wrap">
+      <label id="pr-edit-p1-label">料金（円）</label>
+      <input type="number" id="pr-edit-p1" placeholder="0">
+    </div>
+    <div class="pr-edit-field" id="pr-edit-p4-wrap" style="display:none">
+      <label>デリケートコース（円）</label>
+      <input type="number" id="pr-edit-p4" placeholder="0">
+    </div>
+    <div class="pr-edit-field" id="pr-edit-p5-wrap" style="display:none">
+      <label>ブランドコース（円）</label>
+      <input type="number" id="pr-edit-p5" placeholder="0">
+    </div>
+    <div class="pr-edit-field" id="pr-edit-p6-wrap" style="display:none">
+      <label>ハイブランドコース（円）</label>
+      <input type="number" id="pr-edit-p6" placeholder="0">
+    </div>
+    <div class="pr-edit-footer">
+      <button class="pr-edit-save" onclick="saveEditItem()">保存</button>
+      <button class="pr-edit-del" onclick="deleteEditItem()">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- アクションメニュー -->
+<div class="pr-action-menu" id="pr-action-menu" style="display:none">
+  <button onclick="openEditFromMenu()">✏️ 編集</button>
+  <button onclick="toggleHideFromMenu()">👁 非表示 / 表示</button>
+  <button class="danger" onclick="deleteFromMenu()">🗑 削除</button>
+</div>
 <div class="modal-overlay" id="import-modal" style="display:none">
   <div class="modal-box">
     <div class="modal-title">📥 CSVの取込先を選択</div>
@@ -245,13 +352,104 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 <script src="sales_seed.js"></script>
 <script src="function_seed.js"></script>
 
-<script src="polished-fontscale.js?v=213"></script>
+<script src="polished-fontscale.js?v=214"></script>
+
+<!-- Tweaksパネル -->
+<div id="pr-tweaks-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div class="prtweak-title" style="margin:0">🎨 Tweaks</div>
+    <button onclick="document.getElementById('pr-tweaks-panel').classList.remove('open');window.parent.postMessage({type:'__edit_mode_dismissed'},'*')" style="border:none;background:none;cursor:pointer;font-size:16px;color:#999;padding:0">×</button>
+  </div>
+  <div class="prtweak-row">
+    <div class="prtweak-label">文字サイズ</div>
+    <div class="prtweak-radio" id="ptw-size">
+      <button onclick="ptwSetSize('S')">小</button>
+      <button class="active" onclick="ptwSetSize('M')">標準</button>
+      <button onclick="ptwSetSize('L')">大</button>
+    </div>
+  </div>
+  <div class="prtweak-row">
+    <div class="prtweak-label">コース表示</div>
+    <div class="prtweak-radio" id="ptw-course">
+      <button class="active" onclick="ptwSetCourse('all')">全コース</button>
+      <button onclick="ptwSetCourse('regular')">レギュラーのみ</button>
+    </div>
+  </div>
+  <div class="prtweak-row">
+    <div class="prtweak-toggle">
+      <span class="prtweak-label" style="margin:0">全展開</span>
+      <button class="prtweak-switch" id="ptw-expand" onclick="ptwToggleExpand()"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Tweaks ロジック ──
+const PTW_KEY = 'miwa.price.tweaks.v1';
+let ptwState = { size:'M', course:'all', expand:false };
+try { Object.assign(ptwState, JSON.parse(localStorage.getItem(PTW_KEY)||'{}')); } catch(e){}
+
+function ptwSave() { try { localStorage.setItem(PTW_KEY, JSON.stringify(ptwState)); } catch(e){} }
+
+function ptwSetSize(v) {
+  ptwState.size = v;
+  const sz = { S:13, M:15, L:18 }[v]||15;
+  document.documentElement.style.setProperty('--pr-table-fs', sz+'px');
+  document.querySelectorAll('#ptw-size button').forEach(b => b.classList.toggle('active', b.textContent === ({S:'小',M:'標準',L:'大'})[v]));
+  ptwSave();
+}
+function ptwSetCourse(v) {
+  ptwState.course = v;
+  // レギュラーのみ: デリケート/ブランド/ハイブランド列を隠す
+  const style = document.getElementById('ptw-course-style') || (() => { const s=document.createElement('style'); s.id='ptw-course-style'; document.head.appendChild(s); return s; })();
+  style.textContent = v==='regular' ? '.pr-table th:nth-child(n+4),.pr-table td:nth-child(n+4){display:none}' : '';
+  document.querySelectorAll('#ptw-course button').forEach(b => b.classList.toggle('active', b.textContent.includes(v==='all'?'全コ':'レギ')));
+  renderAll();
+  ptwSave();
+}
+function ptwToggleExpand() {
+  ptwState.expand = !ptwState.expand;
+  const btn = document.getElementById('ptw-expand');
+  btn.classList.toggle('on', ptwState.expand);
+  if (ptwState.expand) {
+    document.querySelectorAll('.pr-cat-head:not(.open)').forEach(h => h.click());
+  } else {
+    // 最初の1つ以外を閉じる
+    const heads = document.querySelectorAll('.pr-cat-head.open');
+    heads.forEach((h,i) => { if(i>0) h.click(); });
+  }
+  ptwSave();
+}
+
+// 初期化
+function ptwInit() {
+  ptwSetSize(ptwState.size);
+  ptwSetCourse(ptwState.course);
+  document.getElementById('ptw-expand').classList.toggle('on', ptwState.expand);
+  if (ptwState.expand) document.querySelectorAll('.pr-cat-head:not(.open)').forEach(h => h.click());
+}
+
+// ホストプロトコル
+window.addEventListener('message', e => {
+  const t = e?.data?.type;
+  if (t === '__activate_edit_mode') {
+    document.getElementById('pr-tweaks-panel').classList.add('open');
+    window.parent.postMessage({ type: '__edit_mode_set_keys', keys: ['size','course','expand'] }, '*');
+  }
+  if (t === '__deactivate_edit_mode') {
+    document.getElementById('pr-tweaks-panel').classList.remove('open');
+  }
+});
+window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+
+document.addEventListener('DOMContentLoaded', () => setTimeout(ptwInit, 300));
+</script>
 <script>
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  設定
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const LS_KEY      = 'miwa.price.green.v2';
-const LS_KEY_BLUE = 'miwa.price.blue.v1';
+const LS_KEY      = 'miwa.price.green.v3'; // v3: YS6件対応
+const LS_KEY_BLUE = 'miwa.price.blue.v2';
 const LS_HIDDEN   = 'miwa.price.hidden.v1';
 const LS_HIDDEN_BLUE = 'miwa.price.hidden.blue.v1';
 const LS_FUNC   = 'miwa.price.func.v1';
@@ -335,6 +533,143 @@ function hideItem(code) {
 function restoreItem(code) {
   hiddenCodes.delete(code); saveHidden(); renderAll();
 }
+
+// ── 料金表編集（全体共有） ─────────────────────────────────
+const LS_EDITS = () => currentBrand==='blue' ? 'miwa.price.edits.blue.v1' : 'miwa.price.edits.v1';
+const CLOUD_EDITS_SHEET = () => currentBrand==='blue' ? '料金設定_青' : '料金設定';
+let priceEdits = {};  // { [code]: { name?, p1?, p4?, p5?, p6?, mp?, deleted:bool } }
+
+function loadEdits() {
+  try { priceEdits = JSON.parse(localStorage.getItem(LS_EDITS())||'{}'); } catch(e){ priceEdits = {}; }
+  // クラウドから取得
+  if (typeof cloudEnabled === 'function' && cloudEnabled()) {
+    if (typeof cloudGet === 'function') {
+      cloudGet(CLOUD_EDITS_SHEET()).then(rows => {
+        if (!Array.isArray(rows)) return;
+        const merged = {};
+        rows.forEach(r => { if (r.code) merged[r.code] = r; });
+        priceEdits = merged;
+        try { localStorage.setItem(LS_EDITS(), JSON.stringify(merged)); } catch(e){}
+        renderAll();
+      }).catch(()=>{});
+    }
+  }
+}
+
+function saveEdits() {
+  try { localStorage.setItem(LS_EDITS(), JSON.stringify(priceEdits)); } catch(e){}
+  // クラウドに全件を上書き
+  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
+    const rows = Object.values(priceEdits);
+    cloudReplaceAll(CLOUD_EDITS_SHEET(), rows).catch(()=>{});
+  }
+}
+
+// 編集後のデータにオーバーライドを適用
+function applyEdits(item) {
+  const e = priceEdits[item.code];
+  if (!e) return item;
+  return { ...item, ...e, deleted: !!e.deleted };
+}
+
+let menuTargetCode = null;
+let menuTargetSheet = null;  // 'cleaning'|'special'|'reform'|'function'|'sales'
+
+function openActionMenu(e, code, sheet) {
+  e.stopPropagation();
+  menuTargetCode = code;
+  menuTargetSheet = sheet;
+  const menu = document.getElementById('pr-action-menu');
+  menu.style.display = 'block';
+  const rect = e.target.getBoundingClientRect();
+  menu.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+  menu.style.left = Math.min(rect.left, window.innerWidth - 160) + 'px';
+  // 非表示状態でメニューのラベルを切替
+  const isHidden = hiddenCodes.has(code);
+  menu.children[1].textContent = isHidden ? '👁 表示に戻す' : '👏 非表示にする';
+}
+function closeActionMenu() {
+  document.getElementById('pr-action-menu').style.display = 'none';
+  menuTargetCode = null;
+}
+function openEditFromMenu() {
+  const code = menuTargetCode;
+  const sheet = menuTargetSheet;
+  closeActionMenu();
+  openEditModal(code, sheet);
+}
+function toggleHideFromMenu() {
+  const code = menuTargetCode;
+  closeActionMenu();
+  if (!code) return;
+  hiddenCodes.has(code) ? restoreItem(code) : hideItem(code);
+}
+function deleteFromMenu() {
+  const code = menuTargetCode;
+  closeActionMenu();
+  if (!code || !confirm('この項目を全端末から削除しますか？（共有）')) return;
+  priceEdits[code] = { ...priceEdits[code], code, deleted: true };
+  saveEdits();
+  renderAll();
+}
+
+let editTargetCode = null;
+function openEditModal(code, sheet) {
+  editTargetCode = code;
+  const allItems = getAllItemsBySheet(sheet);
+  const base = allItems.find(i => i.code === code);
+  if (!base) return;
+  const item = applyEdits(base);
+  document.getElementById('pr-edit-title').textContent = '編集：' + base.name;
+  document.getElementById('pr-edit-name').value = item.name || '';
+  document.getElementById('pr-edit-p1').value = item.p1 || '';
+  document.getElementById('pr-edit-p1-label').textContent = item.ys ? '定価（円）' : '料金（円）';
+  document.getElementById('pr-edit-p4-wrap').style.display = item.p4 !== undefined && !item.ys ? '' : 'none';
+  document.getElementById('pr-edit-p5-wrap').style.display = item.p5 !== undefined && !item.ys ? '' : 'none';
+  document.getElementById('pr-edit-p6-wrap').style.display = item.p6 !== undefined && !item.ys ? '' : 'none';
+  if (item.p4) document.getElementById('pr-edit-p4').value = item.p4 || '';
+  if (item.p5) document.getElementById('pr-edit-p5').value = item.p5 || '';
+  if (item.p6) document.getElementById('pr-edit-p6').value = item.p6 || '';
+  document.getElementById('pr-edit-modal').classList.add('open');
+}
+function closeEditModal() {
+  document.getElementById('pr-edit-modal').classList.remove('open');
+  editTargetCode = null;
+}
+function saveEditItem() {
+  if (!editTargetCode) return;
+  const edit = {
+    code: editTargetCode,
+    name: document.getElementById('pr-edit-name').value.trim() || undefined,
+    p1: Number(document.getElementById('pr-edit-p1').value) || undefined,
+    p4: Number(document.getElementById('pr-edit-p4').value) || undefined,
+    p5: Number(document.getElementById('pr-edit-p5').value) || undefined,
+    p6: Number(document.getElementById('pr-edit-p6').value) || undefined,
+    deleted: false
+  };
+  Object.keys(edit).forEach(k => edit[k] === undefined && delete edit[k]);
+  priceEdits[editTargetCode] = { ...priceEdits[editTargetCode], ...edit };
+  saveEdits();
+  closeEditModal();
+  renderAll();
+}
+function deleteEditItem() {
+  if (!editTargetCode || !confirm('この項目を全端末から削除しますか？（共有）')) return;
+  priceEdits[editTargetCode] = { ...priceEdits[editTargetCode], code: editTargetCode, deleted: true };
+  saveEdits();
+  closeEditModal();
+  renderAll();
+}
+function getAllItemsBySheet(sheet) {
+  if (sheet === 'cleaning') return priceData.cleaning || [];
+  if (sheet === 'special') return priceData.special || [];
+  if (sheet === 'reform') return priceData.reform || [];
+  if (sheet === 'function') { const d = (() => { try { const s=localStorage.getItem(LS_FUNC); if(s) return JSON.parse(s); } catch(e){} return window.FUNCTION_SEED || null; })(); return d ? d.items : []; }
+  if (sheet === 'sales') { const d = (() => { try { const s=localStorage.getItem(LS_SALES); if(s) return JSON.parse(s); } catch(e){} return window.SALES_SEED || null; })(); return d ? d.items : []; }
+  return [];
+}
+// クリック外にメニューを閉じる
+document.addEventListener('click', () => closeActionMenu());
 function restoreAll() {
   hiddenCodes.clear(); showHidden = false; saveHidden(); renderAll();
 }
@@ -441,14 +776,14 @@ function renderCategorySection(catName, items, q) {
   const showIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 
   const rows = displayItems.map(item => {
-    const nm = highlight(item.name, q);
+    const applied = applyEdits(item);
+    if (applied.deleted) return '';
+    const nm = highlight(applied.name || item.name, q);
     const isHidden = hiddenCodes.has(item.code);
     const rowClass = isHidden ? ' class="hidden-row"' : '';
-    const btn = isHidden
-      ? `<td class="action-col"><button class="pr-hide-btn" onclick="restoreItem('${esc(item.code)}')" title="表示に戻す">${showIcon}</button></td>`
-      : `<td class="action-col"><button class="pr-hide-btn" onclick="hideItem('${esc(item.code)}')" title="非表示にする">${hideIcon}</button></td>`;
+    const btn = `<td class="action-col"><button class="pr-hide-btn" onclick="openActionMenu(event,'${esc(item.code)}','${currentTab}')" title="メニュー">⋯</button></td>`;
     if (isYS) {
-      const mem = item.mp ? `<span class="member-price">${fmtPrice(item.mp)}<span class="pr-yen">円</span></span>` : '—';
+      const mem = applied.mp ? `<span class="member-price">${fmtPrice(applied.mp)}<span class="pr-yen">円</span></span>` : '—';
       return `<tr${rowClass}>${btn}<td class="name-col">${nm}</td>${priceCell(item.p1)}<td class="price-col">${mem}</td></tr>`;
     }
     // 全価格0＝都度見積り品（POSで価格未設定）。㎡計算カテゴリは「㎡見積り」表示
@@ -542,34 +877,8 @@ function renderAll() {
   const clrBtn = document.getElementById('pr-search-clear');
   if (clrBtn) clrBtn.style.display = q ? 'flex' : 'none';
 
-  // ── 検索ワードがある場合は全タブ横断表示 ──
-  if (nq) {
-    const funcData = (() => { try { const s=localStorage.getItem(LS_FUNC); if(s) return JSON.parse(s); } catch(e){} return window.FUNCTION_SEED || null; })();
-    const salesData = (() => { try { const s=localStorage.getItem(LS_SALES); if(s) return JSON.parse(s); } catch(e){} return window.SALES_SEED || null; })();
-    const sections = [
-      { label: 'クリーニング料金', items: priceData.cleaning, order: CLEAN_ORDER },
-      { label: '特殊品',         items: priceData.special,  order: SPECIAL_ORDER },
-      { label: 'リフォーム',         items: priceData.reform   },
-      { label: '加工',             items: funcData ? funcData.items : [] },
-      { label: '物販',             items: salesData ? salesData.items : [] },
-    ].filter(s => filterArr(s.items||[]).length > 0);
-
-    if (!sections.length) {
-      html = '<div class="pr-empty">該当する商品が見つかりません（全タブ検索）</div>';
-    } else {
-      html = sections.map(s => {
-        const matched = filterArr(s.items||[]).length;
-        return `<div class="pr-search-section">
-          <div class="pr-search-section-head">${s.label} <span class="pr-search-section-count">${matched}件</span></div>
-          ${s.order ? renderTab(s.items, s.order) : renderFlat(s.items, '')}
-        </div>`;
-      }).join('');
-    }
-    document.getElementById('pr-content').innerHTML = html;
-    return;
-  }
-
   let html = '';
+
 
   const renderTab = (arr, order) => {
     const items = filterArr(arr || []);
@@ -587,12 +896,12 @@ function renderAll() {
     const showIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
     const thead = `<tr><th class="action-col"></th><th>商品名</th><th class="price-col">料金</th>${hasD?'<th class="price-col">デリケート</th>':''}${hasB?'<th class="price-col">ブランド</th>':''}${hasHB?'<th class="price-col">ハイブランド</th>':''}</tr>`;
     const rows = items.map(i => {
+      const applied_i = applyEdits(i);
+      if (applied_i.deleted) return '';
       const isH = hiddenCodes.has(i.code);
       if (isH && !showHidden) return '';
       const rc = isH ? ' class="hidden-row"' : '';
-      const btn = isH
-        ? `<td class="action-col"><button class="pr-hide-btn" onclick="restoreItem('${esc(i.code||'')}')" title="表示に戻す">${showIcon}</button></td>`
-        : `<td class="action-col"><button class="pr-hide-btn" onclick="hideItem('${esc(i.code||'')}')" title="非表示">${hideIcon}</button></td>`;
+      const btn = `<td class="action-col"><button class="pr-hide-btn" onclick="openActionMenu(event,'${esc(i.code||'')}','${currentTab}')" title="メニュー">⋯</button></td>`;
       const allZero = !i.p1 && !i.p4 && !i.p5 && !i.p6;
       if (allZero) {
         // ㎡計算品
@@ -619,6 +928,32 @@ function renderAll() {
     return `<div class="pr-cat" style="margin-top:4px"><div class="pr-table-wrap"><table class="pr-table"><thead>${thead}</thead><tbody>${rows}</tbody></table></div></div>`;
   };
 
+  // ── 検索ワードがある場合は全タブ横断表示 ──
+  if (nq) {
+    const funcData = (() => { try { const s=localStorage.getItem(LS_FUNC); if(s) return JSON.parse(s); } catch(e){} return window.FUNCTION_SEED || null; })();
+    const salesData = (() => { try { const s=localStorage.getItem(LS_SALES); if(s) return JSON.parse(s); } catch(e){} return window.SALES_SEED || null; })();
+    const sections = [
+      { label: 'クリーニング料金', items: priceData.cleaning, order: CLEAN_ORDER },
+      { label: '特殊品',         items: priceData.special,  order: SPECIAL_ORDER },
+      { label: 'リフォーム',         items: priceData.reform   },
+      { label: '加工',             items: funcData ? funcData.items : [] },
+      { label: '物販',             items: salesData ? salesData.items : [] },
+    ].filter(sec => filterArr(sec.items||[]).length > 0);
+
+    if (!sections.length) {
+      html = '<div class="pr-empty">該当する商品が見つかりません（全タブ検索）</div>';
+    } else {
+      html = sections.map(sec => {
+        const matched = filterArr(sec.items||[]).length;
+        return `<div class="pr-search-section">
+          <div class="pr-search-section-head">${sec.label} <span class="pr-search-section-count">${matched}件</span></div>
+          ${sec.order ? renderTab(sec.items, sec.order) : renderFlat(sec.items, '')}
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('pr-content').innerHTML = html;
+    return;
+  }
   if (currentTab === 'cleaning') {
     html = renderTab(priceData.cleaning, CLEAN_ORDER);
     document.getElementById('badge-cleaning').textContent = filterArr(priceData.cleaning||[]).length;
@@ -799,6 +1134,7 @@ function parsePosCSV(text) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (function init() {
   loadData();
+  loadEdits();
   if (!localStorage.getItem(LS_KEY) && window.PRICE_SEED) {
     try { localStorage.setItem(LS_KEY, JSON.stringify(window.PRICE_SEED)); } catch(e) {}
   }
