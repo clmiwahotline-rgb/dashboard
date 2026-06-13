@@ -190,13 +190,14 @@ body {
 
 /* ── 下部タブバー ───────────────────────────────────── */
 /* position:fixed をやめて .m-app の flex 子要素にする。
-   .m-app が height:100dvh の flex-column なのでタブバーは
-   常に画面最下部に収まり、iOS PWA の fixed 浮きバグを根絶。 */
+   セーフエリアは 34px で上限キャップ：一部の iOS PWA で
+   env(safe-area-inset-bottom) が異常に大きな値（約97px）を返し、
+   タブバー下に大きな白余白が出るバグを防止。 */
 .m-tabbar {
   flex-shrink: 0;
   z-index: 50;
-  height: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(var(--m-tabbar-h) + min(env(safe-area-inset-bottom, 0px), 34px));
+  padding-bottom: min(env(safe-area-inset-bottom, 0px), 34px);
   background: var(--card); /* solid fallback */
   background: color-mix(in oklch, var(--card) 96%, transparent);
   backdrop-filter: saturate(180%) blur(20px);
@@ -251,7 +252,7 @@ body {
 /* ── FAB（新規追加）─────────────────────────────────── */
 /* タブバーが flex 子になったため FAB も absolute に変更 */
 .m-fab {
-  position: absolute; right: 18px; bottom: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px); z-index: 45;
+  position: absolute; right: 18px; bottom: calc(var(--m-tabbar-h) + min(env(safe-area-inset-bottom, 0px), 34px) + 16px); z-index: 45;
   width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
   background: var(--accent); color: #fff; box-shadow: 0 8px 22px var(--accent-glow);
   display: flex; align-items: center; justify-content: center;
@@ -416,7 +417,7 @@ body {
 
 /* ── ローディング/トースト ──────────────────────────── */
 .m-toast {
-  position: fixed; left: 50%; bottom: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 22px); transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: calc(var(--m-tabbar-h) + min(env(safe-area-inset-bottom, 0px), 34px) + 22px); transform: translateX(-50%);
   z-index: 200; max-width: 520px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700;
   padding: 11px 18px; border-radius: 999px; box-shadow: var(--shadow-lift); max-width: 88%;
   animation: m-fade 0.2s ease;
