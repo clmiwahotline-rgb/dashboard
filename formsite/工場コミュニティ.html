@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>マニュアルコミュニティ ｜ 東川口工場 ・ クリーニングみわ</title>
+<meta name="description" content="東川口ワイシャツ工場の決定事項・申し送りをみんなで記録。社長・会長が承認バッジを付けられます。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════════════════════
+     東川口工場 ・ マニュアルコミュニティ
+     報告フォームサイトと同じ Material 3 / Google 調
+     アクセント＝東川口工場カラー（ティール）
+     ════════════════════════════════════════════ */
+  :root{
+    --surface:#ffffff;
+    --surface-1:#f6f9f9;
+    --surface-2:#eaf2f1;
+    --surface-3:#e1ecea;
+
+    --ink:#1f1f24;
+    --ink-soft:#444653;
+    --ink-mute:#71807d;
+    --ink-faint:#aebcb9;
+    --line:#e0e9e7;
+    --line-strong:#cdded9;
+
+    --g-blue:#1a73e8;   --g-blue-c:#e8f0fe;
+    --g-red:#d93025;    --g-red-c:#fce8e6;
+    --g-yellow:#ea8600; --g-yellow-c:#fef7e0;
+    --g-green:#1e8e3e;  --g-green-c:#e6f4ea;
+    --g-purple:#8430ce; --g-purple-c:#f3e8fd;
+    --g-grey:#5f6368;   --g-grey-c:#eef0f3;
+
+    /* 工場アクセント（ティール） */
+    --teal:#0f766e;     --teal-c:#d6f0eb;  --teal-d:#0b5d56;
+    /* 承認＝ゴールド */
+    --gold:#b7791f;     --gold-c:#fdf3da;
+
+    --el-1: 0 1px 2px rgba(40,60,57,0.10), 0 1px 3px 1px rgba(40,60,57,0.05);
+    --el-2: 0 1px 3px rgba(40,60,57,0.12), 0 4px 8px 3px rgba(40,60,57,0.06);
+    --el-3: 0 2px 6px 2px rgba(40,60,57,0.10), 0 8px 24px 4px rgba(40,60,57,0.10);
+
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; min-height:100%; }
+  html{ background:var(--surface-3); }
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -200px, var(--surface-1) 0%, transparent 70%),
+      linear-gradient(180deg, var(--surface-2) 0%, var(--surface-3) 100%);
+    color:var(--ink);
+    font-family:"Plus Jakarta Sans","Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-feature-settings:"palt";
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:-0.006em;
+    overscroll-behavior-y:none;
+  }
+  a{ color:inherit; text-decoration:none; }
+  input,textarea,button,select{ font-family:inherit; }
+
+  .app{
+    max-width:600px; margin:0 auto;
+    min-height:100vh; min-height:100dvh;
+    display:flex; flex-direction:column;
+  }
+
+  /* ── トップアプリバー ── */
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    padding:calc(var(--sat) + 12px) 16px 12px;
+    background:color-mix(in oklab, var(--surface) 82%, transparent);
+    backdrop-filter:saturate(180%) blur(18px);
+    -webkit-backdrop-filter:saturate(180%) blur(18px);
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:11px;
+  }
+  .iconbtn{
+    width:40px; height:40px; flex-shrink:0; border:0; cursor:pointer;
+    border-radius:999px; background:var(--surface-2); color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease, transform .15s ease;
+  }
+  .iconbtn:hover{ background:var(--surface-3); }
+  .iconbtn:active{ transform:scale(0.94); }
+  .iconbtn svg{ width:20px; height:20px; }
+  .topbar-titles{ min-width:0; flex:1; }
+  .topbar-title{ font-size:18px; font-weight:800; letter-spacing:-0.02em; line-height:1.1; }
+  .topbar-sub{ font-size:11.5px; color:var(--ink-mute); font-weight:600; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .spin{ animation:spin 1s linear infinite; }
+  @keyframes spin{ from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+  /* ── 本体 ── */
+  .scroll{ flex:1; padding:18px 16px calc(var(--sab) + 36px); display:flex; flex-direction:column; gap:18px; }
+
+  /* ── ヒーロー（ティール＝工場） ── */
+  .hero{
+    border-radius:28px; padding:24px 22px 22px; color:#fff;
+    background:
+      radial-gradient(420px 200px at 88% -40%, rgba(255,255,255,0.20), transparent 70%),
+      linear-gradient(135deg, #0b5d56 0%, #0f766e 50%, #2aa295 100%);
+    box-shadow:var(--el-2); position:relative; overflow:hidden;
+  }
+  .hero::after{
+    content:""; position:absolute; right:-40px; bottom:-60px; width:190px; height:190px; border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.18), transparent 60%);
+  }
+  .hero-eyebrow{ font-size:12px; font-weight:700; letter-spacing:0.06em; opacity:0.9; }
+  .hero-title{ font-size:25px; font-weight:800; letter-spacing:-0.02em; line-height:1.25; margin-top:6px; }
+  .hero-text{ font-size:12.5px; line-height:1.65; opacity:0.95; margin-top:9px; max-width:42ch; }
+  .hstats{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:18px; position:relative; z-index:1; }
+  .hstat{ background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.22); border-radius:16px; padding:11px 8px; text-align:center; backdrop-filter:blur(4px); }
+  .hstat-v{ font-size:21px; font-weight:800; letter-spacing:-0.02em; line-height:1.1; }
+  .hstat-l{ font-size:10.5px; font-weight:700; opacity:0.9; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* ── セクション見出し ── */
+  .sec{ display:flex; align-items:baseline; gap:8px; margin:2px 4px -4px; }
+  .sec-title{ font-size:15px; font-weight:800; letter-spacing:-0.01em; }
+  .sec-sub{ font-size:12px; color:var(--ink-mute); font-weight:600; margin-left:auto; }
+
+  /* ── 投稿コンポーザー ── */
+  .composer{
+    background:var(--surface); border:1px solid var(--line); border-radius:24px;
+    box-shadow:var(--el-1); padding:16px 16px 15px;
+  }
+  .composer-head{ display:flex; align-items:center; gap:11px; }
+  .composer-av{ width:40px; height:40px; flex-shrink:0; border-radius:50%; background:linear-gradient(135deg, var(--teal), #2aa295); color:#fff; display:flex; align-items:center; justify-content:center; }
+  .composer-av svg{ width:21px; height:21px; }
+  .composer-trigger{
+    flex:1; text-align:left; height:44px; padding:0 16px; border-radius:14px;
+    border:1px solid var(--line-strong); background:var(--surface-1); color:var(--ink-mute);
+    font-size:13.5px; font-weight:600; cursor:pointer; transition:all .14s ease;
+  }
+  .composer-trigger:hover{ border-color:var(--teal); background:var(--teal-c); color:var(--teal-d); }
+
+  .composer-form{ display:flex; flex-direction:column; gap:11px; }
+  .field-label{ font-size:11.5px; font-weight:800; color:var(--ink-mute); margin:2px 2px 0; }
+  .cat-pick{ display:flex; gap:7px; overflow-x:auto; padding:2px; scrollbar-width:none; }
+  .cat-pick::-webkit-scrollbar{ display:none; }
+  .cat-opt{
+    white-space:nowrap; font-size:12px; font-weight:700; padding:8px 13px; border-radius:999px; cursor:pointer;
+    border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft);
+    transition:all .14s ease; display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
+  }
+  .cat-opt.on{ border-color:transparent; box-shadow:var(--el-1); }
+  .c-row{ display:flex; flex-direction:column; gap:9px; }
+  .inp.c-name{ width:100%; }
+  .inp{
+    width:100%; height:42px; border-radius:12px; border:1px solid var(--line-strong);
+    background:var(--surface); color:var(--ink); font-size:13.5px; padding:0 13px; transition:border-color .14s, box-shadow .14s;
+  }
+  .ta{
+    width:100%; min-height:92px; border-radius:12px; border:1px solid var(--line-strong);
+    background:var(--surface); color:var(--ink); font-size:13.5px; line-height:1.65; padding:11px 13px; resize:vertical; transition:border-color .14s, box-shadow .14s;
+  }
+  .inp:focus,.ta:focus{ outline:0; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-c); }
+  .composer-actions{ display:flex; align-items:center; gap:9px; }
+  .btn-ghost{ height:42px; padding:0 18px; border-radius:12px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); font-size:13px; font-weight:800; cursor:pointer; transition:all .14s; white-space:nowrap; flex-shrink:0; }
+  .btn-ghost:hover{ background:var(--surface-2); }
+  .btn-primary{ height:42px; flex:1; padding:0 16px; border-radius:12px; border:0; background:var(--teal); color:#fff; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:var(--el-1); transition:opacity .14s, transform .12s; display:flex; align-items:center; justify-content:center; gap:7px; }
+  .btn-primary:disabled{ opacity:0.45; cursor:default; }
+  .btn-primary:not(:disabled):active{ transform:scale(0.98); }
+  .btn-primary svg{ width:17px; height:17px; }
+
+  /* ── 似ている投稿（コンポーザー内）── */
+  .sim-box{ background:var(--g-yellow-c); border:1px solid color-mix(in oklab, var(--g-yellow) 26%, transparent); border-radius:14px; padding:11px 12px; display:flex; flex-direction:column; gap:8px; }
+  .sim-head{ font-size:11.5px; font-weight:800; color:#9a6a00; display:flex; align-items:center; gap:7px; line-height:1.4; }
+  .sim-head svg{ width:15px; height:15px; flex-shrink:0; }
+  .sim-item{ display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:8px 8px 8px 11px; }
+  .si-main{ flex:1; min-width:0; }
+  .si-title{ font-size:12.5px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .si-meta{ font-size:10.5px; color:var(--ink-mute); font-weight:700; margin-top:1px; }
+  .si-link{ flex-shrink:0; height:32px; padding:0 13px; border-radius:9px; border:0; background:var(--teal); color:#fff; font-size:11.5px; font-weight:800; cursor:pointer; }
+  .si-link:active{ transform:scale(0.96); }
+
+  /* ── 更新リンク（選択済み）── */
+  .link-chip{ display:flex; align-items:center; gap:10px; background:var(--teal-c); border:1px solid color-mix(in oklab, var(--teal) 26%, transparent); border-radius:13px; padding:10px 12px; }
+  .link-chip > svg{ flex-shrink:0; }
+  .lc-main{ flex:1; min-width:0; }
+  .lc-l{ font-size:10.5px; font-weight:800; color:var(--teal-d); }
+  .lc-t{ font-size:12.5px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+  .lc-x{ border:0; background:transparent; color:var(--teal-d); font-size:11.5px; font-weight:800; cursor:pointer; flex-shrink:0; }
+
+  /* ── 変更前→変更後ブロック（投稿カード内）── */
+  .change-block{ width:100%; text-align:left; display:block; background:var(--surface-1); border:1px solid var(--line); border-left:3px solid var(--teal); border-radius:12px; padding:9px 12px 8px; margin-bottom:11px; cursor:pointer; transition:background .14s; }
+  .change-block:hover{ background:var(--teal-c); }
+  .change-line{ display:flex; align-items:center; gap:8px; font-size:12.5px; min-width:0; }
+  .cl-tag{ font-size:10px; font-weight:800; padding:2px 7px; border-radius:6px; background:var(--g-grey-c); color:var(--g-grey); flex-shrink:0; }
+  .cl-txt{ color:var(--ink-mute); text-decoration:line-through; text-decoration-color:var(--line-strong); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .change-arrow{ display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:800; color:var(--teal); margin:4px 0 0 1px; white-space:nowrap; }
+  .change-arrow svg{ width:13px; height:13px; }
+  .after-tag{ display:inline-block; font-size:10px; font-weight:800; padding:2px 7px; border-radius:6px; background:var(--teal-c); color:var(--teal-d); margin-right:7px; vertical-align:middle; }
+
+  /* ── 旧版リボン ── */
+  .outdated-ribbon{ width:100%; text-align:left; display:flex; align-items:center; gap:7px; background:var(--g-yellow-c); color:#9a6a00; border:1px solid color-mix(in oklab, var(--g-yellow) 26%, transparent); border-radius:11px; padding:8px 12px; margin-bottom:11px; font-size:11.5px; font-weight:800; cursor:pointer; white-space:nowrap; }
+  .outdated-ribbon svg{ width:14px; height:14px; flex-shrink:0; }
+  .post.outdated{ opacity:0.82; }
+  .post.outdated .post-title{ color:var(--ink-soft); }
+  .post.flash{ animation:flash 1.7s ease; }
+  @keyframes flash{ 0%,100%{ box-shadow:var(--el-1); } 22%{ box-shadow:0 0 0 3px var(--teal); } }
+
+  /* ── フィルタ ── */
+  .filters{ display:flex; flex-direction:column; gap:9px; }
+  .search{
+    display:flex; align-items:center; gap:9px;
+    background:var(--surface); border:1px solid var(--line-strong); border-radius:14px; padding:0 13px; height:44px; box-shadow:var(--el-1);
+  }
+  .search svg{ width:18px; height:18px; color:var(--ink-mute); flex-shrink:0; }
+  .search input{ border:0; outline:0; background:transparent; flex:1; min-width:0; font-size:13.5px; color:var(--ink); }
+  .chips{ display:flex; gap:8px; overflow-x:auto; padding:2px; scrollbar-width:none; }
+  .chips::-webkit-scrollbar{ display:none; }
+  .fchip{
+    white-space:nowrap; font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px;
+    border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); cursor:pointer;
+    transition:all .14s ease; display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
+  }
+  .fchip:hover{ border-color:var(--ink-faint); }
+  .fchip.on{ background:var(--teal); color:#fff; border-color:transparent; box-shadow:var(--el-1); }
+  .fchip.gold.on{ background:var(--gold); }
+  .sortbtn{
+    align-self:flex-start; display:inline-flex; align-items:center; gap:6px;
+    font-size:12px; font-weight:800; color:var(--ink-mute); background:transparent; border:0; cursor:pointer; padding:4px 2px;
+  }
+  .sortbtn svg{ width:15px; height:15px; }
+
+  /* ── 投稿カード ── */
+  .posts{ display:flex; flex-direction:column; gap:12px; }
+  .post{
+    background:var(--surface); border:1px solid var(--line); border-radius:24px;
+    box-shadow:var(--el-1); padding:16px 17px 14px; position:relative;
+    transition:box-shadow .18s ease, border-color .18s ease;
+  }
+  .post:hover{ box-shadow:var(--el-2); }
+  .post.approved{ border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), var(--el-1); }
+
+  .post-top{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .cat-chip{ font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }
+  .sub-chip{ font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; white-space:nowrap; background:var(--surface-2); color:var(--ink-soft); border:1px solid var(--line); }
+
+  /* ── 写真添付 ── */
+  .photo-row{ display:flex; }
+  .attach-btn{ display:inline-flex; align-items:center; gap:7px; height:40px; padding:0 15px; border-radius:12px; border:1px dashed var(--line-strong); background:var(--surface-1); color:var(--ink-soft); font-size:12.5px; font-weight:800; cursor:pointer; transition:all .14s; white-space:nowrap; }
+  .attach-btn:hover:not(:disabled){ border-color:var(--teal); color:var(--teal-d); background:var(--teal-c); }
+  .attach-btn:disabled{ opacity:0.5; cursor:default; }
+  .attach-btn svg{ width:17px; height:17px; }
+  .photo-previews{ display:flex; gap:8px; flex-wrap:wrap; }
+  .photo-prev{ position:relative; width:80px; height:80px; border-radius:12px; overflow:hidden; border:1px solid var(--line); }
+  .photo-prev img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .pp-x{ position:absolute; top:3px; right:3px; width:22px; height:22px; border:0; border-radius:50%; background:rgba(0,0,0,0.55); color:#fff; font-size:14px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mini-spin{ width:15px; height:15px; border-radius:50%; border:2px solid rgba(255,255,255,0.5); border-top-color:#fff; animation:spin .7s linear infinite; flex-shrink:0; }
+
+  .post-photos{ display:grid; gap:6px; margin-top:11px; }
+  .post-photos.n1{ grid-template-columns:1fr; }
+  .post-photos.n2, .post-photos.n3, .post-photos.n4{ grid-template-columns:1fr 1fr; }
+  .post-photo{ border:0; padding:0; cursor:zoom-in; border-radius:14px; overflow:hidden; background:var(--surface-2); aspect-ratio:4/3; }
+  .post-photos.n1 .post-photo{ aspect-ratio:16/10; }
+  .post-photos.n3 .post-photo:first-child{ grid-column:1 / span 2; aspect-ratio:16/9; }
+  .post-photo img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform .2s; }
+  .post-photo:hover img{ transform:scale(1.03); }
+
+  .lightbox{ position:fixed; inset:0; z-index:80; background:rgba(0,0,0,0.86); display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out; }
+  .lightbox img{ max-width:100%; max-height:100%; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,0.5); }
+  .lb-x{ position:absolute; top:16px; right:16px; width:44px; height:44px; border:0; border-radius:50%; background:rgba(255,255,255,0.18); color:#fff; font-size:24px; cursor:pointer; }
+  .post-date{ font-size:11px; color:var(--ink-mute); font-weight:700; margin-left:auto; white-space:nowrap; }
+  .post-del{ border:0; background:transparent; color:var(--ink-faint); font-size:18px; line-height:1; cursor:pointer; padding:0 3px; border-radius:6px; flex-shrink:0; }
+  .post-del:hover{ background:var(--g-red-c); color:var(--g-red); }
+
+  .post-title{ font-size:16px; font-weight:800; color:var(--ink); line-height:1.35; letter-spacing:-0.01em; margin-bottom:5px; text-wrap:pretty; }
+  .post-body{ font-size:13.5px; line-height:1.75; color:var(--ink-soft); text-wrap:pretty; white-space:pre-wrap; word-break:break-word; }
+  .post-who{ font-size:11.5px; color:var(--ink-mute); font-weight:700; margin-top:9px; display:flex; align-items:center; gap:6px; }
+  .post-who .who-av{ width:20px; height:20px; border-radius:50%; background:var(--surface-2); color:var(--ink-soft); font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+
+  /* ── 承認バッジ ── */
+  .approve-row{ display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:12px; }
+  .approve-badge{
+    display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:800; white-space:nowrap; flex-shrink:0;
+    padding:6px 11px 6px 9px; border-radius:999px; background:var(--gold-c); color:var(--gold);
+    border:1px solid color-mix(in oklab, var(--gold) 28%, transparent);
+  }
+  .approve-badge .seal{ width:17px; height:17px; border-radius:50%; background:var(--gold); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .approve-badge .seal svg{ width:11px; height:11px; }
+  .approve-badge .undo{ border:0; background:transparent; color:inherit; opacity:0.55; cursor:pointer; font-size:14px; line-height:1; padding:0 0 0 2px; }
+  .approve-badge .undo:hover{ opacity:1; }
+
+  /* ── 投稿フッター操作 ── */
+  .post-foot{ display:flex; align-items:center; gap:8px; margin-top:13px; padding-top:12px; border-top:1px dashed var(--line-strong); }
+  .foot-btn{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:800; white-space:nowrap; flex-shrink:0;
+    padding:7px 13px; border-radius:999px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); cursor:pointer; transition:all .14s;
+  }
+  .foot-btn svg{ width:15px; height:15px; }
+  .foot-btn:hover{ border-color:var(--ink-faint); }
+  .foot-btn.approve{ color:var(--gold); border-color:color-mix(in oklab, var(--gold) 32%, var(--line-strong)); }
+  .foot-btn.approve:hover{ background:var(--gold-c); border-color:var(--gold); }
+  .foot-cnt{ margin-left:auto; font-size:11.5px; color:var(--ink-mute); font-weight:700; }
+
+  /* ── 承認パネル（誰が承認するか） ── */
+  .approve-panel{ margin-top:11px; background:var(--gold-c); border:1px solid color-mix(in oklab, var(--gold) 26%, transparent); border-radius:16px; padding:13px 13px 12px; }
+  .ap-q{ font-size:12px; font-weight:800; color:var(--gold); margin-bottom:9px; }
+  .ap-roles{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
+  .ap-role{ font-size:12px; font-weight:800; padding:8px 13px; border-radius:999px; border:1px solid color-mix(in oklab, var(--gold) 30%, transparent); background:var(--surface); color:var(--gold); cursor:pointer; transition:all .12s; }
+  .ap-role.on{ background:var(--gold); color:#fff; border-color:transparent; }
+  .ap-actions{ display:flex; gap:8px; }
+  .ap-name{ flex:1; height:38px; border-radius:11px; border:1px solid color-mix(in oklab, var(--gold) 26%, transparent); background:var(--surface); padding:0 12px; font-size:12.5px; }
+  .ap-name:focus{ outline:0; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-c); }
+  .ap-go{ height:38px; padding:0 16px; border-radius:11px; border:0; background:var(--gold); color:#fff; font-size:12.5px; font-weight:800; cursor:pointer; flex-shrink:0; }
+  .ap-go:disabled{ opacity:0.45; cursor:default; }
+
+  /* ── コメント ── */
+  .cmts{ margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+  .cmt-list{ display:flex; flex-direction:column; gap:7px; }
+  .cmt{ display:flex; align-items:flex-start; gap:9px; background:var(--surface-1); border:1px solid var(--line); border-radius:14px; padding:9px 11px; }
+  .cmt-av{ width:26px; height:26px; flex-shrink:0; border-radius:50%; background:linear-gradient(135deg, var(--teal), #2aa295); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .cmt-main{ flex:1; min-width:0; }
+  .cmt-who{ font-size:11.5px; font-weight:800; color:var(--ink); margin-bottom:1px; }
+  .cmt-txt{ font-size:12.5px; color:var(--ink-soft); line-height:1.55; text-wrap:pretty; word-break:break-word; }
+  .cmt-del{ border:0; background:transparent; color:var(--ink-faint); font-size:17px; line-height:1; cursor:pointer; padding:0 3px; border-radius:6px; flex-shrink:0; }
+  .cmt-del:hover{ background:var(--g-red-c); color:var(--g-red); }
+  .cmt-form{ display:flex; gap:8px; align-items:center; }
+  .cmt-form input{ height:38px; border-radius:11px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:12.5px; padding:0 12px; }
+  .cmt-form input:focus{ outline:0; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-c); }
+  .cmt-name{ width:84px; flex-shrink:0; }
+  .cmt-input{ flex:1; min-width:0; }
+  .cmt-add{ height:38px; flex-shrink:0; padding:0 15px; border-radius:11px; border:0; background:var(--teal); color:#fff; font-size:12.5px; font-weight:800; cursor:pointer; transition:opacity .15s, transform .12s; }
+  .cmt-add:disabled{ opacity:0.4; cursor:default; }
+  .cmt-add:not(:disabled):active{ transform:scale(0.96); }
+
+  /* ── 状態 ── */
+  .state{ text-align:center; padding:44px 20px; color:var(--ink-mute); }
+  .state-emoji{ font-size:34px; margin-bottom:10px; }
+  .state-title{ font-size:15px; font-weight:800; color:var(--ink-soft); }
+  .state-sub{ font-size:12.5px; margin-top:6px; line-height:1.6; }
+  .skel{ background:var(--surface); border:1px solid var(--line); border-radius:24px; box-shadow:var(--el-1); padding:16px 17px; height:140px; position:relative; overflow:hidden; }
+  .skel::after{ content:""; position:absolute; inset:0; background:linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.6) 50%, transparent 80%); animation:sweep 1.3s ease infinite; }
+  @keyframes sweep{ from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+  .banner{ background:var(--g-yellow-c); color:#9a6a00; border:1px solid color-mix(in oklab, var(--g-yellow) 26%, transparent); border-radius:14px; padding:11px 14px; font-size:12.5px; font-weight:700; line-height:1.5; }
+
+  /* ── フッター ── */
+  .foot{ text-align:center; padding:8px 16px 4px; color:var(--ink-mute); font-size:11.5px; line-height:1.9; }
+  .foot a{ color:var(--teal); font-weight:700; }
+
+  @media (min-width:601px){
+    .app{ margin:24px auto; min-height:auto; background:var(--surface); border-radius:34px; box-shadow:var(--el-3); overflow:hidden; }
+    .topbar{ border-radius:34px 34px 0 0; }
+  }
+
+  /* ── 文字サイズ切替 ── */
+  .app{ --ts:1; }
+  .ts-seg{ display:flex; gap:2px; background:var(--surface-2); border-radius:999px; padding:3px; flex-shrink:0; }
+  .ts-seg button{ border:0; cursor:pointer; font-weight:800; color:var(--ink-mute); background:transparent; border-radius:999px; padding:6px 11px; line-height:1; transition:all .14s ease; }
+  .ts-seg button.s{ font-size:11.5px; }
+  .ts-seg button.l{ font-size:14px; }
+  .ts-seg button.on{ background:var(--surface); color:var(--teal); box-shadow:var(--el-1); }
+  .hero-title{ font-size:calc(25px * var(--ts)); }
+  .hero-text{ font-size:calc(12.5px * var(--ts)); }
+  .sec-title{ font-size:calc(15px * var(--ts)); }
+  .post-title{ font-size:calc(16px * var(--ts)); }
+  .post-body{ font-size:calc(13.5px * var(--ts)); }
+  .cat-chip{ font-size:calc(11px * var(--ts)); }
+  .post-date{ font-size:calc(11px * var(--ts)); }
+  .cmt-txt{ font-size:calc(12.5px * var(--ts)); }
+  .approve-badge{ font-size:calc(11.5px * var(--ts)); }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" data-presets="env,react">
+  const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+  // ── 共有クラウド（ダッシュボード共通シート）──
+  const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyvBTM4ZijS0hDjKBVjczQywjXYOZJnszLqgqfTZhsNdfd-GSPQp-LYlRxfCMedkg8/exec";
+  const POST_SHEET     = "工場コミュニティ投稿";
+  const APPROVE_SHEET  = "工場コミュニティ承認";
+  const COMMENT_SHEET  = "工場コミュニティコメント";
+
+  // JSONP フォールバック
+  function jsonp(url){
+    return new Promise((resolve)=>{
+      const cb = "__cb_" + Math.random().toString(36).slice(2);
+      const sep = url.includes("?") ? "&" : "?";
+      const s = document.createElement("script");
+      const timer = setTimeout(()=>{ cleanup(); resolve(null); }, 15000);
+      function cleanup(){ try{ delete window[cb]; }catch(e){} s.remove(); clearTimeout(timer); }
+      window[cb] = (data)=>{ cleanup(); resolve(data); };
+      s.onerror = ()=>{ cleanup(); resolve(null); };
+      s.src = url + sep + "callback=" + cb;
+      document.body.appendChild(s);
+    });
+  }
+  async function getJson(url){
+    try{
+      const res = await fetch(url, { redirect:"follow" });
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      return await res.json();
+    }catch(_){ return await jsonp(url); }
+  }
+  async function cloudGet(sheet){
+    const base = CLOUD_API_URL + "?sheet=" + encodeURIComponent(sheet) + "&t=" + Date.now();
+    const data = await getJson(base);
+    if(!data || data.error) return null;
+    return Array.isArray(data) ? data : (data.rows || []);
+  }
+  async function cloudPost(payload){
+    try{
+      const res = await fetch(CLOUD_API_URL, { method:"POST", redirect:"follow", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload) });
+      return await res.json();
+    }catch(e){ return { ok:false, message:String(e) }; }
+  }
+  const cloudAdd    = (sheet,row)=> cloudPost({ sheet, action:"add", row });
+  const cloudDelete = (sheet,id)=>  cloudPost({ sheet, action:"delete", id });
+  const cloudUpload = (name,type,data)=> cloudPost({ sheet:"_files", action:"uploadFile", name, type, data });
+
+  // ── 写真（共有版：Google Drive へ実アップロード）──
+  const PHOTO_DEMO = false;
+  const imgUrl   = (id,w)=> "https://lh3.googleusercontent.com/d/"+id+"=w"+(w||800);
+  const photoSrc = (p,w)=> /^(blob:|https?:|data:)/.test(p) ? p : imgUrl(p,w);
+  function fileToB64(file, maxDim, quality){
+    maxDim=maxDim||1280; quality=quality||0.82;
+    return new Promise((resolve,reject)=>{
+      const img=new Image(); const url=URL.createObjectURL(file);
+      img.onload=()=>{
+        URL.revokeObjectURL(url);
+        let w=img.width, h=img.height;
+        const s=Math.min(1, maxDim/Math.max(w,h)); w=Math.round(w*s)||1; h=Math.round(h*s)||1;
+        const c=document.createElement("canvas"); c.width=w; c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        resolve({ base64:c.toDataURL("image/jpeg",quality).split(",")[1], type:"image/jpeg" });
+      };
+      img.onerror=()=>reject(new Error("img")); img.src=url;
+    });
+  }
+
+  // ── カテゴリ（2層：大カテゴリ（小カテゴリ））──
+  const CATS = [
+    { key:"仕上げ",       emoji:"👔", c:"var(--g-blue)",   bg:"var(--g-blue-c)",   subs:["三ツ山","スリーブ","ボディ","エリ伸ばし","エリプレス","平台","その他"] },
+    { key:"洗い",       emoji:"🫧", c:"var(--teal)",     bg:"var(--teal-c)",     subs:["水洗機","全自動洗濯機","2槽式洗濯機","洗剤","のり","加工剤","洗い準備","その他"] },
+    { key:"検品",       emoji:"🔍", c:"var(--g-red)",    bg:"var(--g-red-c)",    subs:["仕上げ前","仕上げ後"] },
+    { key:"品質基準",   emoji:"📐", c:"var(--g-purple)", bg:"var(--g-purple-c)" },
+    { key:"機械設備",   emoji:"🔧", c:"var(--g-grey)",   bg:"var(--g-grey-c)" },
+    { key:"安全",       emoji:"⛑️", c:"var(--g-yellow)", bg:"var(--g-yellow-c)" },
+    { key:"勤務・シフト",   emoji:"🗓️", c:"var(--g-green)",  bg:"var(--g-green-c)" },
+    { key:"連絡・その他",   emoji:"📌", c:"var(--g-grey)",   bg:"var(--g-grey-c)" },
+  ];
+  const catCfg = (k)=> CATS.find(c=>c.key===k) || { key:k||"その他", emoji:"📌", c:"var(--g-grey)", bg:"var(--g-grey-c)" };
+
+  // ── 承認できる役職 ──
+  const ROLES = ["社長","会長","チーフ","本部"];
+
+  const fmtJst = (d)=>{
+    if(!d) return "—";
+    const dt = new Date(Number(d)||d);
+    if(isNaN(dt.getTime())) return "—";
+    return dt.toLocaleString("ja-JP",{ timeZone:"Asia/Tokyo", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
+  };
+  const uid = (p)=> p + Date.now() + Math.random().toString(36).slice(2,5);
+
+  // ── 日本語向けの簡易類似度（文字2-gram の Dice 係数）──
+  function bigrams(s){
+    s = (s||"").toLowerCase().replace(/\s+/g,"");
+    const g = new Set();
+    if(s.length<2){ if(s) g.add(s); return g; }
+    for(let i=0;i<s.length-1;i++) g.add(s.slice(i,i+2));
+    return g;
+  }
+  function simScore(a,b){
+    const A = bigrams(a), B = bigrams(b);
+    if(!A.size || !B.size) return 0;
+    let inter = 0; A.forEach(x=>{ if(B.has(x)) inter++; });
+    return (2*inter)/(A.size+B.size);
+  }
+
+  // ─────────────────────────── 投稿コンポーザー ───────────────────────────
+  function Composer({ onPost, posts }){
+    const [open,setOpen] = useState(false);
+    const [who,setWho] = useState("");
+    const [cat,setCat] = useState(CATS[0].key);
+    const [title,setTitle] = useState("");
+    const [text,setText] = useState("");
+    const [sub,setSub] = useState("");
+    const [linkTo,setLinkTo] = useState(null);   // 更新元（変更前）の投稿
+    const [photos,setPhotos] = useState([]);     // {id, file, localUrl}
+    const [busy,setBusy] = useState(false);
+    const taRef = useRef(null);
+    const fileRef = useRef(null);
+
+    const addFiles = (fileList)=>{
+      const arr=[...fileList].filter(f=>/^image\//.test(f.type)).slice(0, 4-photos.length);
+      setPhotos(prev=>[...prev, ...arr.map(f=>({ id:uid("ph"), file:f, localUrl:URL.createObjectURL(f) }))]);
+    };
+    const removePhoto = (id)=> setPhotos(prev=>{ const t=prev.find(p=>p.id===id); if(t) URL.revokeObjectURL(t.localUrl); return prev.filter(p=>p.id!==id); });
+
+    // 入力中の文章と似ている既存投稿（上位3件）
+    const similar = useMemo(()=>{
+      const qstr = (title+" "+text);
+      if(qstr.replace(/\s/g,"").length < 4) return [];
+      return (posts||[])
+        .map(p=>({ p, s:simScore(qstr, (p.title||"")+" "+(p.text||"")) }))
+        .filter(x=>x.s >= 0.16)
+        .sort((a,b)=>b.s-a.s)
+        .slice(0,3);
+    },[posts,title,text]);
+
+    const reset = ()=>{ setTitle(""); setText(""); setSub(""); setLinkTo(null); photos.forEach(p=>URL.revokeObjectURL(p.localUrl)); setPhotos([]); setOpen(false); };
+    const submit = async ()=>{
+      const t = title.trim(), b = text.trim();
+      if((!t && !b) || busy) return;
+      let photoStr="";
+      if(photos.length){
+        setBusy(true);
+        if(PHOTO_DEMO){ photoStr = photos.map(p=>p.localUrl).join("\n"); }
+        else {
+          const ids=[];
+          for(const ph of photos){
+            try{ const r0=await fileToB64(ph.file); const r=await cloudUpload(ph.file.name||"photo.jpg", r0.type, r0.base64);
+              if(r&&r.ok&&r.fileId) ids.push(r.fileId); else if(r&&r.url) ids.push(r.url); }catch(e){}
+          }
+          photoStr = ids.join("\n");
+        }
+        setBusy(false);
+      }
+      onPost({ who:who.trim(), cat, sub, title:t || (b.slice(0,24)), text:b, photos:photoStr,
+        updates: linkTo ? linkTo.id : "", updatesTitle: linkTo ? (linkTo.title||"") : "" });
+      photos.forEach(p=>{ if(!PHOTO_DEMO) URL.revokeObjectURL(p.localUrl); });
+      setTitle(""); setText(""); setSub(""); setLinkTo(null); setPhotos([]); setOpen(false);
+    };
+
+    if(!open){
+      return (
+        <div className="composer">
+          <div className="composer-head">
+            <span className="composer-av">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </span>
+            <button className="composer-trigger" onClick={()=>{ setOpen(true); setTimeout(()=>taRef.current&&taRef.current.focus(),60); }}>
+              決定事項・申し送りを書く…
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="composer">
+        <div className="composer-form">
+          <div className="field-label">大カテゴリ</div>
+          <div className="cat-pick">
+            {CATS.map(c=>{
+              const on = cat===c.key;
+              return <button key={c.key} className={"cat-opt"+(on?" on":"")} onClick={()=>{ setCat(c.key); setSub(""); }}
+                style={on?{ background:c.c, color:"#fff" }:{}}>{c.emoji} {c.key}</button>;
+            })}
+          </div>
+          {(()=>{ const cc=CATS.find(c=>c.key===cat); return cc&&cc.subs ? (
+            <React.Fragment>
+              <div className="field-label">小カテゴリ（任意）</div>
+              <div className="cat-pick">
+                {cc.subs.map(s=>{ const on=sub===s; return (
+                  <button key={s} className={"cat-opt"+(on?" on":"")} onClick={()=>setSub(on?"":s)}
+                    style={on?{ background:cc.c, color:"#fff" }:{}}>{s}</button>
+                ); })}
+              </div>
+            </React.Fragment>
+          ) : null; })()}
+          <div className="field-label">タイトル</div>
+          <input className="inp" placeholder="例：襟の二度押さえを標準化" value={title} onChange={e=>setTitle(e.target.value)} maxLength={60} />
+          <div className="field-label">内容（決定の理由・手順など）</div>
+          <textarea ref={taRef} className="ta" placeholder="決まったこと・背景・やり方を具体的に。" value={text} onChange={e=>setText(e.target.value)}></textarea>
+
+          <div className="photo-row">
+            <button type="button" className="attach-btn" onClick={()=>fileRef.current&&fileRef.current.click()} disabled={photos.length>=4}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-5-5L5 21"/></svg>
+              写真を追加{photos.length?" ("+photos.length+"/4)":""}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display:"none" }} onChange={e=>{ addFiles(e.target.files); e.target.value=""; }} />
+          </div>
+          {photos.length>0 && (
+            <div className="photo-previews">
+              {photos.map(p=>(
+                <div key={p.id} className="photo-prev">
+                  <img src={p.localUrl} alt="" />
+                  <button type="button" className="pp-x" onClick={()=>removePhoto(p.id)} aria-label="削除">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!linkTo && similar.length>0 && (
+            <div className="sim-box">
+              <div className="sim-head">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l2.83-2.83a4 4 0 0 0-5.66-5.66l-1.3 1.3"/><path d="M13.4 10.6a4 4 0 0 0-5.66 0l-2.83 2.83a4 4 0 0 0 5.66 5.66l1.3-1.3"/></svg>
+                似ている決定事項があります — 更新なら「これを更新」を
+              </div>
+              {similar.map(({p})=>(
+                <div key={p.id} className="sim-item">
+                  <div className="si-main">
+                    <div className="si-title">{p.title||"(無題)"}</div>
+                    <div className="si-meta">{p.cat}{p.sub?" › "+p.sub:""} ・ {fmtJst(p.ts)}</div>
+                  </div>
+                  <button className="si-link" onClick={()=>{ setLinkTo(p); if(p.cat) setCat(p.cat); setSub(p.sub||""); }}>これを更新</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {linkTo && (
+            <div className="link-chip">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--teal-d)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <div className="lc-main">
+                <div className="lc-l">この決定を更新（変更前）</div>
+                <div className="lc-t">{linkTo.title||"(無題)"}</div>
+              </div>
+              <button className="lc-x" onClick={()=>setLinkTo(null)}>解除 ✕</button>
+            </div>
+          )}
+
+          <div className="c-row">
+            <input className="inp c-name" placeholder="お名前（任意）" value={who} onChange={e=>setWho(e.target.value)} maxLength={20} />
+            <div className="composer-actions" style={{ flex:1 }}>
+              <button className="btn-ghost" onClick={reset}>取消</button>
+              <button className="btn-primary" onClick={submit} disabled={(!title.trim() && !text.trim()) || busy}>
+                {busy ? <React.Fragment><span className="mini-spin"></span>投稿中…</React.Fragment> : <React.Fragment><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>投稿する</React.Fragment>}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────── 承認パネル ───────────────────────────
+  function ApprovePanel({ onApprove, onClose }){
+    const [role,setRole] = useState("");
+    const [name,setName] = useState("");
+    return (
+      <div className="approve-panel">
+        <div className="ap-q">どなたが承認しますか？</div>
+        <div className="ap-roles">
+          {ROLES.map(r=> <button key={r} className={"ap-role"+(role===r?" on":"")} onClick={()=>setRole(r)}>{r}</button>)}
+        </div>
+        <div className="ap-actions">
+          <input className="ap-name" placeholder="お名前（任意）" value={name} onChange={e=>setName(e.target.value)} maxLength={20} />
+          <button className="ap-go" disabled={!role} onClick={()=>{ onApprove({ role, who:name.trim() }); }}>承認する</button>
+          <button className="btn-ghost" style={{ height:38, padding:"0 13px" }} onClick={onClose}>閉じる</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────── 投稿カード ───────────────────────────
+  function Post({ post, approvals, comments, predecessor, supersededByPost, flash, onJump, onPhoto, onApprove, onUnapprove, onComment, onDelComment, onDelPost }){
+    const cfg = catCfg(post.cat);
+    const photos = (post.photos||"").split("\n").map(s=>s.trim()).filter(Boolean);
+    const [showAp,setShowAp] = useState(false);
+    const [showCmt,setShowCmt] = useState(false);
+    const [who,setWho] = useState("");
+    const [text,setText] = useState("");
+    const isApproved = approvals.length>0;
+    const preTitle = predecessor ? (predecessor.title || predecessor.updatesTitle || "") : "";
+
+    const submitCmt = ()=>{ const t=text.trim(); if(!t) return; onComment({ who:who.trim(), text:t }); setText(""); };
+
+    return (
+      <div id={"post-"+post.id} className={"post"+(isApproved?" approved":"")+(supersededByPost?" outdated":"")+(flash?" flash":"")}>
+        {supersededByPost && (
+          <button className="outdated-ribbon" onClick={()=>onJump(supersededByPost.id)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>
+            この決定は更新されました ・ 最新版を見る →
+          </button>
+        )}
+        <div className="post-top">
+          <span className="cat-chip" style={{ background:cfg.bg, color:cfg.c }}>{cfg.emoji} {post.cat}</span>
+          {post.sub && <span className="sub-chip">{post.sub}</span>}
+          <span className="post-date">{fmtJst(post.ts)}</span>
+          <button className="post-del" onClick={()=>{ if(confirm("この投稿を削除しますか？")) onDelPost(); }} aria-label="削除">×</button>
+        </div>
+
+        {predecessor && preTitle && (
+          <button className="change-block" onClick={()=>predecessor.id && onJump(predecessor.id)}>
+            <div className="change-line"><span className="cl-tag">変更前</span><span className="cl-txt">{preTitle}</span></div>
+            <div className="change-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></svg>
+              この投稿で変更{predecessor.id?"（変更前を見る）":""}
+            </div>
+          </button>
+        )}
+
+        {post.title && <div className="post-title">{predecessor && preTitle && <span className="after-tag">変更後</span>}{post.title}</div>}
+        {post.text && <div className="post-body">{post.text}</div>}
+        {photos.length>0 && (
+          <div className={"post-photos n"+Math.min(photos.length,4)}>
+            {photos.slice(0,4).map((ph,i)=>(
+              <button key={i} type="button" className="post-photo" onClick={()=>onPhoto(photoSrc(ph,1600))}>
+                <img src={photoSrc(ph,700)} alt="" loading="lazy" />
+              </button>
+            ))}
+          </div>
+        )}
+        {post.who && (
+          <div className="post-who"><span className="who-av">{post.who.slice(0,1)}</span>{post.who}</div>
+        )}
+
+        {isApproved && (
+          <div className="approve-row">
+            {approvals.map(a=>(
+              <span key={a.id} className="approve-badge">
+                <span className="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                {a.role}{a.who?"・"+a.who:""} 承認
+                <button className="undo" onClick={()=>onUnapprove(a.id)} aria-label="承認を取り消す">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {showAp && <ApprovePanel onApprove={(d)=>{ onApprove(d); setShowAp(false); }} onClose={()=>setShowAp(false)} />}
+
+        <div className="post-foot">
+          <button className="foot-btn approve" onClick={()=>setShowAp(v=>!v)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            承認
+          </button>
+          <button className="foot-btn" onClick={()=>setShowCmt(v=>!v)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
+            コメント
+          </button>
+          <span className="foot-cnt">{comments.length>0 ? comments.length+" 件のコメント" : ""}</span>
+        </div>
+
+        {(showCmt || comments.length>0) && (
+          <div className="cmts">
+            {comments.length>0 && (
+              <div className="cmt-list">
+                {comments.map(c=>(
+                  <div key={c.id} className="cmt">
+                    <span className="cmt-av">{(c.who||"匿").slice(0,1)}</span>
+                    <div className="cmt-main">
+                      {c.who && <div className="cmt-who">{c.who}</div>}
+                      <div className="cmt-txt">{c.text}</div>
+                    </div>
+                    <button className="cmt-del" onClick={()=>onDelComment(c.id)} aria-label="コメント削除">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showCmt && (
+              <div className="cmt-form">
+                <input className="cmt-name" placeholder="名前(任意)" value={who} onChange={e=>setWho(e.target.value)} />
+                <input className="cmt-input" placeholder="コメントを追加…" value={text}
+                  onChange={e=>setText(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter") submitCmt(); }} />
+                <button className="cmt-add" onClick={submitCmt} disabled={!text.trim()}>追加</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─────────────────────────── アプリ ───────────────────────────
+  function App(){
+    const [posts,setPosts] = useState(null);      // null = 読み込み中
+    const [approvals,setApprovals] = useState([]);
+    const [comments,setComments] = useState([]);
+    const [err,setErr] = useState("");
+    const [refreshing,setRefreshing] = useState(false);
+    const [cat,setCat] = useState("all");
+    const [sub,setSub] = useState("all");
+    const [q,setQ] = useState("");
+    const [onlyApproved,setOnlyApproved] = useState(false);
+    const [newestOnly,setNewestOnly] = useState(false);
+    const [flashId,setFlashId] = useState(null);
+    const [lightbox,setLightbox] = useState(null);
+    const [newestFirst,setNewestFirst] = useState(true);
+    const [large,setLarge] = useState(()=>{ try{ return localStorage.getItem("miwa.fc.textsize")==="lg"; }catch(e){ return false; } });
+    useEffect(()=>{ try{ localStorage.setItem("miwa.fc.textsize", large?"lg":"normal"); }catch(e){} },[large]);
+
+    const load = useCallback(async ()=>{
+      const [p,a,c] = await Promise.all([ cloudGet(POST_SHEET), cloudGet(APPROVE_SHEET), cloudGet(COMMENT_SHEET) ]);
+      if(p!=null) setPosts(p.map(x=>({ ...x, ts:Number(x.ts)||0 }))); else if(posts===null){ setPosts([]); setErr("クラウドに接続できませんでした。投稿はこの端末に保存され、接続回復後に共有されます。"); }
+      if(a!=null) setApprovals(a.map(x=>({ ...x, ts:Number(x.ts)||0 })));
+      if(c!=null) setComments(c.map(x=>({ ...x, ts:Number(x.ts)||0 })));
+      if(p!=null) setErr("");
+    },[posts]);
+
+    useEffect(()=>{ load(); /* eslint-disable-next-line */ },[]);
+    useEffect(()=>{ const t=setInterval(load, 45000); return ()=>clearInterval(t); },[load]);
+    const refresh = async ()=>{ setRefreshing(true); await load(); setRefreshing(false); };
+
+    // ── 指定投稿へスクロール（隆らせてハイライト）──
+    const jumpTo = (id, retried)=>{
+      if(!id) return;
+      const el = document.getElementById("post-"+id);
+      if(!el){
+        if(retried) return;
+        setNewestOnly(false); setCat("all"); setSub("all"); setOnlyApproved(false); setQ("");
+        setTimeout(()=>jumpTo(id,true), 90);
+        return;
+      }
+      const y = el.getBoundingClientRect().top + window.scrollY - 72;
+      window.scrollTo({ top:y, behavior:"smooth" });
+      setFlashId(id); setTimeout(()=>setFlashId(null), 1750);
+    };
+
+    // ── 投稿 ──
+    const addPost = (d)=>{
+      const row = { id:uid("p"), who:d.who||"", cat:d.cat, sub:d.sub||"", title:d.title||"", text:d.text||"", photos:d.photos||"", ts:Date.now(), updates:d.updates||"", updatesTitle:d.updatesTitle||"" };
+      setPosts(prev=>[...(prev||[]), row]);
+      cloudAdd(POST_SHEET, row);
+    };
+    const delPost = (id)=>{
+      setPosts(prev=>(prev||[]).filter(x=>x.id!==id));
+      setApprovals(prev=>prev.filter(x=>x.postId!==id));
+      setComments(prev=>prev.filter(x=>x.postId!==id));
+      cloudDelete(POST_SHEET, id);
+    };
+
+    // ── 承認 ──
+    const addApproval = (postId, d)=>{
+      const row = { id:uid("a"), postId, role:d.role, who:d.who||"", ts:Date.now() };
+      setApprovals(prev=>[...prev, row]);
+      cloudAdd(APPROVE_SHEET, row);
+    };
+    const delApproval = (id)=>{ setApprovals(prev=>prev.filter(x=>x.id!==id)); cloudDelete(APPROVE_SHEET, id); };
+
+    // ── コメント ──
+    const addComment = (postId, d)=>{
+      const row = { id:uid("c"), postId, who:d.who||"", text:d.text, ts:Date.now() };
+      setComments(prev=>[...prev, row]);
+      cloudAdd(COMMENT_SHEET, row);
+    };
+    const delComment = (id)=>{ setComments(prev=>prev.filter(x=>x.id!==id)); cloudDelete(COMMENT_SHEET, id); };
+
+    const apByPost = useMemo(()=>{
+      const m={}; approvals.forEach(a=>{ (m[a.postId]=m[a.postId]||[]).push(a); });
+      Object.values(m).forEach(arr=>arr.sort((x,y)=>(x.ts||0)-(y.ts||0)));
+      return m;
+    },[approvals]);
+    const cmByPost = useMemo(()=>{
+      const m={}; comments.forEach(c=>{ (m[c.postId]=m[c.postId]||[]).push(c); });
+      Object.values(m).forEach(arr=>arr.sort((x,y)=>(x.ts||0)-(y.ts||0)));
+      return m;
+    },[comments]);
+
+    // ── 更新の系譜（変更前→変更後）──
+    const byId = useMemo(()=>{ const m={}; (posts||[]).forEach(p=>{ m[p.id]=p; }); return m; },[posts]);
+    const supersededBy = useMemo(()=>{   // 旧投稿id → それを更新した最新投稿
+      const m={};
+      (posts||[]).forEach(p=>{ if(p.updates){ const cur=m[p.updates]; if(!cur || (p.ts||0)>(cur.ts||0)) m[p.updates]=p; } });
+      return m;
+    },[posts]);
+
+    const list = posts || [];
+    const catsUsed = useMemo(()=>{
+      const set = new Set(list.map(p=>p.cat).filter(Boolean));
+      return CATS.filter(c=>set.has(c.key));
+    },[posts]);
+
+    const filtered = useMemo(()=> list.filter(p=>{
+      const cOk = cat==="all" || p.cat===cat;
+      const subOk = sub==="all" || p.sub===sub;
+      const aOk = !onlyApproved || (apByPost[p.id]||[]).length>0;
+      const nOk = !newestOnly || !supersededBy[p.id];
+      const qOk = !q || ((p.cat||"")+(p.sub||"")+(p.title||"")+(p.text||"")+(p.who||"")).toLowerCase().includes(q.toLowerCase());
+      return cOk && subOk && aOk && nOk && qOk;
+    }).sort((a,b)=> newestFirst ? (b.ts-a.ts) : (a.ts-b.ts)), [posts,cat,sub,q,onlyApproved,newestOnly,newestFirst,apByPost,supersededBy]);
+
+    const total = list.length;
+    const week = list.filter(p=>{ try{ return (Date.now()-p.ts)/864e5 <= 7; }catch(e){ return false; } }).length;
+    const approvedCnt = list.filter(p=>(apByPost[p.id]||[]).length>0).length;
+
+    return (
+      <div className="app" style={{ "--ts": large ? 1.4 : 1 }}>
+        <header className="topbar">
+          <a className="iconbtn" href="index.html" aria-label="戻る">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </a>
+          <div className="topbar-titles">
+            <div className="topbar-title">マニュアルコミュニティ</div>
+            <div className="topbar-sub">東川口工場 ・ 決定事項と申し送り</div>
+          </div>
+          <div className="ts-seg" role="group" aria-label="文字サイズ">
+            <button className={"s"+(!large?" on":"")} onClick={()=>setLarge(false)}>標準</button>
+            <button className={"l"+(large?" on":"")} onClick={()=>setLarge(true)}>大</button>
+          </div>
+          <button className="iconbtn" onClick={refresh} aria-label="更新">
+            <svg className={refreshing?"spin":""} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </header>
+
+        <div className="scroll">
+          <section className="hero">
+            <div className="hero-eyebrow">FACTORY COMMUNITY</div>
+            <h1 className="hero-title">工場で決めたこと、みんなで残す。</h1>
+            <p className="hero-text">東川口ワイシャツ工場の決定事項・申し送りを記録。社長・会長が承認バッジを付けて、共通ルールとして確定します。</p>
+            <div className="hstats">
+              <div className="hstat"><div className="hstat-v">{total}</div><div className="hstat-l">決定事項</div></div>
+              <div className="hstat"><div className="hstat-v">{week}</div><div className="hstat-l">今週の投稿</div></div>
+              <div className="hstat"><div className="hstat-v">{approvedCnt}</div><div className="hstat-l">承認済み</div></div>
+            </div>
+          </section>
+
+          <Composer onPost={addPost} posts={list} />
+
+          {err && <div className="banner">⚠ {err}</div>}
+
+          {posts!==null && total>0 && (
+            <div className="filters">
+              <div className="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                <input placeholder="決定事項・内容で検索…" value={q} onChange={e=>setQ(e.target.value)} />
+              </div>
+              <div className="chips">
+                <button className={"fchip"+(cat==="all"?" on":"")} onClick={()=>{ setCat("all"); setSub("all"); }}>すべて</button>
+                {catsUsed.map(c=> <button key={c.key} className={"fchip"+(cat===c.key?" on":"")} onClick={()=>{ setCat(c.key); setSub("all"); }}>{c.emoji} {c.key}</button>)}
+                <button className={"fchip gold"+(onlyApproved?" on":"")} onClick={()=>setOnlyApproved(v=>!v)}>✓ 承認済みのみ</button>
+                <button className={"fchip"+(newestOnly?" on":"")} onClick={()=>setNewestOnly(v=>!v)}>🔄 最新版のみ</button>
+              </div>
+              {(()=>{ const cc=CATS.find(c=>c.key===cat); if(!cc||!cc.subs) return null;
+                const used=[...new Set(list.filter(p=>p.cat===cat).map(p=>p.sub).filter(Boolean))];
+                if(!used.length) return null;
+                return (
+                  <div className="chips">
+                    <button className={"fchip"+(sub==="all"?" on":"")} onClick={()=>setSub("all")}>全{cc.key}</button>
+                    {cc.subs.filter(s=>used.includes(s)).map(s=> <button key={s} className={"fchip"+(sub===s?" on":"")} onClick={()=>setSub(s)}>{s}</button>)}
+                  </div>
+                );
+              })()}
+              <button className="sortbtn" onClick={()=>setNewestFirst(v=>!v)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h13M3 12h9M3 18h5"/><path d="m17 8 4 4-4 4"/></svg>
+                {newestFirst ? "新しい順" : "古い順（時系列）"}
+              </button>
+            </div>
+          )}
+
+          {posts!==null && total>0 && (
+            <div className="sec"><span className="sec-title">{cat==="all" ? "決定事項の記録" : (cat + (sub!=="all" ? " › "+sub : ""))}</span><span className="sec-sub">{filtered.length} 件</span></div>
+          )}
+
+          {posts===null ? (
+            <div className="posts"><div className="skel"></div><div className="skel"></div><div className="skel"></div></div>
+          ) : total===0 ? (
+            <div className="state">
+              <div className="state-emoji">📋</div>
+              <div className="state-title">まだ記録がありません</div>
+              <div className="state-sub">上の「決定事項・申し送りを書く」から<br/>最初の決定を残しましょう。</div>
+            </div>
+          ) : filtered.length===0 ? (
+            <div className="state">
+              <div className="state-emoji">🔍</div>
+              <div className="state-title">該当する記録がありません</div>
+              <div className="state-sub">絞り込み条件を変えてお試しください。</div>
+            </div>
+          ) : (
+            <div className="posts">
+              {filtered.map(p=>(
+                <Post key={p.id} post={p}
+                  approvals={apByPost[p.id]||[]} comments={cmByPost[p.id]||[]}
+                  predecessor={p.updates ? (byId[p.updates] || { id:"", title:p.updatesTitle||"" }) : null}
+                  supersededByPost={supersededBy[p.id]||null}
+                  flash={flashId===p.id} onJump={jumpTo}
+                  onApprove={(d)=>addApproval(p.id,d)} onUnapprove={delApproval}
+                  onComment={(d)=>addComment(p.id,d)} onDelComment={delComment}
+                  onDelPost={()=>delPost(p.id)} onPhoto={setLightbox} />
+              ))}
+            </div>
+          )}
+
+          <div className="foot">
+            <div>クリーニングみわ ・ 東川口工場 マニュアルコミュニティ</div>
+            <div style={{ marginTop:6 }}><a href="index.html">← フォーム一覧へ戻る</a></div>
+          </div>
+        </div>
+        {lightbox && (
+          <div className="lightbox" onClick={()=>setLightbox(null)}>
+            <img src={lightbox} alt="" onClick={e=>e.stopPropagation()} />
+            <button className="lb-x" onClick={()=>setLightbox(null)} aria-label="閉じる">×</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

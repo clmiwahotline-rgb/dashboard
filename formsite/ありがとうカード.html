@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>みんなの声 ｜ ありがとうカード ・ クリーニングみわ</title>
+<meta name="description" content="クリーニングみわ 全店に届いた『ありがとう』とスタッフの声。コメントで応援もできます。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════════════════════
+     クリーニングみわ ・ みんなの声（ありがとうカード閲覧）
+     報告フォームサイトと同じ Material 3 / Google 調
+     ════════════════════════════════════════════ */
+  :root{
+    --surface:#ffffff;
+    --surface-1:#f7f9fd;
+    --surface-2:#eef2fb;
+    --surface-3:#e6edf9;
+
+    --ink:#1f1f24;
+    --ink-soft:#444653;
+    --ink-mute:#74778a;
+    --ink-faint:#b7bacb;
+    --line:#e3e6f0;
+    --line-strong:#d3d7e6;
+
+    --g-blue:#1a73e8;   --g-blue-c:#e8f0fe;
+    --g-red:#d93025;    --g-red-c:#fce8e6;
+    --g-yellow:#ea8600; --g-yellow-c:#fef7e0;
+    --g-green:#1e8e3e;  --g-green-c:#e6f4ea;
+    --g-purple:#8430ce; --g-purple-c:#f3e8fd;
+    --g-grey:#5f6368;   --g-grey-c:#eef0f3;
+
+    --el-1: 0 1px 2px rgba(60,64,67,0.10), 0 1px 3px 1px rgba(60,64,67,0.05);
+    --el-2: 0 1px 3px rgba(60,64,67,0.12), 0 4px 8px 3px rgba(60,64,67,0.06);
+    --el-3: 0 2px 6px 2px rgba(60,64,67,0.10), 0 8px 24px 4px rgba(60,64,67,0.10);
+
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; min-height:100%; }
+  html{ background:var(--surface-3); }
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -200px, var(--surface-1) 0%, transparent 70%),
+      linear-gradient(180deg, var(--surface-2) 0%, var(--surface-3) 100%);
+    color:var(--ink);
+    font-family:"Plus Jakarta Sans","Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-feature-settings:"palt";
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:-0.006em;
+    overscroll-behavior-y:none;
+  }
+  a{ color:inherit; text-decoration:none; }
+
+  .app{
+    max-width:600px; margin:0 auto;
+    min-height:100vh; min-height:100dvh;
+    display:flex; flex-direction:column;
+  }
+
+  /* ── トップアプリバー ── */
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    padding:calc(var(--sat) + 12px) 16px 12px;
+    background:color-mix(in oklab, var(--surface) 82%, transparent);
+    backdrop-filter:saturate(180%) blur(18px);
+    -webkit-backdrop-filter:saturate(180%) blur(18px);
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:11px;
+  }
+  .iconbtn{
+    width:40px; height:40px; flex-shrink:0; border:0; cursor:pointer;
+    border-radius:999px; background:var(--surface-2); color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease, transform .15s ease;
+  }
+  .iconbtn:hover{ background:var(--surface-3); }
+  .iconbtn:active{ transform:scale(0.94); }
+  .iconbtn svg{ width:20px; height:20px; }
+  .topbar-titles{ min-width:0; flex:1; }
+  .topbar-title{ font-size:18px; font-weight:800; letter-spacing:-0.02em; line-height:1.1; }
+  .topbar-sub{ font-size:11.5px; color:var(--ink-mute); font-weight:600; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .spin{ animation:spin 1s linear infinite; }
+  @keyframes spin{ from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+  /* ── 本体 ── */
+  .scroll{ flex:1; padding:18px 16px calc(var(--sab) + 36px); display:flex; flex-direction:column; gap:18px; }
+
+  /* ── ヒーロー（緑＝ありがとう） ── */
+  .hero{
+    border-radius:28px; padding:24px 22px 22px; color:#fff;
+    background:
+      radial-gradient(420px 200px at 88% -40%, color-mix(in oklab, var(--g-green) 22%, transparent), transparent 70%),
+      linear-gradient(135deg, #11743a 0%, #1e8e3e 50%, #49bd6a 100%);
+    box-shadow:var(--el-2); position:relative; overflow:hidden;
+  }
+  .hero::after{
+    content:""; position:absolute; right:-40px; bottom:-60px; width:190px; height:190px; border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.22), transparent 60%);
+  }
+  .hero-eyebrow{ font-size:12px; font-weight:700; letter-spacing:0.06em; opacity:0.9; }
+  .hero-title{ font-size:25px; font-weight:800; letter-spacing:-0.02em; line-height:1.25; margin-top:6px; }
+  .hero-text{ font-size:12.5px; line-height:1.65; opacity:0.95; margin-top:9px; max-width:42ch; }
+
+  /* ── ヒーロー内ミニ統計 ── */
+  .hstats{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:18px; position:relative; z-index:1; }
+  .hstat{ background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.22); border-radius:16px; padding:11px 8px; text-align:center; backdrop-filter:blur(4px); }
+  .hstat-v{ font-size:21px; font-weight:800; letter-spacing:-0.02em; line-height:1.1; }
+  .hstat-v.sm{ font-size:14px; }
+  .hstat-l{ font-size:10.5px; font-weight:700; opacity:0.9; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* ── セクション見出し ── */
+  .sec{ display:flex; align-items:baseline; gap:8px; margin:2px 4px -4px; }
+  .sec-title{ font-size:15px; font-weight:800; letter-spacing:-0.01em; }
+  .sec-sub{ font-size:12px; color:var(--ink-mute); font-weight:600; margin-left:auto; }
+
+  /* ── フィルタ ── */
+  .filters{ display:flex; flex-direction:column; gap:9px; }
+  .search{
+    display:flex; align-items:center; gap:9px;
+    background:var(--surface); border:1px solid var(--line-strong); border-radius:14px; padding:0 13px; height:44px;
+    box-shadow:var(--el-1);
+  }
+  .search svg{ width:18px; height:18px; color:var(--ink-mute); flex-shrink:0; }
+  .search input{ border:0; outline:0; background:transparent; flex:1; min-width:0; font-family:inherit; font-size:13.5px; color:var(--ink); }
+  .chips{ display:flex; gap:8px; overflow-x:auto; padding:2px; scrollbar-width:none; }
+  .chips::-webkit-scrollbar{ display:none; }
+  .fchip{
+    white-space:nowrap; font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px;
+    border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); cursor:pointer; font-family:inherit;
+    transition:all .14s ease; display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
+  }
+  .fchip:hover{ border-color:var(--ink-faint); }
+  .fchip.on{ background:var(--g-green); color:#fff; border-color:transparent; box-shadow:var(--el-1); }
+
+  /* ── 声カード ── */
+  .voices{ display:flex; flex-direction:column; gap:12px; }
+  .voice{
+    background:var(--surface); border:1px solid var(--line); border-radius:24px;
+    box-shadow:var(--el-1); padding:16px 17px 14px;
+    transition:box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+  }
+  .voice:hover{ box-shadow:var(--el-2); }
+  .voice-top{ display:flex; align-items:center; gap:8px; margin-bottom:11px; }
+  .store-chip{ font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; white-space:nowrap; }
+  .voice-date{ font-size:11px; color:var(--ink-mute); font-weight:700; margin-left:auto; white-space:nowrap; }
+  .copy-btn{
+    border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-mute);
+    font-size:11px; font-weight:800; font-family:inherit; padding:4px 9px; border-radius:8px; cursor:pointer; white-space:nowrap;
+    transition:all .12s ease;
+  }
+  .copy-btn:hover{ border-color:var(--g-green); color:var(--g-green); background:var(--g-green-c); }
+  .copy-btn.done{ border-color:var(--g-green); color:#fff; background:var(--g-green); }
+
+  .kind-badge{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:800; padding:6px 12px; border-radius:999px; margin-bottom:11px; }
+  .voice-body{ font-size:14px; line-height:1.75; color:var(--ink-soft); text-wrap:pretty; white-space:pre-wrap; }
+
+  /* ── コメント ── */
+  .cmts{ margin-top:13px; padding-top:12px; border-top:1px dashed var(--line-strong); display:flex; flex-direction:column; gap:8px; }
+  .cmt-list{ display:flex; flex-direction:column; gap:7px; }
+  .cmt{ display:flex; align-items:flex-start; gap:9px; background:var(--surface-1); border:1px solid var(--line); border-radius:14px; padding:9px 11px; }
+  .cmt-av{ width:26px; height:26px; flex-shrink:0; border-radius:50%; background:linear-gradient(135deg, var(--g-green), #49bd6a); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .cmt-main{ flex:1; min-width:0; }
+  .cmt-who{ font-size:11.5px; font-weight:800; color:var(--ink); margin-bottom:1px; }
+  .cmt-txt{ font-size:12.5px; color:var(--ink-soft); line-height:1.55; text-wrap:pretty; word-break:break-word; }
+  .cmt-del{ border:0; background:transparent; color:var(--ink-faint); font-size:17px; line-height:1; cursor:pointer; padding:0 3px; border-radius:6px; flex-shrink:0; }
+  .cmt-del:hover{ background:var(--g-red-c); color:var(--g-red); }
+  .cmt-form{ display:flex; gap:8px; align-items:center; }
+  .cmt-form input{ height:38px; border-radius:11px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:12.5px; font-family:inherit; padding:0 12px; }
+  .cmt-form input:focus{ outline:0; border-color:var(--g-green); box-shadow:0 0 0 3px var(--g-green-c); }
+  .cmt-name{ width:88px; flex-shrink:0; }
+  .cmt-input{ flex:1; min-width:0; }
+  .cmt-add{ height:38px; flex-shrink:0; padding:0 15px; border-radius:11px; border:0; background:var(--g-green); color:#fff; font-size:12.5px; font-weight:800; font-family:inherit; cursor:pointer; transition:opacity .15s ease, transform .12s ease; }
+  .cmt-add:disabled{ opacity:0.4; cursor:default; }
+  .cmt-add:not(:disabled):active{ transform:scale(0.96); }
+
+  /* ── 状態（読み込み・空・エラー） ── */
+  .state{ text-align:center; padding:48px 20px; color:var(--ink-mute); }
+  .state-emoji{ font-size:34px; margin-bottom:10px; }
+  .state-title{ font-size:15px; font-weight:800; color:var(--ink-soft); }
+  .state-sub{ font-size:12.5px; margin-top:6px; line-height:1.6; }
+  .skel{ background:var(--surface); border:1px solid var(--line); border-radius:24px; box-shadow:var(--el-1); padding:16px 17px; height:150px; position:relative; overflow:hidden; }
+  .skel::after{ content:""; position:absolute; inset:0; background:linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.6) 50%, transparent 80%); animation:sweep 1.3s ease infinite; }
+  @keyframes sweep{ from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+
+  .banner{ background:var(--g-red-c); color:var(--g-red); border:1px solid color-mix(in oklab, var(--g-red) 22%, transparent); border-radius:14px; padding:11px 14px; font-size:12.5px; font-weight:700; line-height:1.5; }
+
+  /* ── フッター ── */
+  .foot{ text-align:center; padding:8px 16px 4px; color:var(--ink-mute); font-size:11.5px; line-height:1.9; }
+  .foot a{ color:var(--g-green); font-weight:700; }
+
+  @media (min-width:601px){
+    .app{ margin:24px auto; min-height:auto; background:var(--surface); border-radius:34px; box-shadow:var(--el-3); overflow:hidden; }
+    .topbar{ border-radius:34px 34px 0 0; }
+    .voices{ }
+  }
+
+  /* ── 文字サイズ切替（--ts: 1 標準 / 1.5 大）── */
+  .app{ --ts:1; }
+  .ts-seg{ display:flex; gap:2px; background:var(--surface-2); border-radius:999px; padding:3px; flex-shrink:0; }
+  .ts-seg button{ border:0; cursor:pointer; font-family:inherit; font-weight:800; color:var(--ink-mute); background:transparent; border-radius:999px; padding:6px 11px; line-height:1; transition:all .14s ease; }
+  .ts-seg button.s{ font-size:11.5px; }
+  .ts-seg button.l{ font-size:14px; }
+  .ts-seg button.on{ background:var(--surface); color:var(--g-green); box-shadow:var(--el-1); }
+
+  /* 読むテキストを --ts 倍で拡大（ヘッダー等のクロームは固定）*/
+  .hero-title{ font-size:calc(25px * var(--ts)); }
+  .hero-text{ font-size:calc(12.5px * var(--ts)); }
+  .sec-title{ font-size:calc(15px * var(--ts)); }
+  .sec-sub{ font-size:calc(12px * var(--ts)); }
+  .fchip{ font-size:calc(12px * var(--ts)); }
+  .search input{ font-size:calc(13.5px * var(--ts)); }
+  .store-chip{ font-size:calc(11px * var(--ts)); }
+  .voice-date{ font-size:calc(11px * var(--ts)); }
+  .kind-badge{ font-size:calc(12px * var(--ts)); }
+  .voice-body{ font-size:calc(14px * var(--ts)); }
+  .cmt-who{ font-size:calc(11.5px * var(--ts)); }
+  .cmt-txt{ font-size:calc(12.5px * var(--ts)); }
+  .cmt-form input{ font-size:calc(12.5px * var(--ts)); }
+  .cmt-add{ font-size:calc(12.5px * var(--ts)); }
+  .copy-btn{ font-size:calc(11px * var(--ts)); }
+  .state-title{ font-size:calc(15px * var(--ts)); }
+  .state-sub{ font-size:calc(12.5px * var(--ts)); }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" data-presets="env,react">
+  const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+  // ── データ取得元（報告フォーム連携 GAS：ダッシュボードと共通）──
+  const ARIGATOU_GAS = "https://script.google.com/macros/s/AKfycbxCHJ4OB8uYtdEflKyld4h3oitjW2Tr80UihXnVTd_jyUREAWz0qF5ebGzJpUhq2eQh/exec";
+  // ── 共有クラウド（コメント保存：ダッシュボードと共通シート）──
+  const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyvBTM4ZijS0hDjKBVjczQywjXYOZJnszLqgqfTZhsNdfd-GSPQp-LYlRxfCMedkg8/exec";
+  const COMMENT_SHEET = "ありがとうコメント";
+
+  // JSONP フォールバック（CORS で fetch が失敗したとき）
+  function jsonp(url){
+    return new Promise((resolve)=>{
+      const cb = "__cb_" + Math.random().toString(36).slice(2);
+      const sep = url.includes("?") ? "&" : "?";
+      const s = document.createElement("script");
+      const timer = setTimeout(()=>{ cleanup(); resolve(null); }, 15000);
+      function cleanup(){ try{ delete window[cb]; }catch(e){} s.remove(); clearTimeout(timer); }
+      window[cb] = (data)=>{ cleanup(); resolve(data); };
+      s.onerror = ()=>{ cleanup(); resolve(null); };
+      s.src = url + sep + "callback=" + cb;
+      document.body.appendChild(s);
+    });
+  }
+  async function getJson(url){
+    try{
+      const res = await fetch(url, { redirect:"follow" });
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      return await res.json();
+    }catch(_){
+      return await jsonp(url);
+    }
+  }
+  async function cloudGet(sheet){
+    const base = CLOUD_API_URL + "?sheet=" + encodeURIComponent(sheet) + "&t=" + Date.now();
+    const data = await getJson(base);
+    if(!data) return null;
+    if(data.error) return null;
+    return Array.isArray(data) ? data : (data.rows || []);
+  }
+  async function cloudPost(payload){
+    try{
+      const res = await fetch(CLOUD_API_URL, { method:"POST", redirect:"follow", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload) });
+      return await res.json();
+    }catch(e){ return { ok:false, message:String(e) }; }
+  }
+  const cloudAdd    = (row)=> cloudPost({ sheet:COMMENT_SHEET, action:"add", row });
+  const cloudDelete = (id)=>  cloudPost({ sheet:COMMENT_SHEET, action:"delete", id });
+
+  // ── 店舗カラー（全システム共通）──
+  const STORE_TAG_COLORS = {
+    "本店":{bg:"#ffa500",fg:"#ffffff"}, "新田店":{bg:"#008000",fg:"#ffffff"},
+    "草加西口店":{bg:"#afeeee",fg:"#000000"}, "モールプラザ草加店":{bg:"#1e90ff",fg:"#ffffff"},
+    "蒲生店":{bg:"#9370db",fg:"#ffffff"}, "西友蒲生伊原店":{bg:"#fa8072",fg:"#000000"},
+    "東川口店":{bg:"#ffffff",fg:"#000000"}, "東川口2号店":{bg:"#ffffff",fg:"#00bfff"},
+    "マミーマート川口安行店":{bg:"#ffff00",fg:"#000000"}, "八潮工場":{bg:"#475569",fg:"#ffffff"},
+    "東川口工場":{bg:"#0f766e",fg:"#ffffff"}, "ルート":{bg:"#b45309",fg:"#ffffff"},
+  };
+  const STORE_ALIASES = {
+    "モールプラザ草加":"モールプラザ草加店", "マミー川口安行店":"マミーマート川口安行店",
+    "マミーマート川口安行":"マミーマート川口安行店", "東川口２号店":"東川口2号店",
+  };
+  function storeColor(raw){
+    const name = (raw||"").trim();
+    if(!name) return null;
+    if(STORE_TAG_COLORS[name]) return STORE_TAG_COLORS[name];
+    if(STORE_ALIASES[name] && STORE_TAG_COLORS[STORE_ALIASES[name]]) return STORE_TAG_COLORS[STORE_ALIASES[name]];
+    const stem = name.replace(/店$/,"");
+    for(const k of Object.keys(STORE_TAG_COLORS)){ if(k.replace(/店$/,"")===stem) return STORE_TAG_COLORS[k]; }
+    return null;
+  }
+  function StoreChip({ name }){
+    const c = storeColor(name);
+    if(!c) return <span className="store-chip" style={{ background:"var(--surface-2)", color:"var(--ink-soft)", border:"1px solid var(--line-strong)" }}>{name||"不明"}</span>;
+    const isWhite = /^#(f{3}|f{6})$/i.test(c.bg);
+    return <span className="store-chip" style={{ background:c.bg, color:c.fg, border:isWhite?"1px solid var(--line-strong)":"1px solid transparent" }}>{name}</span>;
+  }
+
+  // ── 種別（Google トーンに対応）──
+  const KIND = {
+    "お客様からのありがとう":{ emoji:"🙏", c:"var(--g-green)",  bg:"var(--g-green-c)" },
+    "接客対応":             { emoji:"😊", c:"var(--g-blue)",   bg:"var(--g-blue-c)" },
+    "お客様からの苦情・不満":{ emoji:"⚠️", c:"var(--g-red)",    bg:"var(--g-red-c)" },
+    "チームワーク":         { emoji:"🤝", c:"var(--g-yellow)", bg:"var(--g-yellow-c)" },
+    "業務改善":             { emoji:"💡", c:"var(--g-purple)", bg:"var(--g-purple-c)" },
+    "サポート":             { emoji:"🙌", c:"var(--g-green)",  bg:"var(--g-green-c)" },
+  };
+  const kindCfg = (k)=> KIND[k] || { emoji:"📌", c:"var(--g-grey)", bg:"var(--g-grey-c)" };
+
+  // 日時 → 日本時間表示（GAS は UTC で返す）
+  const fmtJst = (d)=>{
+    if(!d) return "—";
+    const dt = new Date(d);
+    if(isNaN(dt.getTime())) return String(d).replace("T"," ").substring(0,16);
+    return dt.toLocaleString("ja-JP",{ timeZone:"Asia/Tokyo", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
+  };
+
+  // 各カードの安定キー（ダッシュボードのコメントと共有するため同一ロジック）
+  const cardKeyOf = (card)=>{
+    const s = `${card.store||""}|${card.date||""}|${card.content||""}`;
+    let h = 0;
+    for(let i=0;i<s.length;i++) h = (Math.imul(31,h) + s.charCodeAt(i)) | 0;
+    return "k" + (h>>>0).toString(36);
+  };
+
+  // ── 1枚の声カード ──
+  function Voice({ card, comments, onAdd, onDel }){
+    const cfg = kindCfg(card.kind);
+    const [who,setWho] = useState("");
+    const [text,setText] = useState("");
+    const [copied,setCopied] = useState(false);
+    const submit = ()=>{ const t=text.trim(); if(!t) return; onAdd({ who:who.trim(), text:t }); setText(""); };
+    const copy = async ()=>{
+      const lines = [`【${card.store||"不明"}】${card.kind?"（"+card.kind+"）":""}`, fmtJst(card.date), "", card.content||""];
+      if(comments.length){ lines.push("","── コメント ──"); comments.forEach(c=>lines.push(`・${c.who?c.who+"：":""}${c.text}`)); }
+      const out = lines.join("\n");
+      try{ await navigator.clipboard.writeText(out); }
+      catch(e){ const ta=document.createElement("textarea"); ta.value=out; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");}catch(e2){} ta.remove(); }
+      setCopied(true); setTimeout(()=>setCopied(false),1400);
+    };
+    return (
+      <div className="voice">
+        <div className="voice-top">
+          <StoreChip name={card.store} />
+          <span className="voice-date">{fmtJst(card.date)}</span>
+          <button className={"copy-btn"+(copied?" done":"")} onClick={copy}>{copied?"✓ コピー":"⧉ コピー"}</button>
+        </div>
+        {card.kind && <div className="kind-badge" style={{ background:cfg.bg, color:cfg.c }}>{cfg.emoji} {card.kind}</div>}
+        <div className="voice-body">{card.content||""}</div>
+
+        <div className="cmts">
+          {comments.length>0 && (
+            <div className="cmt-list">
+              {comments.map(c=>(
+                <div key={c.id} className="cmt">
+                  <span className="cmt-av">{(c.who||"匿").slice(0,1)}</span>
+                  <div className="cmt-main">
+                    {c.who && <div className="cmt-who">{c.who}</div>}
+                    <div className="cmt-txt">{c.text}</div>
+                  </div>
+                  <button className="cmt-del" onClick={()=>onDel(c.id)} aria-label="コメント削除">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="cmt-form">
+            <input className="cmt-name" placeholder="名前(任意)" value={who} onChange={e=>setWho(e.target.value)} />
+            <input className="cmt-input" placeholder="応援コメントを追加…" value={text}
+              onChange={e=>setText(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter") submit(); }} />
+            <button className="cmt-add" onClick={submit} disabled={!text.trim()}>追加</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function App(){
+    const [cards,setCards] = useState(null);   // null = 読み込み中
+    const [comments,setComments] = useState([]);
+    const [err,setErr] = useState("");
+    const [refreshing,setRefreshing] = useState(false);
+    const [store,setStore] = useState("all");
+    const [kind,setKind] = useState("all");
+    const [q,setQ] = useState("");
+    const [large,setLarge] = useState(()=>{ try{ return localStorage.getItem("miwa.voices.textsize")==="lg"; }catch(e){ return false; } });
+    useEffect(()=>{ try{ localStorage.setItem("miwa.voices.textsize", large?"lg":"normal"); }catch(e){} },[large]);
+
+    const loadCards = useCallback(async ()=>{
+      const data = await getJson(ARIGATOU_GAS + "?t=" + Date.now());
+      if(Array.isArray(data)){ setCards(data); setErr(""); }
+      else { setErr("データを取得できませんでした。時間をおいて更新してください。"); if(cards===null) setCards([]); }
+    },[cards]);
+    const loadComments = useCallback(async ()=>{
+      const remote = await cloudGet(COMMENT_SHEET);
+      if(remote!=null) setComments(remote.map(c=>({ ...c, ts:Number(c.ts)||0 })));
+    },[]);
+
+    useEffect(()=>{ loadCards(); loadComments(); /* eslint-disable-next-line */ },[]);
+    // 自動更新（45秒ごと）
+    useEffect(()=>{
+      const t = setInterval(()=>{ loadCards(); loadComments(); }, 45000);
+      return ()=>clearInterval(t);
+    },[loadCards,loadComments]);
+
+    const refresh = async ()=>{ setRefreshing(true); await Promise.all([loadCards(),loadComments()]); setRefreshing(false); };
+
+    const commentsByKey = useMemo(()=>{
+      const m = {};
+      comments.forEach(c=>{ (m[c.cardKey]=m[c.cardKey]||[]).push(c); });
+      Object.values(m).forEach(a=>a.sort((x,y)=>(x.ts||0)-(y.ts||0)));
+      return m;
+    },[comments]);
+
+    const addComment = (cardKey, c)=>{
+      const note = { id:"ac"+Date.now()+Math.random().toString(36).slice(2,5), cardKey, who:c.who||"", text:c.text, ts:Date.now() };
+      setComments(prev=>[...prev, note]);
+      cloudAdd(note);
+    };
+    const delComment = (id)=>{ setComments(prev=>prev.filter(x=>x.id!==id)); cloudDelete(id); };
+
+    const list = cards || [];
+    const stores = useMemo(()=>[...new Set(list.map(d=>d.store).filter(Boolean))].sort(),[cards]);
+    const kinds  = useMemo(()=>[...new Set(list.map(d=>d.kind).filter(Boolean))],[cards]);
+
+    const filtered = useMemo(()=> list.filter(d=>{
+      const sOk = store==="all" || d.store===store;
+      const kOk = kind==="all"  || d.kind===kind;
+      const qOk = !q || ((d.store||"")+(d.kind||"")+(d.content||"")).toLowerCase().includes(q.toLowerCase());
+      return sOk && kOk && qOk;
+    }).sort((a,b)=> new Date(b.date||0) - new Date(a.date||0)), [cards,store,kind,q]);
+
+    // ヒーロー統計
+    const total = list.length;
+    const week = list.filter(d=>{ try{ return (Date.now()-new Date(d.date).getTime())/864e5 <= 7; }catch(e){ return false; } }).length;
+    const topStore = useMemo(()=>{
+      const c={}; list.forEach(d=>{ if(d.store) c[d.store]=(c[d.store]||0)+1; });
+      const top = Object.entries(c).sort((a,b)=>b[1]-a[1])[0];
+      return top ? top[0] : "—";
+    },[cards]);
+
+    return (
+      <div className="app" style={{ "--ts": large ? 1.5 : 1 }}>
+        <header className="topbar">
+          <a className="iconbtn" href="index.html" aria-label="戻る">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </a>
+          <div className="topbar-titles">
+            <div className="topbar-title">みんなの声</div>
+            <div className="topbar-sub">ありがとうカード ・ 全店</div>
+          </div>
+          <div className="ts-seg" role="group" aria-label="文字サイズ">
+            <button className={"s"+(!large?" on":"")} onClick={()=>setLarge(false)} aria-pressed={!large}>標準</button>
+            <button className={"l"+(large?" on":"")} onClick={()=>setLarge(true)} aria-pressed={large}>大</button>
+          </div>
+          <button className="iconbtn" onClick={refresh} aria-label="更新">
+            <svg className={refreshing?"spin":""} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </header>
+
+        <div className="scroll">
+          <section className="hero">
+            <div className="hero-eyebrow">VOICES</div>
+            <h1 className="hero-title">みんなの「ありがとう」</h1>
+            <p className="hero-text">全店に届いたお客様の声とスタッフの取り組み。コメントで応援も送れます。</p>
+            <div className="hstats">
+              <div className="hstat"><div className="hstat-v">{total}</div><div className="hstat-l">総登録数</div></div>
+              <div className="hstat"><div className="hstat-v">{week}</div><div className="hstat-l">今週の登録</div></div>
+              <div className="hstat"><div className="hstat-v sm">{topStore}</div><div className="hstat-l">投稿最多店舗</div></div>
+            </div>
+          </section>
+
+          {err && <div className="banner">⚠ {err}</div>}
+
+          {cards!==null && total>0 && (
+            <div className="filters">
+              <div className="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                <input placeholder="内容・店舗で検索…" value={q} onChange={e=>setQ(e.target.value)} />
+              </div>
+              <div className="chips">
+                <button className={"fchip"+(store==="all"?" on":"")} onClick={()=>setStore("all")}>全店舗</button>
+                {stores.map(s=> <button key={s} className={"fchip"+(store===s?" on":"")} onClick={()=>setStore(s)}>{s}</button>)}
+              </div>
+              {kinds.length>0 && (
+                <div className="chips">
+                  <button className={"fchip"+(kind==="all"?" on":"")} onClick={()=>setKind("all")}>すべて</button>
+                  {kinds.map(k=>{ const c=kindCfg(k); return <button key={k} className={"fchip"+(kind===k?" on":"")} onClick={()=>setKind(k)}>{c.emoji} {k}</button>; })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {cards!==null && total>0 && (
+            <div className="sec"><span className="sec-title">投稿一覧</span><span className="sec-sub">{filtered.length} 件</span></div>
+          )}
+
+          {cards===null ? (
+            <div className="voices">
+              <div className="skel"></div><div className="skel"></div><div className="skel"></div>
+            </div>
+          ) : total===0 ? (
+            <div className="state">
+              <div className="state-emoji">🙏</div>
+              <div className="state-title">まだ投稿がありません</div>
+              <div className="state-sub">「ありがとうカード」フォームから投稿すると<br/>ここに表示されます。</div>
+            </div>
+          ) : filtered.length===0 ? (
+            <div className="state">
+              <div className="state-emoji">🔍</div>
+              <div className="state-title">該当する投稿がありません</div>
+              <div className="state-sub">絞り込み条件を変えてお試しください。</div>
+            </div>
+          ) : (
+            <div className="voices">
+              {filtered.map((card,i)=>{ const ck=cardKeyOf(card); return (
+                <Voice key={ck+"_"+i} card={card} comments={commentsByKey[ck]||[]}
+                  onAdd={(c)=>addComment(ck,c)} onDel={delComment} />
+              ); })}
+            </div>
+          )}
+
+          <div className="foot">
+            <div>クリーニングみわ ・ 報告フォーム管理システム</div>
+            <div className="foot-links" style={{ marginTop:6 }}><a href="index.html">← フォーム一覧へ戻る</a></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

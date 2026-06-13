@@ -77,7 +77,7 @@
   .header-brand .brand-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(5,150,105,.16); }
   .header-brand .dot {
     width: 30px; height: 30px; border-radius: 8px;
-    background: #fff url('../favicon.png') center/80% no-repeat;
+    background: #fff url('miwa_avatar.png') center/86% no-repeat;
     box-shadow: 0 1px 3px rgba(40,55,80,.18), inset 0 0 0 1px rgba(40,55,80,.06);
     flex-shrink: 0;
   }
@@ -124,7 +124,7 @@
   }
   .chat-subhead .avatar {
     width: 40px; height: 40px; border-radius: 11px;
-    background: #fff url('../favicon.png') center/80% no-repeat;
+    background: #fff url('miwa_avatar.png') center/86% no-repeat;
     flex-shrink: 0;
     box-shadow: 0 1px 4px rgba(40,55,80,.16), inset 0 0 0 1px rgba(40,55,80,.06);
   }
@@ -158,7 +158,7 @@
 
   .msg-avatar {
     width: 36px; height: 36px; border-radius: 10px;
-    background: #fff url('../favicon.png') center/80% no-repeat;
+    background: #fff url('miwa_avatar.png') center/86% no-repeat;
     flex-shrink: 0;
     box-shadow: 0 1px 3px rgba(40,55,80,.16), inset 0 0 0 1px rgba(40,55,80,.06);
   }
@@ -230,21 +230,6 @@
     0%, 60%, 100% { transform: translateY(0); opacity: .45; }
     30% { transform: translateY(-4px); opacity: 1; }
   }
-
-  /* ─── ストリーミングカーソル ─── */
-  .stream-cursor { display: inline-block; animation: blink .7s infinite; color: var(--primary); font-weight: 400; }
-  @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
-
-  /* ─── ついで読み（関連回答） ─── */
-  .related-wrap { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
-  .related-label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 7px; letter-spacing: .04em; }
-  .related-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 4px; background: var(--surface2); border-radius: var(--radius-sm); cursor: pointer; transition: background .15s; }
-  .related-item:hover { background: var(--primary-light); }
-  .related-q { font-size: 13px; color: var(--text); flex: 1; line-height: 1.4; }
-  .related-arr { font-size: 15px; color: var(--text-muted); flex-shrink: 0; }
-
-  /* ─── 料金マスク ─── */
-  .price-masked { background: #fef9c3; color: #92400e; border-radius: 4px; padding: 1px 7px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 
   /* 入力バー */
   .chat-inputbar {
@@ -646,7 +631,7 @@
   .splash-inner { display: flex; flex-direction: column; align-items: center; }
   .splash-logo {
     width: 168px; height: 168px;
-    background: #fff url('../favicon.png') center/contain no-repeat;
+    background: #fff url('miwa_avatar.png') center/contain no-repeat;
     filter: drop-shadow(0 8px 22px rgba(40,80,40,.16));
   }
   .splash-title {
@@ -1074,93 +1059,6 @@ function addBotBubble(innerHtml, opts = {}, typingRow = null) {
   return row;
 }
 
-// ─── ストリーミング表示（タイピング風） ─────────────────────
-// GASはSSEを使えないため「全文受信→文字を順次表示」で体感速度を改善
-function streamIntoBubble(typingRow, rawText, finalHtml, opts = {}) {
-  return new Promise(resolve => {
-    const bubbleClass = opts.notfound ? 'bubble them notfound' : 'bubble them';
-    typingRow.className = 'msg-row them';
-    typingRow.innerHTML = `
-      <div class="msg-avatar"></div>
-      <div class="msg-group">
-        <div class="msg-name">FAQ</div>
-        <div class="msg-bundle">
-          <div class="${bubbleClass}"><span class="stream-text"></span><span class="stream-cursor">\u2502</span></div>
-        </div>
-      </div>`;
-    scrollChat();
-    const span = typingRow.querySelector('.stream-text');
-    const cursor = typingRow.querySelector('.stream-cursor');
-    // 速度：約150〜200文字/秒（16ms × 3文字 = 56ms/10文字 ≒ 180文字/秒）
-    const chars = [...rawText]; let i = 0;
-    const id = setInterval(() => {
-      const end = Math.min(i + 4, chars.length);
-      span.textContent += chars.slice(i, end).join(''); i = end; scrollChat();
-      if (i >= chars.length) {
-        clearInterval(id); cursor.remove();
-        const b = typingRow.querySelector('.msg-bundle');
-        b.innerHTML = `<div class="${bubbleClass}">${finalHtml}</div><span class="msg-time">${nowTime()}</span>`;
-        scrollChat(); resolve();
-      }
-    }, 18);
-  });
-}
-
-// ─── 関連回答（ついで読み） ──────────────────────────────────
-function findRelated(question, usedRefs, topN = 3) {
-  const usedIds = new Set((usedRefs || []).map(r => r.id));
-  const cats = new Set((usedRefs || []).map(r => r.category).filter(Boolean));
-  const qNorm = question.replace(/[？。、！\s]/g, '').toLowerCase();
-  return knowledgeBase
-    .filter(kb => !usedIds.has(kb.id))
-    .map(kb => {
-      let score = 0;
-      if (cats.has(kb.category)) score += 3;
-      const kbStr = (kb.q + kb.a).toLowerCase();
-      // 2文字以上の部分一致
-      for (let j = 0; j < qNorm.length - 1; j++) {
-        const bi = qNorm.slice(j, j + 2);
-        if (kbStr.includes(bi)) score += 0.5;
-      }
-      return { kb, score };
-    })
-    .filter(x => x.score >= 1)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topN)
-    .map(x => x.kb);
-}
-function renderRelated(items) {
-  if (!items.length) return '';
-  return `<div class="related-wrap">
-    <div class="related-label">\ud83d\udcd6 \u3064\u3044\u3067\u8aad\u307f — \u95a2\u9023\u3059\u308b\u5185\u5bb9</div>
-    ${items.map(kb => `<div class="related-item" onclick="showRelatedKB(${kb.id})">
-      <span class="related-q">${escHtml(kb.q)}</span><span class="related-arr">\u203a</span></div>`).join('')}
-  </div>`;
-}
-function showRelatedKB(id) {
-  const kb = knowledgeBase.find(k => k.id === id);
-  if (!kb) return;
-  const finalHtml = maskPrices(mdToHtml(kb.a))
-    + imagesHtml([kb]).replace('answer-images', 'imgs')
-    + `<div class="src">\ud83d\udcda \u95a2\u9023\uff1a${escHtml(kb.category || '')}</div>`;
-  addBotBubble(finalHtml);
-}
-
-// ─── 料金マスキング ───────────────────────────────────────────
-// FAQ管理ページのトグルとlocalStorage（miwa_price_mask）を共有
-let PRICE_MASK_ENABLED = (function() {
-  try { return localStorage.getItem('miwa_price_mask') === '1'; } catch(e) { return false; }
-})();
-window.addEventListener('storage', function(e) {
-  if (e.key === 'miwa_price_mask') PRICE_MASK_ENABLED = (e.newValue === '1');
-});
-function maskPrices(html) {
-  if (!PRICE_MASK_ENABLED) return html;
-  return html
-    .replace(/¥[\d,]+/g, '<span class="price-masked">\ud83d\udcb4 \u6599\u91d1\u8868\u53c2\u7167</span>')
-    .replace(/\d[\d,]*円(?:\s*(?:税込|税抜|[\(（][^)\uff09]{0,12}[\)\uff09]))?/g, '<span class="price-masked">\ud83d\udcb4 \u6599\u91d1\u8868\u53c2\u7167</span>');
-}
-
 function quickAsk(text) {
   document.getElementById('question-input').value = text;
   askQuestion();
@@ -1195,12 +1093,10 @@ async function askQuestion() {
 
     if (answered) {
       statsAnswered++;
-      const related = findRelated(question, result.refItems);
-      const finalHtml = maskPrices(mdToHtml(result.text))
-        + imagesHtml(result.refItems).replace('answer-images', 'imgs')
-        + `<div class="src">\ud83d\udcda \u77e5\u8b58\u30d9\u30fc\u30b9\u3088\u308a\u56de\u7b54${refLabel(result.refItems)}</div>`
-        + renderRelated(related);
-      await streamIntoBubble(typingRow, result.text, finalHtml);
+      const html = `${mdToHtml(result.text)}
+        ${imagesHtml(result.refItems).replace('answer-images', 'imgs')}
+        <div class="src">📚 知識ベースより回答${refLabel(result.refItems)}</div>`;
+      addBotBubble(html, {}, typingRow);
     } else {
       addToUnanswered(question);
       addBotBubble(
