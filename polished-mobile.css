@@ -19,15 +19,14 @@ body {
 #m-root { min-height: 100%; }
 
 /* ── アプリシェル ───────────────────────────────────── */
+/* position:fixed + inset:0 で 100dvh の動的変化を排除。
+   iOS PWA でスワイプ中にレイアウトが揺れるバグを根絶。 */
 .m-app {
-  max-width: 520px;
-  margin: 0 auto;
-  height: 100vh;
-  height: 100dvh;
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  position: relative;
   overflow: hidden;
 }
 
@@ -200,6 +199,7 @@ body {
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid var(--line);
   display: flex;
+  touch-action: none; /* タブバー近辺のスワイプがスクロールに漏れるのを防止 */
 }
 .m-tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
@@ -462,5 +462,9 @@ body {
 /* PC幅でのプレビュー時に端末風の枠を付ける（任意） */
 @media (min-width: 521px) {
   body { background: #2a2840; }
-  .m-app { box-shadow: 0 20px 60px rgba(0,0,0,0.4); min-height: 100vh; }
+  .m-app {
+    left: calc(50% - 260px);
+    right: calc(50% - 260px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
 }
