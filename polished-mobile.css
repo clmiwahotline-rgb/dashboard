@@ -19,14 +19,18 @@ body {
 #m-root { min-height: 100%; }
 
 /* ── アプリシェル ───────────────────────────────────── */
-/* position:fixed + inset:0 で 100dvh の動的変化を排除。
-   iOS PWA でスワイプ中にレイアウトが揺れるバグを根絶。 */
+/* ※ position:fixed は使わない：font-zoom（bodyの zoom）が効いた状態で
+   fixed 要素は画面全体に広がらず縮むため、下に白い余白が出る。
+   relative + svh （スワイプ中も変化しない安定高さ）と flex 子タブバーで解決。 */
 .m-app {
-  position: fixed;
-  inset: 0;
+  max-width: 520px;
+  margin: 0 auto;
+  height: 100vh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  position: relative;
   overflow: hidden;
 }
 
@@ -462,9 +466,5 @@ body {
 /* PC幅でのプレビュー時に端末風の枠を付ける（任意） */
 @media (min-width: 521px) {
   body { background: #2a2840; }
-  .m-app {
-    left: calc(50% - 260px);
-    right: calc(50% - 260px);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-  }
+  .m-app { box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
 }
