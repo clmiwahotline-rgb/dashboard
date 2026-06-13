@@ -741,6 +741,36 @@
 // ═══════════════════════════════════════════════
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec';
 
+// ── クラウド知識ベース（FAQ管理と共有）──────────────────────────
+const FAQ_CHAT_CLOUD_KEY = 'miwa.faq.cloud.v1';
+
+async function loadKBFromCloud() {
+  try {
+    const s = localStorage.getItem(FAQ_CHAT_CLOUD_KEY);
+    if (!s) return;
+    const cfg = JSON.parse(s);
+    if (!cfg.enabled || !cfg.gasUrl) return;
+    const res = await fetch(cfg.gasUrl + '?action=get_kb');
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      const loaded = data
+        .filter(item => item.enabled !== false)
+        .map(item => ({
+          ...item,
+          images: typeof item.images === 'string'
+            ? item.images.split(',').filter(Boolean)
+            : (Array.isArray(item.images) ? item.images : []),
+        }));
+      if (loaded.length > 0) {
+        knowledgeBase = loaded;
+        console.log('[FAQ] クラウドから知識ベースを読み込みました：', loaded.length, '件');
+      }
+    }
+  } catch(e) {
+    console.warn('[FAQ] クラウドKB読み込み失敗（ローカルで継続）:', e.message);
+  }
+}
+
 // ═══════════════════════════════════════════════
 //  データストア（体験版：ブラウザメモリ）
 // ═══════════════════════════════════════════════
@@ -1873,17 +1903,14 @@ function initChatFontSize() {
 updateStats();
 initChatFontSize();
 
-// ピンチ／ダブルタップ拡大を無効化（iOS Safari は viewport の user-scalable を無視するため）
+// ピンチ／ダブルタップ拡大を無効化
 (function(){
-  // ピンチ（ジェスチャー）を無効化
   ['gesturestart','gesturechange','gestureend'].forEach(function(ev){
     document.addEventListener(ev, function(e){ e.preventDefault(); }, { passive: false });
   });
-  // 2本指タッチを無効化
   document.addEventListener('touchmove', function(e){
     if (e.touches && e.touches.length > 1) e.preventDefault();
   }, { passive: false });
-  // ダブルタップ拡大を無効化
   let lastTouch = 0;
   document.addEventListener('touchend', function(e){
     const now = Date.now();
@@ -1892,19 +1919,17 @@ initChatFontSize();
   }, { passive: false });
 })();
 
-document.body.classList.add('chat-mode');
-addBotBubble(
-  `クリーニングみわ FAQへようこそ！<br>業務でわからないことを質問してください。<br><span class="src">登録された知識だけを参照して回答します。答えが無い質問は管理者に届きます。</span>`
-);
+// クラウド知識ベース読み込み（設定済みの場合）→ 完了後にスプラッシュを消す
+(async function(){
+  await loadKBFromCloud();
 
-// スプラッシュを2秒後にフェードアウト
-(function(){
+  document.body.classList.add('chat-mode');
+  addBotBubble(
+    `クリーニングみわ FAQへようこそ！<br>業務でわからないことを質問してください。<br><span class="src">登録された知識だけを参照して回答します。答えが無い質問は管理者に届きます。</span>`
+  );
+
   const sp = document.getElementById('splash');
-  if (!sp) return;
-  setTimeout(() => {
-    sp.classList.add('hide');
-    setTimeout(() => sp.remove(), 600);
-  }, 2000);
+  if (sp) { setTimeout(() => { sp.classList.add('hide'); setTimeout(() => sp.remove(), 600); }, 400); }
 })();
 </script>
 </body>
