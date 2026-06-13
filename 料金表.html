@@ -7,7 +7,7 @@
 <script src="auth-config.js"></script>
 <script src="polished-auth.js"></script>
 <script src="polished-device.js"></script>
-<script src="polished-mobile-footer.js"></script>
+<script src="polished-mobile-footer.js?v=217"></script>
 <script src="polished-cloud.jsx"></script>
 <link rel="stylesheet" href="polished.css?v=213">
 <style>
@@ -162,6 +162,7 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 .pr-edit-close { border: none; background: none; font-size: 22px; cursor: pointer; color: #999; }
 .pr-edit-field { margin-bottom: 14px; }
 .pr-edit-field label { display: block; font-size: 12px; font-weight: 700; color: #666; margin-bottom: 5px; }
+.pr-add-select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; background: var(--surface); color: var(--text); }
 .pr-edit-field input { width: 100%; padding: 10px 12px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 15px; font-family: inherit; }
 .pr-edit-field input:focus { outline: none; border-color: var(--green); }
 .pr-edit-footer { display: flex; gap: 8px; margin-top: 18px; }
@@ -263,6 +264,10 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     CSV取込
   </button>
+  <button class="pr-import-btn" onclick="openAddModal()" style="background:#0e8b52;margin-left:6px">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    商品追加
+  </button>
 </div>
 
 <div class="pr-tabs" id="pr-tabs">
@@ -312,6 +317,53 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
     <div class="pr-edit-footer">
       <button class="pr-edit-save" onclick="saveEditItem()">保存</button>
       <button class="pr-edit-del" onclick="deleteEditItem()">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 商品追加モーダル -->
+<div class="pr-edit-modal" id="pr-add-modal">
+  <div class="pr-edit-sheet">
+    <div class="pr-edit-head">
+      <h3>＋ 商品追加</h3>
+      <button class="pr-edit-close" onclick="closeAddModal()">×</button>
+    </div>
+    <div class="pr-edit-field">
+      <label>タブ（分類）</label>
+      <select id="pr-add-sheet" class="pr-add-select" onchange="onAddSheetChange()">
+        <option value="cleaning">クリーニング料金</option>
+        <option value="special">特殊品</option>
+        <option value="reform">リフォーム</option>
+        <option value="function">加工</option>
+        <option value="sales">物販</option>
+      </select>
+    </div>
+    <div class="pr-edit-field">
+      <label>カテゴリ</label>
+      <input type="text" id="pr-add-cat" placeholder="例：ｼｬﾂ・ﾌﾞﾗｳｽ">
+    </div>
+    <div class="pr-edit-field">
+      <label>商品名</label>
+      <input type="text" id="pr-add-name" placeholder="例：ニットカーディガン">
+    </div>
+    <div class="pr-edit-field">
+      <label id="pr-add-p1-label">料金（円・税込）</label>
+      <input type="number" id="pr-add-p1" placeholder="0">
+    </div>
+    <div class="pr-edit-field" id="pr-add-p4-wrap">
+      <label>デリケートコース（円）</label>
+      <input type="number" id="pr-add-p4" placeholder="0">
+    </div>
+    <div class="pr-edit-field" id="pr-add-p5-wrap">
+      <label>ブランドコース（円）</label>
+      <input type="number" id="pr-add-p5" placeholder="0">
+    </div>
+    <div class="pr-edit-field" id="pr-add-p6-wrap">
+      <label>ハイブランドコース（円）</label>
+      <input type="number" id="pr-add-p6" placeholder="0">
+    </div>
+    <div class="pr-edit-footer">
+      <button class="pr-edit-save" onclick="saveAddItem()">追加する</button>
     </div>
   </div>
 </div>
@@ -635,6 +687,52 @@ function closeEditModal() {
   document.getElementById('pr-edit-modal').classList.remove('open');
   editTargetCode = null;
 }
+
+// ── 商品追加 ──────────────────────────────────────────
+function openAddModal() {
+  // 現在のタブをデフォルト選択
+  document.getElementById('pr-add-sheet').value = currentTab || 'cleaning';
+  document.getElementById('pr-add-cat').value = '';
+  document.getElementById('pr-add-name').value = '';
+  document.getElementById('pr-add-p1').value = '';
+  document.getElementById('pr-add-p4').value = '';
+  document.getElementById('pr-add-p5').value = '';
+  document.getElementById('pr-add-p6').value = '';
+  onAddSheetChange();
+  document.getElementById('pr-add-modal').classList.add('open');
+}
+function closeAddModal() {
+  document.getElementById('pr-add-modal').classList.remove('open');
+}
+function onAddSheetChange() {
+  const sheet = document.getElementById('pr-add-sheet').value;
+  const showMulti = (sheet === 'cleaning' || sheet === 'special');
+  document.getElementById('pr-add-p4-wrap').style.display = showMulti ? '' : 'none';
+  document.getElementById('pr-add-p5-wrap').style.display = showMulti ? '' : 'none';
+  document.getElementById('pr-add-p6-wrap').style.display = showMulti ? '' : 'none';
+}
+function saveAddItem() {
+  const sheet = document.getElementById('pr-add-sheet').value;
+  const name  = document.getElementById('pr-add-name').value.trim();
+  const cat   = document.getElementById('pr-add-cat').value.trim() || '追加商品';
+  const p1    = Number(document.getElementById('pr-add-p1').value) || 0;
+  const p4    = Number(document.getElementById('pr-add-p4').value) || undefined;
+  const p5    = Number(document.getElementById('pr-add-p5').value) || undefined;
+  const p6    = Number(document.getElementById('pr-add-p6').value) || undefined;
+  if (!name) { alert('商品名を入力してください'); return; }
+  if (!p1)   { alert('料金を入力してください'); return; }
+  const code = 'CUSTOM_' + Date.now();
+  const item = { code, name, cat, p1, sheet, isNew: true, deleted: false };
+  if (p4) item.p4 = p4;
+  if (p5) item.p5 = p5;
+  if (p6) item.p6 = p6;
+  priceEdits[code] = item;
+  saveEdits();
+  // 追加したタブに切替
+  if (currentTab !== sheet) switchTab(sheet);
+  else renderAll();
+  closeAddModal();
+}
 function saveEditItem() {
   if (!editTargetCode) return;
   const edit = {
@@ -660,12 +758,15 @@ function deleteEditItem() {
   renderAll();
 }
 function getAllItemsBySheet(sheet) {
-  if (sheet === 'cleaning') return priceData.cleaning || [];
-  if (sheet === 'special') return priceData.special || [];
-  if (sheet === 'reform') return priceData.reform || [];
-  if (sheet === 'function') { const d = (() => { try { const s=localStorage.getItem(LS_FUNC); if(s) return JSON.parse(s); } catch(e){} return window.FUNCTION_SEED || null; })(); return d ? d.items : []; }
-  if (sheet === 'sales') { const d = (() => { try { const s=localStorage.getItem(LS_SALES); if(s) return JSON.parse(s); } catch(e){} return window.SALES_SEED || null; })(); return d ? d.items : []; }
-  return [];
+  let base = [];
+  if (sheet === 'cleaning') base = priceData.cleaning || [];
+  else if (sheet === 'special') base = priceData.special || [];
+  else if (sheet === 'reform') base = priceData.reform || [];
+  else if (sheet === 'function') { const d = (() => { try { const s=localStorage.getItem(LS_FUNC); if(s) return JSON.parse(s); } catch(e){} return window.FUNCTION_SEED || null; })(); base = d ? d.items : []; }
+  else if (sheet === 'sales') { const d = (() => { try { const s=localStorage.getItem(LS_SALES); if(s) return JSON.parse(s); } catch(e){} return window.SALES_SEED || null; })(); base = d ? d.items : []; }
+  // 追加商品（priceEditsのisNew=true）を末尾に追加
+  const customItems = Object.values(priceEdits).filter(e => e.isNew && e.sheet === sheet && !e.deleted);
+  return [...base, ...customItems];
 }
 // クリック外にメニューを閉じる
 document.addEventListener('click', () => closeActionMenu());
