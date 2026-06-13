@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>セーフエリア診断</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: -apple-system, system-ui, sans-serif; background: #0a7d4a; color: #fff; }
+  /* safe-area の値を CSS 変数経由で読む計測バー */
+  #probe-bottom {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: env(safe-area-inset-bottom, 0px);
+    background: repeating-linear-gradient(45deg, #ff3b30 0 10px, #ffcc00 10px 20px);
+  }
+  #probe-top {
+    position: fixed; left: 0; right: 0; top: 0;
+    height: env(safe-area-inset-top, 0px);
+    background: repeating-linear-gradient(45deg, #007aff 0 10px, #34c759 10px 20px);
+  }
+  .wrap { padding: 90px 20px 120px; }
+  h1 { font-size: 20px; margin-bottom: 16px; }
+  .row { background: rgba(255,255,255,.14); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .k { font-size: 12px; opacity: .8; }
+  .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .note { font-size: 13px; line-height: 1.7; opacity: .9; margin-top: 14px; }
+  .stripe-legend { font-size: 12px; margin-top: 10px; opacity: .85; }
+</style>
+</head>
+<body>
+<div id="probe-top"></div>
+<div id="probe-bottom"></div>
+<div class="wrap">
+  <h1>セーフエリア診断</h1>
+  <div class="row"><div class="k">env(safe-area-inset-top)</div><div class="v" id="sat">…</div></div>
+  <div class="row"><div class="k">env(safe-area-inset-bottom)</div><div class="v" id="sab">…</div></div>
+  <div class="row"><div class="k">window.innerHeight</div><div class="v" id="iw">…</div></div>
+  <div class="row"><div class="k">visualViewport.height</div><div class="v" id="vv">…</div></div>
+  <div class="row"><div class="k">screen.height</div><div class="v" id="sh">…</div></div>
+  <div class="row"><div class="k">100svh / 100dvh / 100lvh</div><div class="v" id="vh">…</div></div>
+  <div class="row"><div class="k">standalone (PWA)?</div><div class="v" id="sa">…</div></div>
+  <div class="row"><div class="k">devicePixelRatio</div><div class="v" id="dpr">…</div></div>
+  <div class="stripe-legend">画面上端の青緑シマ＝上セーフエリア、下端の赤黄シマ＝下セーフエリア。<br>シマの太さ＝実際の余白量です。</div>
+  <div class="note">この画面の数字を教えてください。特に <b>env(safe-area-inset-bottom)</b> と下端の赤黄シマの太さに注目です。</div>
+</div>
+<script>
+  function px(el){ const d=document.createElement('div'); d.style.cssText='position:absolute;'+el; document.body.appendChild(d); const h=d.getBoundingClientRect().height; d.remove(); return Math.round(h*100)/100; }
+  function refresh(){
+    document.getElementById('sat').textContent = px('height:env(safe-area-inset-top,0px)') + ' px';
+    document.getElementById('sab').textContent = px('height:env(safe-area-inset-bottom,0px)') + ' px';
+    document.getElementById('iw').textContent = window.innerHeight + ' px';
+    document.getElementById('vv').textContent = (window.visualViewport ? Math.round(window.visualViewport.height) : '—') + ' px';
+    document.getElementById('sh').textContent = screen.height + ' px';
+    document.getElementById('vh').textContent = px('height:100svh') + ' / ' + px('height:100dvh') + ' / ' + px('height:100lvh');
+    document.getElementById('sa').textContent = (window.navigator.standalone ? 'YES（ホーム画面アプリ）' : 'no（Safari等）');
+    document.getElementById('dpr').textContent = window.devicePixelRatio;
+  }
+  refresh();
+  window.addEventListener('resize', refresh);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', refresh);
+</script>
+</body>
+</html>
