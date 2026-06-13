@@ -127,13 +127,6 @@ const MApp = () => {
           );
         })}
       </div>
-      {/* iOS セーフエリア（ホームインジケーター下）の背景を埋める */}
-      <div aria-hidden="true" style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: 520, margin: "0 auto",
-        height: "env(safe-area-inset-bottom, 0px)",
-        background: "var(--card, #fff)",
-        zIndex: 48, pointerEvents: "none",
-      }} />
     </div>
   );
 };

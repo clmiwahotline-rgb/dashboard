@@ -76,7 +76,7 @@ body {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 14px 14px calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 24px);
+  padding: 14px 14px 24px;
 }
 .m-section-gap { height: 14px; }
 
@@ -186,14 +186,18 @@ body {
 .m-spinner.sm { width: 15px; height: 15px; border-width: 2px; margin: 0; }
 
 /* ── 下部タブバー ───────────────────────────────────── */
+/* position:fixed をやめて .m-app の flex 子要素にする。
+   .m-app が height:100dvh の flex-column なのでタブバーは
+   常に画面最下部に収まり、iOS PWA の fixed 浮きバグを根絶。 */
 .m-tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-  max-width: 520px; margin: 0 auto;
+  flex-shrink: 0;
+  z-index: 50;
   height: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: color-mix(in oklch, var(--card) 92%, transparent);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  background: var(--card); /* solid fallback */
+  background: color-mix(in oklch, var(--card) 96%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid var(--line);
   display: flex;
 }
@@ -241,14 +245,14 @@ body {
 .m-claim-edit { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
 
 /* ── FAB（新規追加）─────────────────────────────────── */
+/* タブバーが flex 子になったため FAB も absolute に変更 */
 .m-fab {
-  position: fixed; right: 18px; bottom: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px); z-index: 45;
+  position: absolute; right: 18px; bottom: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px); z-index: 45;
   width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
   background: var(--accent); color: #fff; box-shadow: 0 8px 22px var(--accent-glow);
   display: flex; align-items: center; justify-content: center;
 }
 .m-fab:active { transform: scale(0.92); }
-@media (min-width: 521px) { .m-fab { right: calc(50% - 260px + 18px); } }
 
 /* ── ボトムシート（モーダル）────────────────────────── */
 .m-sheet-backdrop {
@@ -409,7 +413,7 @@ body {
 /* ── ローディング/トースト ──────────────────────────── */
 .m-toast {
   position: fixed; left: 50%; bottom: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 22px); transform: translateX(-50%);
-  z-index: 200; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700;
+  z-index: 200; max-width: 520px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700;
   padding: 11px 18px; border-radius: 999px; box-shadow: var(--shadow-lift); max-width: 88%;
   animation: m-fade 0.2s ease;
 }
