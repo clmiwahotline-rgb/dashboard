@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<!-- saved from url=(0058)file:///C:/Users/satos/Downloads/arigatou_dashboard_7.html -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ありがとうカード ダッシュボード</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: #fdf8f0; color: #1c1917; font-size: 13px; }
+
+  header { background: #fff; border-bottom: 2px solid #f0e0c8; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(249,115,22,0.08); }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; color: #f97316; white-space: nowrap; }
+  .header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .live-badge { display: flex; align-items: center; gap: 5px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #10b981; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .live-dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:0.3;} }
+  .last-updated { color: #a8896c; font-size: 11px; }
+  .refresh-btn { background: #fff7ed; border: 1px solid #f0e0c8; color: #f97316; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; }
+  .refresh-btn:hover { background: #f97316; color: white; }
+  .pdf-btn { background: #1c1917; border: none; color: white; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; }
+  .pdf-btn:hover { background: #333; }
+
+  .main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+  .page-title { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .page-subtitle { color: #a8896c; font-size: 12px; margin-bottom: 20px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+  .kpi-card { background: #fff; border: 1.5px solid #f0e0c8; border-radius: 14px; padding: 18px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+  .kpi-icon { font-size: 24px; margin-bottom: 8px; display: block; }
+  .kpi-label { color: #a8896c; font-size: 11px; margin-bottom: 4px; }
+  .kpi-value { font-size: 30px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .kpi-sub { color: #a8896c; font-size: 11px; }
+  .kpi-card.orange .kpi-value { color: #f97316; }
+  .kpi-card.pink   .kpi-value { color: #ec4899; }
+  .kpi-card.purple .kpi-value { color: #8b5cf6; }
+  .kpi-card.green  .kpi-value { color: #10b981; }
+
+  .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .card { background: #fff; border: 1.5px solid #f0e0c8; border-radius: 14px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .card-title { font-size: 14px; font-weight: 700; }
+  .card-badge { font-size: 10px; color: #a8896c; background: #fff7ed; padding: 3px 8px; border-radius: 20px; border: 1px solid #f0e0c8; }
+
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { width: 110px; font-size: 12px; color: #78716c; text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; height: 24px; background: #fff7ed; border-radius: 6px; overflow: hidden; border: 1px solid #f0e0c8; }
+  .bar-fill { height: 100%; border-radius: 5px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 600; color: white; min-width: 32px; }
+  .bar-count { width: 28px; text-align: right; font-size: 12px; color: #78716c; }
+
+  .kind-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kind-item { background: #fff7ed; border: 1.5px solid #f0e0c8; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  .kind-emoji { font-size: 20px; }
+  .kind-info { flex: 1; }
+  .kind-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .kind-bar-track { height: 4px; background: #f0e0c8; border-radius: 2px; overflow: hidden; }
+  .kind-bar-fill { height: 100%; border-radius: 2px; }
+  .kind-pct { font-size: 10px; color: #a8896c; margin-top: 2px; }
+  .kind-count { font-size: 20px; font-weight: 700; color: #f97316; }
+
+  .full-card { background: #fff; border: 1.5px solid #f0e0c8; border-radius: 14px; padding: 20px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+  .filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .search-input { background: #fff7ed; border: 1.5px solid #f0e0c8; color: #1c1917; padding: 6px 12px; border-radius: 20px; font-size: 12px; width: 160px; outline: none; }
+  .search-input:focus { border-color: #f97316; }
+  .filter-btn { background: #fff7ed; border: 1.5px solid #f0e0c8; color: #78716c; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+  .filter-btn:hover { border-color: #f97316; color: #f97316; }
+  .filter-btn.active { background: #f97316; color: white; border-color: #f97316; }
+
+  .card-list { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 16px; }
+  .thank-card { background: #fff7ed; border: 1.5px solid #f0e0c8; border-radius: 10px; padding: 14px; transition: box-shadow 0.2s, transform 0.2s; }
+  .thank-card:hover { box-shadow: 0 4px 14px rgba(249,115,22,0.15); transform: translateY(-2px); }
+  .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .store-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .card-date { font-size: 10px; color: #a8896c; }
+  .kind-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; margin-bottom: 6px; padding: 2px 8px; border-radius: 6px; }
+  .card-content { font-size: 12px; color: #78716c; line-height: 1.7; border-left: 3px solid #f0e0c8; padding-left: 8px; }
+
+  .loading { text-align: center; padding: 60px 20px; color: #a8896c; font-size: 14px; }
+  .spinner { font-size: 36px; display: block; margin-bottom: 12px; animation: spin 1.2s linear infinite; }
+  @keyframes spin { from{transform:rotate(0deg);}to{transform:rotate(360deg);} }
+  .error-msg { background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 10px; padding: 20px; color: #dc2626; font-size: 13px; text-align: center; margin: 20px 0; line-height: 1.8; }
+  .empty-msg { grid-column: 1/-1; text-align: center; color: #a8896c; padding: 32px; font-size: 13px; }
+
+  /* Claude レポート */
+  .report-card { background: #fff; border: 1.5px solid #f0e0c8; border-radius: 14px; padding: 20px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+  .report-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .report-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .claude-badge { background: linear-gradient(135deg,#f97316,#ec4899); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .report-btn { background: linear-gradient(135deg,#f97316,#ec4899); color: white; border: none; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.2s; display: flex; align-items: center; gap: 6px; }
+  .report-btn:hover { opacity: 0.85; }
+  .report-btn:disabled { opacity: 0.5; cursor: default; }
+  .report-output { background: #fff7ed; border: 1.5px solid #f0e0c8; border-radius: 10px; padding: 18px; font-size: 13px; line-height: 1.9; color: #1c1917; min-height: 80px; white-space: pre-wrap; }
+  .report-output.loading { color: #a8896c; display: flex; align-items: center; gap: 8px; }
+  .report-output.loading::before { content: "⏳"; animation: spin 1.2s linear infinite; display: inline-block; }
+  .report-placeholder { color: #a8896c; font-size: 13px; text-align: center; padding: 20px; }
+  .report-type-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .report-type-btn { background: #fff7ed; border: 1.5px solid #f0e0c8; color: #78716c; padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .report-type-btn:hover { border-color: #f97316; color: #f97316; }
+  .report-type-btn.active { background: #f97316; color: white; border-color: #f97316; }
+
+  @media(max-width:900px){
+    .kpi-grid{grid-template-columns:repeat(2,1fr);}
+    .content-grid{grid-template-columns:1fr;}
+    .card-list{grid-template-columns:1fr 1fr;}
+    .kind-grid{grid-template-columns:1fr;}
+  }
+
+  /* スマホ対応 */
+  @media(max-width:600px){
+    header { padding: 0 12px; height: auto; min-height: 56px; flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+    .logo { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .header-right { gap: 6px; flex-wrap: wrap; }
+    .last-updated { display: none; }
+    .live-badge { font-size: 10px; padding: 3px 8px; }
+    .refresh-btn, .pdf-btn { font-size: 11px; padding: 5px 10px; }
+
+    .main { padding: 14px 12px; }
+    .page-title { font-size: 16px; }
+    .page-subtitle { font-size: 11px; margin-bottom: 14px; }
+
+    .kpi-grid { grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 14px; }
+    .kpi-card { padding: 12px 14px; border-radius: 10px; }
+    .kpi-icon { font-size: 20px; margin-bottom: 6px; }
+    .kpi-value { font-size: 22px; }
+    .kpi-label { font-size: 10px; }
+    .kpi-sub { font-size: 10px; }
+
+    .content-grid { grid-template-columns: 1fr; gap: 10px; }
+    .card { padding: 14px; border-radius: 10px; }
+    .card-title { font-size: 13px; }
+
+    .bar-label { width: 80px; font-size: 11px; }
+    .bar-fill { font-size: 10px; }
+    .bar-count { font-size: 11px; }
+
+    .kind-grid { grid-template-columns: 1fr; gap: 8px; }
+    .kind-item { padding: 10px 12px; }
+    .kind-count { font-size: 18px; }
+
+    .full-card { padding: 14px; border-radius: 10px; }
+    .card-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .filter-bar { gap: 6px; }
+    .search-input { width: 100%; }
+    .filter-btn { font-size: 10px; padding: 4px 10px; }
+
+    .card-list { grid-template-columns: 1fr !important; gap: 8px; margin-top: 12px; }
+    .thank-card { padding: 12px; }
+    .card-content { font-size: 12px; }
+
+    .report-card { padding: 14px; border-radius: 10px; }
+    .report-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .report-btn { width: 100%; justify-content: center; }
+    .report-type-btns { gap: 6px; }
+    .report-type-btn { font-size: 10px; padding: 4px 10px; }
+    .report-output { font-size: 12px; padding: 14px; }
+  }
+
+  /* PDF印刷用スタイル */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    header { display: none !important; }
+    .report-card { display: none !important; }
+    .filter-bar { display: none !important; }
+    .pdf-header { display: block !important; }
+    body { background: white !important; font-size: 11px; }
+    .main { padding: 0 !important; max-width: 100% !important; }
+    .kpi-grid { grid-template-columns: repeat(4,1fr) !important; gap: 8px !important; margin-bottom: 12px !important; }
+    .kpi-card { padding: 12px !important; border-radius: 8px !important; box-shadow: none !important; }
+    .kpi-value { font-size: 22px !important; }
+    .content-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; margin-bottom: 8px !important; }
+    .card { padding: 12px !important; border-radius: 8px !important; box-shadow: none !important; }
+    .full-card { padding: 12px !important; border-radius: 8px !important; box-shadow: none !important; margin-bottom: 8px !important; }
+    .card-list { grid-template-columns: repeat(3,1fr) !important; gap: 8px !important; }
+    .thank-card { padding: 10px !important; break-inside: avoid; }
+    .card-content { font-size: 11px !important; }
+    .page-title { font-size: 16px !important; }
+    .page-subtitle { margin-bottom: 12px !important; }
+  }
+
+  .pdf-header {
+    display: none;
+    text-align: center;
+    padding: 16px 0 12px;
+    border-bottom: 2px solid #f0e0c8;
+    margin-bottom: 16px;
+  }
+  .pdf-header h1 { font-size: 18px; font-weight: 700; color: #f97316; }
+  .pdf-header p  { font-size: 11px; color: #a8896c; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🙏 ありがとうカード</div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <span class="last-updated" id="last-updated">最終更新: 09:56:44</span>
+    <button class="refresh-btn" onclick="loadData()">↻ 更新</button>
+    <button class="pdf-btn" onclick="exportPDF()">📄 PDF出力</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- PDF印刷時のみ表示されるヘッダー -->
+  <div class="pdf-header">
+    <h1>🙏 ありがとうカード 登録状況レポート</h1>
+    <p id="pdf-date">有限会社クリーニングみわ</p>
+  </div>
+  <div class="page-title">ありがとうカード 登録状況</div>
+  <div class="page-subtitle">有限会社クリーニングみわ — 全店舗集計</div>
+  <div id="main-content">
+    <!-- KPI -->
+    <div class="kpi-grid">
+      <div class="kpi-card orange">
+        <span class="kpi-icon">📮</span>
+        <div class="kpi-label">総登録数</div>
+        <div class="kpi-value" id="kv-total">3</div>
+        <div class="kpi-sub">全店舗合計</div>
+      </div>
+      <div class="kpi-card pink">
+        <span class="kpi-icon">🥇</span>
+        <div class="kpi-label">投稿最多店舗</div>
+        <div class="kpi-value" style="font-size:15px;line-height:1.4;padding-top:4px">本店</div>
+        <div class="kpi-sub">2件</div>
+      </div>
+      <div class="kpi-card purple">
+        <span class="kpi-icon">🏆</span>
+        <div class="kpi-label">最多種別</div>
+        <div class="kpi-value" style="font-size:15px;line-height:1.4;padding-top:4px"> お客様からのありがとう</div>
+        <div class="kpi-sub">トップカテゴリ</div>
+      </div>
+      <div class="kpi-card green">
+        <span class="kpi-icon">📅</span>
+        <div class="kpi-label">今週の登録</div>
+        <div class="kpi-value" id="kv-week">3</div>
+        <div class="kpi-sub">直近7日間</div>
+      </div>
+    </div>
+
+    <!-- グラフ -->
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏪 店舗別 登録数</div>
+          <div class="card-badge">2店舗</div>
+        </div>
+        <div class="bar-chart"><div class="bar-row">
+      <div class="bar-label">本店</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:100%;background:linear-gradient(90deg,#f97316,#f97316aa)">2件</div>
+      </div>
+      <div class="bar-count">2</div>
+    </div><div class="bar-row">
+      <div class="bar-label">その他</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:50%;background:linear-gradient(90deg,#ec4899,#ec4899aa)">1件</div>
+      </div>
+      <div class="bar-count">1</div>
+    </div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏷 種別 内訳</div>
+          <div class="card-badge">2種別</div>
+        </div>
+        <div class="kind-grid"><div class="kind-item">
+      <div class="kind-emoji">📌</div>
+      <div class="kind-info">
+        <div class="kind-name">お客様からのありがとう</div>
+        <div class="kind-bar-track"><div class="kind-bar-fill" style="width:100%;background:#94a3b8"></div></div>
+        <div class="kind-pct">67%</div>
+      </div>
+      <div class="kind-count">2</div>
+    </div><div class="kind-item">
+      <div class="kind-emoji">📌</div>
+      <div class="kind-info">
+        <div class="kind-name">お客様からの苦情・不満</div>
+        <div class="kind-bar-track"><div class="kind-bar-fill" style="width:50%;background:#94a3b8"></div></div>
+        <div class="kind-pct">33%</div>
+      </div>
+      <div class="kind-count">1</div>
+    </div></div>
+      </div>
+    </div>
+
+    <!-- カード一覧 -->
+    <div class="full-card">
+      <div class="card-header">
+        <div class="card-title">📋 個別カード一覧</div>
+        <div class="filter-bar">
+          <input class="search-input" type="text" placeholder="内容・店舗で検索..." oninput="onSearch(this.value)">
+          <div id="store-btns"><button class="filter-btn active" onclick="setFilter(&#39;store&#39;,&#39;all&#39;,this)">
+      全店舗
+    </button><button class="filter-btn " onclick="setFilter(&#39;store&#39;,&#39;本店&#39;,this)">
+      本店
+    </button><button class="filter-btn " onclick="setFilter(&#39;store&#39;,&#39;その他&#39;,this)">
+      その他
+    </button></div>
+          <div id="kind-btns"><button class="filter-btn active" onclick="setFilter(&#39;kind&#39;,&#39;all&#39;,this)">
+      全種別
+    </button><button class="filter-btn " onclick="setFilter(&#39;kind&#39;,&#39;お客様からのありがとう&#39;,this)">
+       お客様からのありがとう
+    </button><button class="filter-btn " onclick="setFilter(&#39;kind&#39;,&#39;お客様からの苦情・不満&#39;,this)">
+       お客様からの苦情・不満
+    </button></div>
+        </div>
+      </div>
+      <div class="card-list" id="card-list"><div class="thank-card">
+      <div class="card-top">
+        <span class="store-tag" style="background:#f973161a;color:#f97316;border:1px solid #f9731640">本店</span>
+        <span class="card-date">2026-05-16 07:18</span>
+      </div>
+      <div class="kind-badge" style="background:rgba(148,163,184,0.1);color:#94a3b8">📌 お客様からのありがとう</div>
+      <div class="card-content">シミ抜きが思った以上に綺麗になっていて感動しました！とお客様に仰っていただきました</div>
+    </div><div class="thank-card">
+      <div class="card-top">
+        <span class="store-tag" style="background:#ec48991a;color:#ec4899;border:1px solid #ec489940">その他</span>
+        <span class="card-date">2026-05-16 07:36</span>
+      </div>
+      <div class="kind-badge" style="background:rgba(148,163,184,0.1);color:#94a3b8">📌 お客様からの苦情・不満</div>
+      <div class="card-content">スラックスのプレスが二重線だった。
+以前にもあったため注意してほしい。</div>
+    </div><div class="thank-card">
+      <div class="card-top">
+        <span class="store-tag" style="background:#f973161a;color:#f97316;border:1px solid #f9731640">本店</span>
+        <span class="card-date">2026-05-16 07:37</span>
+      </div>
+      <div class="kind-badge" style="background:rgba(148,163,184,0.1);color:#94a3b8">📌 お客様からのありがとう</div>
+      <div class="card-content">諦めていたシミが綺麗になって嬉しかった。</div>
+    </div></div>
+    </div></div>
+
+  <!-- Claudeレポート -->
+  <div class="report-card">
+    <div class="report-header">
+      <div class="report-title">
+        🤖 AIレポート
+        <span class="claude-badge">Claude AI</span>
+      </div>
+      <button class="report-btn" id="report-btn" onclick="generateReport()">✨ レポートを作成</button>
+    </div>
+    <div class="report-type-btns" style="margin-bottom:14px">
+      <button class="report-type-btn active" onclick="setReportType(&#39;summary&#39;,this)">📊 月次まとめ</button>
+      <button class="report-type-btn" onclick="setReportType(&#39;followup&#39;,this)">⚠️ フォロー確認</button>
+      <button class="report-type-btn" onclick="setReportType(&#39;trend&#39;,this)">📈 トレンド分析</button>
+      <button class="report-type-btn" onclick="setReportType(&#39;praise&#39;,this)">🏆 表彰候補</button>
+    </div>
+    <div class="report-output" id="report-output">
+      <div class="report-placeholder">「レポートを作成」ボタンを押すと、Claudeがありがとうカードの内容を分析してレポートを作成します。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxCHJ4OB8uYtdEflKyld4h3oitjW2Tr80UihXnVTd_jyUREAWz0qF5ebGzJpUhq2eQh/exec";
+
+const kindConfig = {
+  "接客対応":    { emoji:"😊", color:"#f97316", bg:"rgba(249,115,22,0.1)" },
+  "チームワーク": { emoji:"🤝", color:"#ec4899", bg:"rgba(236,72,153,0.1)" },
+  "業務改善":    { emoji:"💡", color:"#8b5cf6", bg:"rgba(139,92,246,0.1)" },
+  "サポート":    { emoji:"🙌", color:"#10b981", bg:"rgba(16,185,129,0.1)" },
+};
+const storeColors = ["#f97316","#ec4899","#8b5cf6","#10b981","#3b82f6","#f59e0b"];
+
+let allData = [];
+let activeStore = "all";
+let activeKind  = "all";
+let searchVal   = "";
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById("last-updated").textContent = "最終更新: " +
+    [now.getHours(), now.getMinutes(), now.getSeconds()].map(n=>String(n).padStart(2,"0")).join(":");
+}
+
+function loadData() {
+  document.getElementById("main-content").innerHTML =
+    '<div class="loading"><span class="spinner">⏳</span>データを読み込んでいます...</div>';
+
+  fetch(GAS_URL)
+    .then(r => { if (!r.ok) throw new Error("HTTPエラー: " + r.status); return r.json(); })
+    .then(data => {
+      allData = Array.isArray(data) ? data : [];
+      updateClock();
+      buildPage();
+    })
+    .catch(err => {
+      document.getElementById("main-content").innerHTML =
+        `<div class="error-msg">⚠️ データの読み込みに失敗しました。<br>
+        ・GASが正しくデプロイされているか確認してください<br>
+        ・「アクセスできるユーザー：全員」になっているか確認してください<br><br>
+        <small style="color:#999">${err}</small></div>`;
+    });
+}
+
+function buildPage() {
+  const stores = [...new Set(allData.map(d=>d.store).filter(Boolean))];
+  const kinds  = [...new Set(allData.map(d=>d.kind).filter(Boolean))];
+
+  // 集計
+  const total = allData.length;
+  const storeCounts = {};
+  const kindCounts  = {};
+  allData.forEach(d => {
+    if (d.store) storeCounts[d.store] = (storeCounts[d.store]||0)+1;
+    if (d.kind)  kindCounts[d.kind]   = (kindCounts[d.kind]||0)+1;
+  });
+
+  const sortedStores = Object.entries(storeCounts).sort((a,b)=>b[1]-a[1]);
+  const sortedKinds  = Object.entries(kindCounts).sort((a,b)=>b[1]-a[1]);
+  const maxStore = sortedStores[0]?.[1] || 1;
+  const maxKind  = sortedKinds[0]?.[1]  || 1;
+  const topKind  = sortedKinds[0];
+
+  const week = allData.filter(d => {
+    try { return (Date.now() - new Date(d.date).getTime()) / 864e5 <= 7; } catch(e){return false;}
+  }).length;
+
+  // ストアフィルターボタン生成
+  const storeBtns = ["all", ...stores].map(s =>
+    `<button class="filter-btn ${s===activeStore?"active":""}" onclick="setFilter('store','${s}',this)">
+      ${s==="all"?"全店舗":s}
+    </button>`).join("");
+
+  const kindBtns = ["all", ...kinds].map(k => {
+    const cfg = kindConfig[k] || {};
+    return `<button class="filter-btn ${k===activeKind?"active":""}" onclick="setFilter('kind','${k}',this)">
+      ${k==="all"?"全種別":((cfg.emoji||"")+" "+k)}
+    </button>`;
+  }).join("");
+
+  // 棒グラフHTML
+  const barHTML = sortedStores.map(([store, count], i) => {
+    const pct = Math.round(count/maxStore*100);
+    const col = storeColors[i % storeColors.length];
+    return `<div class="bar-row">
+      <div class="bar-label">${store}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${col},${col}aa)">${count}件</div>
+      </div>
+      <div class="bar-count">${count}</div>
+    </div>`;
+  }).join("");
+
+  // 種別HTML
+  const kindHTML = sortedKinds.map(([kind, count]) => {
+    const cfg = kindConfig[kind] || { emoji:"📌", color:"#94a3b8", bg:"rgba(148,163,184,0.1)" };
+    const pct = Math.round(count/maxKind*100);
+    const totalPct = Math.round(count/total*100);
+    return `<div class="kind-item">
+      <div class="kind-emoji">${cfg.emoji}</div>
+      <div class="kind-info">
+        <div class="kind-name">${kind}</div>
+        <div class="kind-bar-track"><div class="kind-bar-fill" style="width:${pct}%;background:${cfg.color}"></div></div>
+        <div class="kind-pct">${totalPct}%</div>
+      </div>
+      <div class="kind-count">${count}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("main-content").innerHTML = `
+    <!-- KPI -->
+    <div class="kpi-grid">
+      <div class="kpi-card orange">
+        <span class="kpi-icon">📮</span>
+        <div class="kpi-label">総登録数</div>
+        <div class="kpi-value" id="kv-total">0</div>
+        <div class="kpi-sub">全店舗合計</div>
+      </div>
+      <div class="kpi-card pink">
+        <span class="kpi-icon">🥇</span>
+        <div class="kpi-label">投稿最多店舗</div>
+        <div class="kpi-value" style="font-size:15px;line-height:1.4;padding-top:4px">${sortedStores[0] ? sortedStores[0][0] : "—"}</div>
+        <div class="kpi-sub">${sortedStores[0] ? sortedStores[0][1]+"件" : ""}</div>
+      </div>
+      <div class="kpi-card purple">
+        <span class="kpi-icon">🏆</span>
+        <div class="kpi-label">最多種別</div>
+        <div class="kpi-value" style="font-size:15px;line-height:1.4;padding-top:4px">${topKind ? ((kindConfig[topKind[0]]?.emoji||"")+" "+topKind[0]) : "—"}</div>
+        <div class="kpi-sub">トップカテゴリ</div>
+      </div>
+      <div class="kpi-card green">
+        <span class="kpi-icon">📅</span>
+        <div class="kpi-label">今週の登録</div>
+        <div class="kpi-value" id="kv-week">0</div>
+        <div class="kpi-sub">直近7日間</div>
+      </div>
+    </div>
+
+    <!-- グラフ -->
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏪 店舗別 登録数</div>
+          <div class="card-badge">${stores.length}店舗</div>
+        </div>
+        <div class="bar-chart">${barHTML || '<div style="color:#a8896c;font-size:12px">データがありません</div>'}</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏷 種別 内訳</div>
+          <div class="card-badge">${kinds.length}種別</div>
+        </div>
+        <div class="kind-grid">${kindHTML || '<div style="color:#a8896c;font-size:12px">データがありません</div>'}</div>
+      </div>
+    </div>
+
+    <!-- カード一覧 -->
+    <div class="full-card">
+      <div class="card-header">
+        <div class="card-title">📋 個別カード一覧</div>
+        <div class="filter-bar">
+          <input class="search-input" type="text" placeholder="内容・店舗で検索..." oninput="onSearch(this.value)">
+          <div id="store-btns">${storeBtns}</div>
+          <div id="kind-btns">${kindBtns}</div>
+        </div>
+      </div>
+      <div class="card-list" id="card-list"></div>
+    </div>`;
+
+  // アニメーション
+  animNum("kv-total", total);
+  animNum("kv-week",  week);
+
+  renderCards();
+}
+
+function animNum(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let v = 0;
+  const step = Math.max(1, Math.ceil(target/20));
+  const t = setInterval(() => {
+    v = Math.min(v+step, target);
+    el.textContent = v;
+    if (v >= target) clearInterval(t);
+  }, 40);
+}
+
+function renderCards() {
+  const filtered = allData.filter(d => {
+    const storeOk = activeStore === "all" || d.store === activeStore;
+    const kindOk  = activeKind  === "all" || d.kind  === activeKind;
+    const searchOk = !searchVal || (d.store+d.kind+d.content).toLowerCase().includes(searchVal);
+    return storeOk && kindOk && searchOk;
+  });
+
+  const stores = [...new Set(allData.map(d=>d.store).filter(Boolean))];
+
+  const list = document.getElementById("card-list");
+  if (!list) return;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-msg">該当するカードがありません</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(d => {
+    const cfg = kindConfig[d.kind] || { emoji:"📌", color:"#94a3b8", bg:"rgba(148,163,184,0.1)" };
+    const si = stores.indexOf(d.store) % storeColors.length;
+    const sc = storeColors[si < 0 ? 0 : si];
+    const dateStr = d.date ? String(d.date).replace("T"," ").substring(0,16) : "—";
+    return `<div class="thank-card">
+      <div class="card-top">
+        <span class="store-tag" style="background:${sc}1a;color:${sc};border:1px solid ${sc}40">${d.store||"不明"}</span>
+        <span class="card-date">${dateStr}</span>
+      </div>
+      <div class="kind-badge" style="background:${cfg.bg};color:${cfg.color}">${cfg.emoji} ${d.kind||""}</div>
+      <div class="card-content">${d.content||""}</div>
+    </div>`;
+  }).join("");
+}
+
+function setFilter(type, val, btn) {
+  if (type === "store") activeStore = val;
+  if (type === "kind")  activeKind  = val;
+  const parent = btn.parentElement;
+  parent.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderCards();
+}
+
+function onSearch(val) {
+  searchVal = val.toLowerCase();
+  renderCards();
+}
+
+// 起動
+loadData();
+setInterval(updateClock, 1000);
+setInterval(loadData, 30000);
+
+// ====== Claudeレポート ======
+let reportType = "summary";
+
+function setReportType(type, btn) {
+  reportType = type;
+  document.querySelectorAll(".report-type-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function generateReport() {
+  if (allData.length === 0) {
+    document.getElementById("report-output").textContent = "先にデータを読み込んでください。";
+    return;
+  }
+
+  const btn = document.getElementById("report-btn");
+  const output = document.getElementById("report-output");
+  btn.disabled = true;
+  btn.textContent = "⏳ 作成中...";
+  output.innerHTML = '<div style="color:#a8896c;padding:10px">Claudeが分析しています...</div>';
+
+  // レポートの種類ごとのプロンプト
+  const prompts = {
+    summary: `以下は従業員から寄せられた「ありがとうカード」の登録データです。
+このデータをもとに、月次レポートを日本語で作成してください。
+・全体の傾向
+・店舗別の特徴
+・種別ごとの傾向
+・良かった点のまとめ
+を箇条書きでわかりやすくまとめてください。`,
+
+    followup: `以下は従業員から寄せられた「ありがとうカード」の登録データです。
+このデータの中から、マネージャーがフォローしたほうがよい内容や、
+注意が必要な状況があれば指摘してください。
+特に業務上の課題や、サポートが必要そうな従業員・店舗があれば教えてください。`,
+
+    trend: `以下は従業員から寄せられた「ありがとうカード」の登録データです。
+このデータからトレンドを分析してください。
+・どの店舗が活発にカードを送っているか
+・どの種別が多いか
+・今後改善できる点はあるか
+わかりやすく日本語でまとめてください。`,
+
+    praise: `以下は従業員から寄せられた「ありがとうカード」の登録データです。
+このデータから、特に表彰・感謝すべき店舗や行動を選んでください。
+理由も含めて3〜5件、日本語で紹介してください。`
+  };
+
+  const cardSummary = allData.map(d =>
+    `【${d.store}】種別:${d.kind} 内容:${d.content}`
+  ).join("\n");
+
+  const prompt = prompts[reportType] + "\n\n=== データ ===\n" + cardSummary;
+
+  // クリップボードにコピーしてclaude.aiで開く
+  navigator.clipboard.writeText(prompt).then(() => {
+    output.innerHTML = `
+      <div style="margin-bottom:12px;font-weight:700;color:#f97316">✅ プロンプトをコピーしました！</div>
+      <div style="line-height:1.9;color:#78716c">
+        <b style="color:#1c1917">あと2ステップで完成です：</b><br>
+        ① 下のボタンを押してClaude.aiを開く<br>
+        ② 画面に貼り付ける（Ctrl+V）→ Enterを押す<br>
+        ③ レポートが生成されます 🎉
+      </div>
+      <a href="https://claude.ai" target="_blank"
+        style="display:inline-block;margin-top:14px;background:linear-gradient(135deg,#f97316,#ec4899);color:white;padding:10px 24px;border-radius:20px;font-weight:700;font-size:13px;text-decoration:none">
+        Claude.ai を開く →
+      </a>`;
+    btn.disabled = false;
+    btn.textContent = "✨ レポートを作成";
+  }).catch(() => {
+    // クリップボード失敗時はテキストエリアで表示
+    output.innerHTML = `
+      <div style="margin-bottom:8px;font-weight:700;color:#f97316">以下をコピーしてClaude.aiに貼り付けてください：</div>
+      <textarea style="width:100%;height:120px;font-size:11px;padding:8px;border:1px solid #f0e0c8;border-radius:6px;resize:vertical">${prompt}</textarea>
+      <a href="https://claude.ai" target="_blank"
+        style="display:inline-block;margin-top:10px;background:linear-gradient(135deg,#f97316,#ec4899);color:white;padding:10px 24px;border-radius:20px;font-weight:700;font-size:13px;text-decoration:none">
+        Claude.ai を開く →
+      </a>`;
+    btn.disabled = false;
+    btn.textContent = "✨ レポートを作成";
+  });
+}
+
+// ====== PDF出力 ======
+function exportPDF() {
+  if (allData.length === 0) {
+    alert("先にデータを読み込んでください。");
+    return;
+  }
+
+  // PDF用ヘッダーに日時を入れる
+  const now = new Date();
+  const dateStr = now.getFullYear() + "年" +
+    (now.getMonth()+1) + "月" + now.getDate() + "日 " +
+    String(now.getHours()).padStart(2,"0") + ":" +
+    String(now.getMinutes()).padStart(2,"0") + " 出力";
+  const el = document.getElementById("pdf-date");
+  if (el) el.textContent = "有限会社クリーニングみわ　" + dateStr;
+
+  window.print();
+}
+</script>
+
+
+</body></html>

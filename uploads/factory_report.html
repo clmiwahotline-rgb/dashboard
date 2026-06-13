@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<!-- saved from url=(0058)file:///C:/Users/satos/Downloads/factory_dashboard_27.html -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工場作業報告ダッシュボード</title>
+<link href="./factory_report_files/css2" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --border: #e2e6ed;
+    --accent: #d97706;
+    --green: #16a34a;
+    --blue: #2563eb;
+    --red: #dc2626;
+    --purple: #7c3aed;
+    --text: #1e293b;
+    --text-dim: #64748b;
+    --text-muted: #94a3b8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans JP', 'Segoe UI', sans-serif;
+    padding: 24px 20px; min-height: 100vh;
+  }
+  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .header-icon {
+    width: 36px; height: 36px; background: var(--accent); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .header-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .meta { font-size: 11px; color: var(--text-muted); margin-bottom: 20px; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .filter-btn {
+    padding: 6px 14px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-dim); border-radius: 4px; cursor: pointer;
+    transition: all 0.2s; font-family: inherit;
+  }
+  .filter-btn.active { border-color: var(--accent); background: rgba(217,119,6,0.1); color: var(--accent); }
+  .alert-bar {
+    background: rgba(239,68,68,0.06); border: 1px solid var(--red); border-radius: 6px;
+    padding: 12px 16px; margin-bottom: 16px; display: none; align-items: center; gap: 10px;
+  }
+  .alert-bar.show { display: flex; }
+  .alert-bar .icon { font-size: 20px; }
+  .alert-title { font-size: 13px; font-weight: 700; color: var(--red); }
+  .alert-desc { font-size: 12px; color: var(--text); margin-top: 2px; }
+  .kpi-date { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; font-weight: 600; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+  @media (max-width: 800px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); padding: 16px 20px; border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--text); font-family: 'JetBrains Mono', monospace; line-height: 1; }
+  .stat-unit { font-size: 13px; color: var(--text-dim); margin-left: 4px; }
+  .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 6px; min-height: 16px; }
+  .charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .chart-title { font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; padding: 0 4px; overflow-x: auto; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .bar-val { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; font-family: 'JetBrains Mono', monospace; }
+  .bar-rect { border-radius: 3px 3px 0 0; transition: height 0.4s ease; min-height: 2px; }
+  .bar-label { font-size: 9px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; }
+  .bar-day { font-size: 9px; font-weight: 600; margin-top: 1px; }
+  .comparison-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 24px; }
+  .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .comp-factory-name { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+  .comp-total { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
+  .comp-total-label { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+  .mini-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .mini-bar-label { width: 70px; font-size: 11px; color: var(--text-dim); text-align: right; flex-shrink: 0; }
+  .mini-bar-track { flex: 1; height: 16px; background: #edf0f5; border-radius: 3px; overflow: hidden; }
+  .mini-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+  .mini-bar-val { width: 55px; font-size: 12px; color: var(--text); font-family: monospace; text-align: right; flex-shrink: 0; }
+  .comp-stats { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+  .comp-stats span { color: var(--text); font-family: monospace; }
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 24px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { padding: 8px 10px; text-align: center; color: var(--text-dim); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 10px; text-align: center; }
+  tr.stripe { background: #f8fafc; }
+  td.mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .factory-tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+  .notes-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 24px; }
+  .note-item { padding: 10px 14px; margin-bottom: 12px; border-radius: 4px; background: #f8fafc; border-left: 3px solid var(--accent); }
+  .note-meta { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+  .note-text { font-size: 13px; margin-bottom: 8px; }
+  .note-comments { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .note-comment { font-size: 12px; padding: 6px 0; color: var(--text); }
+  .note-comment.user-comment { padding: 8px 10px; margin: 6px 0; background: rgba(217,119,6,0.12); border-radius: 4px; border-left: 3px solid #d97706; }
+  .note-comment-meta { font-size: 10px; color: var(--text-dim); }
+  .comment-form { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .comment-form input, .comment-form textarea {
+    font-family: inherit; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 4px; background: var(--card); color: var(--text);
+  }
+  .comment-form input { width: 100px; }
+  .comment-form textarea { flex: 1; min-width: 150px; height: 32px; resize: vertical; }
+  .comment-form button {
+    font-family: inherit; font-size: 11px; font-weight: 600; padding: 6px 14px;
+    border: 1px solid var(--accent); background: rgba(217,119,6,0.1); color: var(--accent);
+    border-radius: 4px; cursor: pointer; white-space: nowrap;
+  }
+  .comment-form button:hover { background: rgba(217,119,6,0.2); }
+  .footer { text-align: center; font-size: 10px; color: var(--text-muted); margin-top: 32px; padding-bottom: 16px; }
+
+  /* 編集モーダル */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 1000; align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 10px; padding: 24px;
+    width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+  .modal-field input, .modal-field textarea {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+    font-family: inherit; font-size: 13px; color: var(--text); background: var(--bg);
+  }
+  .modal-field input:focus, .modal-field textarea:focus { outline: none; border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .modal-btn {
+    padding: 8px 20px; font-size: 13px; font-weight: 600; border-radius: 6px;
+    cursor: pointer; font-family: inherit; border: 1px solid var(--border);
+  }
+  .modal-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .modal-btn.secondary { background: transparent; color: var(--text-dim); }
+  .edit-btn {
+    font-size: 10px; padding: 2px 8px; border-radius: 3px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+    font-family: inherit; margin-left: 4px;
+  }
+  .edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 月次レポートボタン */
+  .report-section {
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+    padding: 16px; margin-bottom: 24px;
+  }
+  .report-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .report-select {
+    padding: 7px 12px; border: 1px solid var(--border); border-radius: 4px;
+    font-family: inherit; font-size: 13px; color: var(--text); background: var(--bg);
+  }
+  .report-btn {
+    padding: 8px 20px; font-size: 13px; font-weight: 600; border-radius: 6px;
+    cursor: pointer; font-family: inherit; background: var(--accent); color: white;
+    border: none;
+  }
+  .report-btn:hover { opacity: 0.9; }
+  .report-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  #report-output {
+    margin-top: 16px; display: none;
+  }
+  .report-preview {
+    background: white; border: 1px solid var(--border); border-radius: 6px;
+    padding: 32px; font-size: 13px; line-height: 1.8; color: #1e293b;
+  }
+  .report-preview h1 { font-size: 20px; margin-bottom: 4px; }
+  .report-preview h2 { font-size: 15px; font-weight: 700; margin: 20px 0 8px; border-bottom: 2px solid #e2e6ed; padding-bottom: 6px; }
+  .report-preview h3 { font-size: 13px; font-weight: 700; margin: 14px 0 6px; color: #d97706; }
+  .report-preview table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+  .report-preview th { background: #f4f6f9; padding: 7px 10px; text-align: center; border: 1px solid #e2e6ed; font-weight: 600; }
+  .report-preview td { padding: 6px 10px; text-align: center; border: 1px solid #e2e6ed; }
+  .report-preview tr:nth-child(even) td { background: #f8fafc; }
+  .report-download-btn {
+    margin-top: 12px; padding: 10px 24px; font-size: 13px; font-weight: 600;
+    border-radius: 6px; cursor: pointer; font-family: inherit;
+    background: #16a34a; color: white; border: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🏭</div>
+  <div>
+    <h1>工場作業報告ダッシュボード</h1>
+    <div class="header-sub">Factory Operation Report Dashboard</div>
+  </div>
+</div>
+<div class="meta" id="meta">最終更新: 2026/5/21 13:45:56 ｜ データ件数: 2件</div>
+
+<div class="filters">
+  <button class="filter-btn active" data-factory="all">全工場</button>
+  <button class="filter-btn" data-factory="八潮ドライ工場">八潮ドライ</button>
+  <button class="filter-btn" data-factory="東川口ワイシャツ工場">東川口ワイシャツ</button>
+</div>
+
+<div class="alert-bar" id="alert-bar">
+  <span class="icon">⚠️</span>
+  <div>
+    <div class="alert-title">報告未提出の可能性</div>
+    <div class="alert-desc" id="alert-desc"></div>
+  </div>
+</div>
+
+<div class="kpi-date" id="kpi-date"></div>
+<div class="kpi-grid" id="kpi-grid">
+    <div class="stat-card" style="border-left-color:var(--text)">
+      <div class="stat-label">総点数</div>
+      <div class="stat-value">1,022<span class="stat-unit">点</span></div>
+      <div class="stat-sub">通常+ロット外+先付け+保管</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--accent)">
+      <div class="stat-label">通常ロット</div>
+      <div class="stat-value">600<span class="stat-unit">点</span></div>
+      <div class="stat-sub">&nbsp;</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--blue)">
+      <div class="stat-label">ロット外</div>
+      <div class="stat-value">202<span class="stat-unit">点</span></div>
+      <div class="stat-sub">&nbsp;</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--green)">
+      <div class="stat-label">先付け処理</div>
+      <div class="stat-value">220<span class="stat-unit">点</span></div>
+      <div class="stat-sub">&nbsp;</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--purple)">
+      <div class="stat-label">保管処理</div>
+      <div class="stat-value">0<span class="stat-unit">点</span></div>
+      <div class="stat-sub">&nbsp;</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--red)">
+      <div class="stat-label">稼働時間</div>
+      <div class="stat-value">57.50<span class="stat-unit">h</span></div>
+      <div class="stat-sub">9名出勤</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--red)">
+      <div class="stat-label">人件費目安</div>
+      <div class="stat-value">¥70,700<span class="stat-unit"></span></div>
+      <div class="stat-sub">八潮@1,260円 / 東川口@1,160円</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--accent)">
+      <div class="stat-label">生産性</div>
+      <div class="stat-value">17.8<span class="stat-unit">点/h</span></div>
+      <div class="stat-sub">総点数÷稼働時間</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--accent)">
+      <div class="stat-label">1点あたり人件費</div>
+      <div class="stat-value">¥69<span class="stat-unit"></span></div>
+      <div class="stat-sub">人件費÷総点数</div>
+    </div></div>
+
+<div class="charts-row">
+  <div class="chart-card">
+    <div class="chart-title">📊 日別 総点数</div>
+    <div class="bar-chart" id="chart-lot"><div class="bar-col" style="min-width:40px;height:140px">
+        <div class="bar-val">1022</div>
+        <div class="bar-rect" style="width:40px;height:96px;background:linear-gradient(180deg,#d97706,#d9770688)"></div>
+        <div class="bar-label">05-21</div>
+        <div class="bar-day" style="color:var(--text-dim)">(木)</div>
+      </div></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">⏱ 日別 合計稼働時間</div>
+    <div class="bar-chart" id="chart-hours"><div class="bar-col" style="min-width:40px;height:140px">
+        <div class="bar-val">57.50</div>
+        <div class="bar-rect" style="width:40px;height:96px;background:linear-gradient(180deg,#2563eb,#2563eb88)"></div>
+        <div class="bar-label">05-21</div>
+        <div class="bar-day" style="color:var(--text-dim)">(木)</div>
+      </div></div>
+  </div>
+</div>
+
+<div class="comparison-card">
+  <div class="chart-title" style="margin-bottom:4px">🏭 工場別 比較（直近1週間の日平均）</div>
+  <div style="font-size:10px;color:var(--text-muted);margin-bottom:14px" id="comp-period">2026-05-21 〜 2026-05-21</div>
+  <div class="comp-grid" id="comp-grid"><div>
+      <div class="comp-factory-name" style="color:#d97706">● 八潮ドライ工場 <span style="font-size:10px;font-weight:400;color:var(--text-dim);margin-left:8px">1日間の平均</span></div>
+      <div class="comp-total" style="color:#d97706"><span class="comp-total-label">総点数 </span>650<span style="font-size:12px;color:var(--text-dim)"> 点/日</span></div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">通常ロット</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:100%;background:linear-gradient(90deg,#d9770688,#d97706)"></div></div>
+        <div class="mini-bar-val">250</div>
+      </div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">ロット外</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:80%;background:linear-gradient(90deg,#d9770688,#d97706)"></div></div>
+        <div class="mini-bar-val">200</div>
+      </div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">先付け</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:80%;background:linear-gradient(90deg,#d9770688,#d97706)"></div></div>
+        <div class="mini-bar-val">200</div>
+      </div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">保管処理</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:0%;background:linear-gradient(90deg,#d9770688,#d97706)"></div></div>
+        <div class="mini-bar-val">0</div>
+      </div>
+      <div class="comp-stats">
+        平均稼働: <span>40.00h/日</span> / 平均生産性: <span>16.3点/h</span>
+      </div>
+    </div><div>
+      <div class="comp-factory-name" style="color:#2563eb">● 東川口ワイシャツ工場 <span style="font-size:10px;font-weight:400;color:var(--text-dim);margin-left:8px">1日間の平均</span></div>
+      <div class="comp-total" style="color:#2563eb"><span class="comp-total-label">総点数 </span>372<span style="font-size:12px;color:var(--text-dim)"> 点/日</span></div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">通常ロット</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:100%;background:linear-gradient(90deg,#2563eb88,#2563eb)"></div></div>
+        <div class="mini-bar-val">350</div>
+      </div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">ロット外</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:0.5714285714285714%;background:linear-gradient(90deg,#2563eb88,#2563eb)"></div></div>
+        <div class="mini-bar-val">2</div>
+      </div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">先付け</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:5.714285714285714%;background:linear-gradient(90deg,#2563eb88,#2563eb)"></div></div>
+        <div class="mini-bar-val">20</div>
+      </div>
+      
+      <div class="comp-stats">
+        平均稼働: <span>17.50h/日</span> / 平均生産性: <span>21.3点/h</span>
+      </div>
+    </div></div>
+</div>
+
+<div class="table-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div class="chart-title" style="margin-bottom:0">📋 報告一覧</div>
+    <div id="table-count" style="font-size:11px;color:var(--text-dim)">2 / 2件</div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>日付</th><th>曜日</th><th>工場</th><th>人数</th><th>通常</th><th>ロット外</th><th>先付け</th><th>保管</th><th>総点数</th><th>時間</th><th>生産性</th><th></th>
+    </tr></thead>
+    <tbody id="table-body"><tr class="">
+      <td class="mono" style="white-space:nowrap;text-align:center">05-21</td>
+      <td style="font-size:11px;font-weight:600;text-align:center;">木</td>
+      <td style="text-align:center"><span class="factory-tag" style="background:rgba(217,119,6,0.12);color:#b45309">八潮</span></td>
+      <td style="text-align:center">4名</td>
+      <td class="mono" style="font-weight:700;text-align:center">250</td>
+      <td class="mono" style="text-align:center">200</td>
+      <td class="mono" style="text-align:center">200</td>
+      <td class="mono" style="text-align:center;">0</td>
+      <td class="mono" style="font-weight:700;text-align:center">650</td>
+      <td class="mono" style="text-align:center">40.00h</td>
+      <td class="mono" style="color:var(--green);text-align:center">16.3</td>
+      <td style="text-align:center"><button class="edit-btn" onclick="openEditModal(&#39;2026-05-21&#39;,&#39;八潮ドライ工場&#39;)">修正</button></td>
+    </tr><tr class="stripe">
+      <td class="mono" style="white-space:nowrap;text-align:center">05-21</td>
+      <td style="font-size:11px;font-weight:600;text-align:center;">木</td>
+      <td style="text-align:center"><span class="factory-tag" style="background:rgba(37,99,235,0.12);color:#1d4ed8">東川口</span></td>
+      <td style="text-align:center">5名</td>
+      <td class="mono" style="font-weight:700;text-align:center">350</td>
+      <td class="mono" style="text-align:center">2</td>
+      <td class="mono" style="text-align:center">20</td>
+      <td class="mono" style="text-align:center;color:var(--text-muted)">-</td>
+      <td class="mono" style="font-weight:700;text-align:center">372</td>
+      <td class="mono" style="text-align:center">17.50h</td>
+      <td class="mono" style="color:var(--green);text-align:center">21.3</td>
+      <td style="text-align:center"><button class="edit-btn" onclick="openEditModal(&#39;2026-05-21&#39;,&#39;東川口ワイシャツ工場&#39;)">修正</button></td>
+    </tr></tbody>
+  </table>
+  <div id="table-more-wrap" style="text-align:center;margin-top:12px;display:none">
+    <button id="table-more-btn" style="font-family:inherit;font-size:12px;padding:6px 20px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);border-radius:4px;cursor:pointer">さらに表示</button>
+  </div>
+</div>
+
+<div class="notes-card" id="notes-card" style="display: block;">
+  <div class="chart-title">💬 自由報告・メモ</div>
+  <div id="notes-body"><div class="note-item" style="border-left-color:#d97706">
+        <div class="note-meta">2026-05-21（木）｜ 八潮ドライ工場</div>
+        <div class="note-text">テスト</div>
+        <div class="note-comments"><div class="note-comment user-comment"><span class="note-comment-meta">💬 社長 (2026-05-21T09:29:07.000Z)</span><br>藪さんに連絡してください</div></div>
+        <div class="comment-form">
+          <input type="text" placeholder="名前" id="cname-0" onkeydown="if(event.key===&#39;Enter&#39;){document.getElementById(&#39;ctext-0&#39;).focus();}">
+          <textarea placeholder="コメントを入力... (Shift+Enterで改行、Enterで送信)" id="ctext-0" onkeydown="if(event.key===&#39;Enter&#39;&amp;&amp;!event.shiftKey){event.preventDefault();addComment(0);}"></textarea>
+          <button onclick="addComment(0)">投稿</button>
+        </div>
+      </div><div class="note-item" style="border-left-color:#2563eb">
+        <div class="note-meta">2026-05-21（木）｜ 東川口ワイシャツ工場</div>
+        <div class="note-text">機械直りました</div>
+        <div class="note-comments"><div class="note-comment user-comment"><span class="note-comment-meta">💬 社長 (2026-05-21T09:29:21.000Z)</span><br>良かった！</div></div>
+        <div class="comment-form">
+          <input type="text" placeholder="名前" id="cname-1" onkeydown="if(event.key===&#39;Enter&#39;){document.getElementById(&#39;ctext-1&#39;).focus();}">
+          <textarea placeholder="コメントを入力... (Shift+Enterで改行、Enterで送信)" id="ctext-1" onkeydown="if(event.key===&#39;Enter&#39;&amp;&amp;!event.shiftKey){event.preventDefault();addComment(1);}"></textarea>
+          <button onclick="addComment(1)">投稿</button>
+        </div>
+      </div></div>
+</div>
+
+<!-- 月次レポート -->
+<div class="report-section">
+  <div class="chart-title" style="margin-bottom:4px">📄 月次レポート生成</div>
+  <div class="report-controls">
+    <select class="report-select" id="report-year"><option value="2026">2026年</option><option value="2025">2025年</option><option value="2024">2024年</option></select>
+    <select class="report-select" id="report-month"><option value="1">1月</option><option value="2">2月</option><option value="3">3月</option><option value="4">4月</option><option value="5">5月</option><option value="6">6月</option><option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select>
+    <select class="report-select" id="report-factory">
+      <option value="all">全工場</option>
+      <option value="八潮ドライ工場">八潮ドライ工場</option>
+      <option value="東川口ワイシャツ工場">東川口ワイシャツ工場</option>
+    </select>
+    <button class="report-btn" id="report-gen-btn" onclick="generateReport()">📄 レポート生成</button>
+  </div>
+  <div id="report-output">
+    <div class="report-preview" id="report-preview"></div>
+    <button class="report-download-btn" onclick="downloadPDF()">⬇️ PDFダウンロード</button>
+  </div>
+</div>
+
+<!-- 編集モーダル -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3>📝 報告内容を修正</h3>
+    <div class="modal-field">
+      <label>通常ロット点数</label>
+      <input type="number" id="edit-normalLot">
+    </div>
+    <div class="modal-field">
+      <label>ロット外点数</label>
+      <input type="number" id="edit-extraLot">
+    </div>
+    <div class="modal-field">
+      <label>先付け処理点数</label>
+      <input type="number" id="edit-advance">
+    </div>
+    <div class="modal-field" id="edit-storage-wrap">
+      <label>保管処理点数</label>
+      <input type="number" id="edit-storage">
+    </div>
+    <div class="modal-field">
+      <label>合計稼働時間</label>
+      <input type="number" step="0.25" id="edit-hours">
+    </div>
+    <div class="modal-field">
+      <label>出勤メンバー</label>
+      <input type="text" id="edit-members">
+    </div>
+    <div class="modal-field">
+      <label>自由報告</label>
+      <textarea id="edit-note" rows="3"></textarea>
+    </div>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:8px">※ 修正内容はGoogleフォームに再送信されます。ダッシュボードには最新データが反映されます。</div>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" onclick="closeEditModal()">キャンセル</button>
+      <button class="modal-btn primary" onclick="submitEdit()">送信して修正</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Googleフォーム回答データをGAS経由でリアルタイム取得しています。ページを更新すると最新データが反映されます。</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwzozfPWs5wFYvgxsTwIH0dWwCtiKvc5gM3MN8LGGWJXKIfdp1p9reKc8jd_RHCBWZIwg/exec";
+const COMMENT_GAS_URL = "https://script.google.com/macros/s/AKfycbye_DKfP4mj3TPKrxoAj1W4gNyREg70FyV_qJES67x-unRVwprbXg4j1FVm2mG51EPk/exec";
+
+let DATA = [];
+let noteComments = {}; // { noteIndex: [{ name, date, text }] }
+const DAYS = ["日","月","火","水","木","金","土"];
+const dayName = d => DAYS[new Date(d).getDay()];
+const dayColor = d => { const w=new Date(d).getDay(); return w===0?"#ef4444":w===6?"#2563eb":null; };
+let selectedFactory = "all";
+let tableShowCount = 10;
+
+// Total points helper
+function totalPoints(r) {
+  return r.normalLot + r.extraLot + r.advance + (r.storage || 0);
+}
+
+// --- GAS data fetch (JSONP) ---
+function loadData() {
+  document.getElementById("meta").textContent = "⏳ データを読み込み中...";
+  
+  let dataLoaded = false;
+  let commentsLoaded = false;
+  let tempData = null;
+  let tempComments = null;
+
+  function tryRender() {
+    if (!dataLoaded || !commentsLoaded) return;
+    
+    // 同じ日・同じ工場の重複は新しいタイムスタンプを優先（上書き）
+    const deduped = {};
+    tempData.forEach(function(r) {
+      const key = r.date + "_" + r.factory;
+      if (!deduped[key] || r.timestamp > deduped[key].timestamp) {
+        deduped[key] = r;
+      }
+    });
+    DATA = Object.values(deduped);
+
+    if (DATA.length === 0) {
+      document.getElementById("meta").textContent = "⚠ データが0件です。";
+      return;
+    }
+    // コメントをマッチング
+    noteComments = {};
+    const notes = DATA.filter(r=>r.note&&r.note.trim());
+    (tempComments || []).forEach(function(c) {
+      notes.forEach(function(note, idx) {
+        if (note.reportID === c["報告ID"]) {
+          if (!noteComments[idx]) noteComments[idx] = [];
+          noteComments[idx].push({
+            name: c["名前"] || "",
+            date: c["投稿日時"] || c["タイムスタンプ"] || "",
+            text: c["コメント"] || ""
+          });
+        }
+      });
+    });
+    render();
+  }
+
+  // データ取得
+  window.__gasCallback = function(raw) {
+    try {
+      tempData = raw.map(r => parseRow(r)).filter(r => r !== null);
+    } catch(e) {
+      document.getElementById("meta").textContent = "❌ データ変換に失敗しました: " + e.message;
+      return;
+    }
+    dataLoaded = true;
+    tryRender();
+  };
+  var s1 = document.createElement("script");
+  s1.src = GAS_URL + "?callback=__gasCallback";
+  s1.onerror = function() {
+    document.getElementById("meta").textContent = "❌ データ取得に失敗しました。";
+  };
+  document.body.appendChild(s1);
+
+  // コメント取得（並列）
+  window.__commentLoadCallback = function(raw) {
+    tempComments = raw || [];
+    commentsLoaded = true;
+    tryRender();
+  };
+  var s2 = document.createElement("script");
+  s2.src = COMMENT_GAS_URL + "?callback=__commentLoadCallback";
+  s2.onerror = function() {
+    tempComments = [];
+    commentsLoaded = true;
+    tryRender();
+  };
+  document.body.appendChild(s2);
+}
+
+function parseRow(r) {
+  const factory = findVal(r, "どちらの工場");
+  if (!factory) return null;
+  const isYashio = factory.includes("八潮") || factory.includes("ドライ");
+  const prefix = isYashio ? "（八潮）" : "（東川口）";
+
+  const tsRaw = findVal(r, "タイムスタンプ") || "";
+  let ts = "";
+  if (tsRaw) { const d = new Date(tsRaw); if (!isNaN(d)) ts = d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }); }
+
+  let dateRaw = findVal(r, "報告日");
+  let date = "";
+  if (dateRaw) {
+    const d = new Date(dateRaw);
+    if (!isNaN(d)) { const jst = new Date(d.getTime() + 9*60*60*1000); date = jst.toISOString().slice(0,10); }
+    else { date = String(dateRaw).slice(0,10); }
+  }
+  if (!date) return null;
+
+  return {
+    timestamp: ts, date: date, factory: factory,
+    reportID: date + "_" + factory,
+    members: String(prefixVal(r, prefix, "出勤したメンバー") || ""),
+    normalLot: num(prefixVal(r, prefix, "通常ロット")),
+    extraLot: num(prefixVal(r, prefix, "ロット外")),
+    advance: num(prefixVal(r, prefix, "先付け")),
+    storage: isYashio ? num(prefixVal(r, prefix, "保管処理")) : null,
+    hours: num(prefixVal(r, prefix, "合計時間")),
+    note: String(prefixVal(r, prefix, "自由報告") || ""),
+  };
+}
+
+function prefixVal(obj, prefix, partial) {
+  const key = Object.keys(obj).find(k => k.includes(prefix) && k.includes(partial));
+  return key !== undefined ? obj[key] : null;
+}
+function findVal(obj, partial) {
+  const key = Object.keys(obj).find(k => k.includes(partial));
+  return key ? obj[key] : null;
+}
+function num(v) {
+  if (v === null || v === undefined || v === "") return 0;
+  const n = parseFloat(String(v).replace(/,/g, ""));
+  return isNaN(n) ? 0 : n;
+}
+function countMembers(m) {
+  if (!m || !m.trim()) return 0;
+  return m.split(/[,、]/).filter(s => s.trim()).length;
+}
+
+function render() {
+  const all = selectedFactory === "all" ? DATA : DATA.filter(r => r.factory === selectedFactory);
+  const allDates = [...new Set(DATA.map(r=>r.date))].sort();
+  const latestDate = allDates[allDates.length-1];
+  const weekDates = allDates.slice(-7);
+
+  document.getElementById("meta").textContent = `最終更新: ${DATA[DATA.length-1].timestamp} ｜ データ件数: ${DATA.length}件`;
+
+  // Alert
+  const yDates = DATA.filter(r=>r.factory==="八潮ドライ工場").map(r=>r.date).sort();
+  const hDates = DATA.filter(r=>r.factory==="東川口ワイシャツ工場").map(r=>r.date).sort();
+  const yL = yDates[yDates.length-1], hL = hDates[hDates.length-1];
+  const alertEl = document.getElementById("alert-bar");
+  if (yL && hL && yL !== hL) {
+    const missing = yL > hL ? { factory:"東川口ワイシャツ工場", last:hL, other:yL } : { factory:"八潮ドライ工場", last:yL, other:hL };
+    document.getElementById("alert-desc").innerHTML = `<b>${missing.factory}</b> の最終報告は <code>${missing.last}（${dayName(missing.last)}）</code>です。もう一方の工場は <code>${missing.other}（${dayName(missing.other)}）</code>まで報告済みです。`;
+    alertEl.classList.add("show");
+  } else { alertEl.classList.remove("show"); }
+
+  // KPI — previous day
+  let pd = DATA.filter(r => r.date === latestDate);
+  if (selectedFactory !== "all") pd = pd.filter(r => r.factory === selectedFactory);
+  const pdNormal = pd.reduce((s,r)=>s+r.normalLot,0);
+  const pdExtra = pd.reduce((s,r)=>s+r.extraLot,0);
+  const pdAdvance = pd.reduce((s,r)=>s+r.advance,0);
+  const pdStorage = pd.reduce((s,r)=>s+(r.storage||0),0);
+  const pdTotal = pd.reduce((s,r)=>s+totalPoints(r),0);
+  const pdHours = pd.reduce((s,r)=>s+r.hours,0);
+  const pdMembers = pd.reduce((s,r)=>s+countMembers(r.members),0);
+  const isHigashi = selectedFactory === "東川口ワイシャツ工場";
+  const pdProd = pdHours > 0 ? (pdTotal/pdHours).toFixed(1) : "0";
+  // 工場ごとに単価を分けて合算（全工場表示時も正確に計算）
+  const pdCost = pd.reduce((s,r) => {
+    const rate = r.factory.includes("八潮") ? 1260 : 1160;
+    return s + Math.round(r.hours * rate);
+  }, 0);
+  const pdCostSub = selectedFactory === "all"
+    ? "八潮@1,260円 / 東川口@1,160円"
+    : `${pdHours.toFixed(2)}h × @${isHigashi?"1,160":"1,260"}円`;
+  const pdCostPer = pdTotal > 0 ? Math.round(pdCost/pdTotal) : 0;
+  const cards = [
+    { label:"総点数", value:pdTotal.toLocaleString(), unit:"点", color:"var(--text)", sub:"通常+ロット外+先付け+保管" },
+    { label:"通常ロット", value:pdNormal.toLocaleString(), unit:"点", color:"var(--accent)", sub:"" },
+    { label:"ロット外", value:pdExtra.toLocaleString(), unit:"点", color:"var(--blue)", sub:"" },
+    { label:"先付け処理", value:pdAdvance.toLocaleString(), unit:"点", color:"var(--green)", sub:"" },
+    { label:"保管処理", value:isHigashi?"-":pdStorage.toLocaleString(), unit:isHigashi?"":"点", color:"var(--purple)", sub:isHigashi?"対象外":"" },
+    { label:"稼働時間", value:pdHours.toFixed(2), unit:"h", color:"var(--red)", sub:`${pdMembers}名出勤` },
+    { label:"人件費目安", value:"¥"+pdCost.toLocaleString(), unit:"", color:"var(--red)", sub:pdCostSub },
+    { label:"生産性", value:pdProd, unit:"点/h", color:"var(--accent)", sub:"総点数÷稼働時間" },
+    { label:"1点あたり人件費", value:pdCostPer>0?"¥"+pdCostPer.toLocaleString():"-", unit:"", color:"var(--accent)", sub:"人件費÷総点数" },
+  ];
+  document.getElementById("kpi-grid").innerHTML = cards.map(c => `
+    <div class="stat-card" style="border-left-color:${c.color}">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value">${c.value}<span class="stat-unit">${c.unit}</span></div>
+      <div class="stat-sub">${c.sub || "&nbsp;"}</div>
+    </div>`).join("");
+
+  // Charts
+  const dates = [...new Set(all.map(r=>r.date))].sort();
+  function renderChart(containerId, dataFn, color) {
+    const vals = dates.map(d => {
+      const dayData = all.filter(r=>r.date===d);
+      return { date:d, value: dayData.reduce(dataFn, 0) };
+    });
+    const max = Math.max(...vals.map(v=>v.value), 1);
+    const barW = Math.max(16, Math.min(40, (500/Math.max(vals.length,1))-6));
+    const chartH = 140;
+    const labelH = 30; // space for date + day labels
+    const valH = 14; // space for value text
+    const barMaxH = chartH - labelH - valH;
+    document.getElementById(containerId).innerHTML = vals.map(v => {
+      const h = Math.max(2, (v.value/max) * barMaxH);
+      const dc = dayColor(v.date);
+      const displayVal = Number.isInteger(v.value) ? v.value : v.value.toFixed(2);
+      return `<div class="bar-col" style="min-width:${barW}px;height:${chartH}px">
+        <div class="bar-val">${displayVal}</div>
+        <div class="bar-rect" style="width:${barW}px;height:${h}px;background:linear-gradient(180deg,${color},${color}88)"></div>
+        <div class="bar-label">${v.date.slice(5)}</div>
+        <div class="bar-day" style="color:${dc||'var(--text-dim)'}">(${dayName(v.date)})</div>
+      </div>`;
+    }).join("");
+  }
+  renderChart("chart-lot", (s,r) => s+totalPoints(r), "#d97706");
+  renderChart("chart-hours", (s,r) => s+r.hours, "#2563eb");
+
+  // Factory comparison (weekly averages) with total
+  const weekData = DATA.filter(r => weekDates.includes(r.date));
+  document.getElementById("comp-period").textContent = weekDates.length ? `${weekDates[0]} 〜 ${weekDates[weekDates.length-1]}` : "";
+
+  const factories = [
+    { name:"八潮ドライ工場", color:"#d97706", hasStorage:true },
+    { name:"東川口ワイシャツ工場", color:"#2563eb", hasStorage:false },
+  ];
+  document.getElementById("comp-grid").innerHTML = factories.map(f => {
+    const fd = weekData.filter(r=>r.factory===f.name);
+    const days = new Set(fd.map(r=>r.date)).size || 1;
+    const nl = fd.reduce((s,r)=>s+r.normalLot,0)/days;
+    const el = fd.reduce((s,r)=>s+r.extraLot,0)/days;
+    const ad = fd.reduce((s,r)=>s+r.advance,0)/days;
+    const st = fd.reduce((s,r)=>s+(r.storage||0),0)/days;
+    const tot = nl + el + ad + st;
+    const hr = fd.reduce((s,r)=>s+r.hours,0)/days;
+    const totalProdAll = fd.reduce((s,r)=>s+totalPoints(r),0);
+    const totalHr = fd.reduce((s,r)=>s+r.hours,0);
+    const maxVal = Math.max(nl,el,ad,st,1);
+    const bar = (label,val) => {
+      const pct = (val/maxVal)*100;
+      const dv = val%1!==0 ? val.toFixed(1) : val;
+      return `<div class="mini-bar-row">
+        <div class="mini-bar-label">${label}</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${f.color}88,${f.color})"></div></div>
+        <div class="mini-bar-val">${dv}</div>
+      </div>`;
+    };
+    return `<div>
+      <div class="comp-factory-name" style="color:${f.color}">● ${f.name} <span style="font-size:10px;font-weight:400;color:var(--text-dim);margin-left:8px">${days}日間の平均</span></div>
+      <div class="comp-total" style="color:${f.color}"><span class="comp-total-label">総点数 </span>${Math.round(tot*10)/10}<span style="font-size:12px;color:var(--text-dim)"> 点/日</span></div>
+      ${bar("通常ロット", Math.round(nl*10)/10)}
+      ${bar("ロット外", Math.round(el*10)/10)}
+      ${bar("先付け", Math.round(ad*10)/10)}
+      ${f.hasStorage ? bar("保管処理", Math.round(st*10)/10) : ""}
+      <div class="comp-stats">
+        平均稼働: <span>${hr.toFixed(2)}h/日</span> / 平均生産性: <span>${totalHr>0?(totalProdAll/totalHr).toFixed(1):"0"}点/h</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Table (newest first, paginated 10)
+  const sorted = [...all].sort((a,b) => b.date.localeCompare(a.date) || b.timestamp.localeCompare(a.timestamp));
+  const showing = sorted.slice(0, tableShowCount);
+  document.getElementById("table-count").textContent = `${Math.min(tableShowCount, sorted.length)} / ${sorted.length}件`;
+  document.getElementById("table-body").innerHTML = showing.map((r,i) => {
+    const mc = countMembers(r.members);
+    const tp = totalPoints(r);
+    const prod = r.hours>0 ? (tp/r.hours).toFixed(1) : "-";
+    const dn = dayName(r.date);
+    const dc = dayColor(r.date);
+    const isY = r.factory.includes("八潮");
+    return `<tr class="${i%2?'stripe':''}">
+      <td class="mono" style="white-space:nowrap;text-align:center">${r.date.slice(5)}</td>
+      <td style="font-size:11px;font-weight:600;text-align:center;${dc?'color:'+dc:''}">${dn}</td>
+      <td style="text-align:center"><span class="factory-tag" style="background:${isY?'rgba(217,119,6,0.12)':'rgba(37,99,235,0.12)'};color:${isY?'#b45309':'#1d4ed8'}">${isY?'八潮':'東川口'}</span></td>
+      <td style="text-align:center">${mc}名</td>
+      <td class="mono" style="font-weight:700;text-align:center">${r.normalLot}</td>
+      <td class="mono" style="text-align:center">${r.extraLot}</td>
+      <td class="mono" style="text-align:center">${r.advance}</td>
+      <td class="mono" style="text-align:center;${r.storage==null?'color:var(--text-muted)':''}">${r.storage??'-'}</td>
+      <td class="mono" style="font-weight:700;text-align:center">${tp}</td>
+      <td class="mono" style="text-align:center">${r.hours.toFixed(2)}h</td>
+      <td class="mono" style="color:var(--green);text-align:center">${prod}</td>
+      <td style="text-align:center"><button class="edit-btn" onclick="openEditModal('${r.date}','${r.factory}')">修正</button></td>
+    </tr>`;
+  }).join("");
+
+  const moreWrap = document.getElementById("table-more-wrap");
+  if (sorted.length > tableShowCount) {
+    moreWrap.style.display = "block";
+  } else {
+    moreWrap.style.display = "none";
+  }
+
+  // Notes with comment feature (show first 10)
+  const notes = all.filter(r=>r.note&&r.note.trim());
+  const notesShowing = notes.slice(0, 10);
+  const notesCard = document.getElementById("notes-card");
+  if (notes.length) {
+    notesCard.style.display = "block";
+    document.getElementById("notes-body").innerHTML = notesShowing.map((r, idx) => {
+      const isY = r.factory.includes("八潮");
+      const comments = noteComments[idx] || [];
+      const commentsHtml = comments.map(c =>
+        `<div class="note-comment user-comment"><span class="note-comment-meta">💬 ${c.name} (${c.date})</span><br>${c.text}</div>`
+      ).join("");
+      return `<div class="note-item" style="border-left-color:${isY?'#d97706':'#2563eb'}">
+        <div class="note-meta">${r.date}（${dayName(r.date)}）｜ ${r.factory}</div>
+        <div class="note-text">${r.note}</div>
+        <div class="note-comments">${commentsHtml}</div>
+        <div class="comment-form">
+          <input type="text" placeholder="名前" id="cname-${idx}" onkeydown="if(event.key==='Enter'){document.getElementById('ctext-${idx}').focus();}">
+          <textarea placeholder="コメントを入力... (Shift+Enterで改行、Enterで送信)" id="ctext-${idx}" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addComment(${idx});}"></textarea>
+          <button onclick="addComment(${idx})">投稿</button>
+        </div>
+      </div>`;
+    }).join("");
+    
+    // Show more button for notes
+    if (notes.length > 10) {
+      const moreNotesWrap = document.createElement("div");
+      moreNotesWrap.style.textAlign = "center";
+      moreNotesWrap.style.marginTop = "12px";
+      moreNotesWrap.innerHTML = `<button id="notes-more-btn" style="font-family:inherit;font-size:12px;padding:6px 20px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);border-radius:4px;cursor:pointer">さらに表示（残り${notes.length-10}件）</button>`;
+      document.getElementById("notes-body").parentNode.appendChild(moreNotesWrap);
+      document.getElementById("notes-more-btn").addEventListener("click", () => {
+        // Implement expanding notes if needed
+        alert("全コメントを表示する機能は今後実装予定です");
+      });
+    }
+  } else {
+    notesCard.style.display = "none";
+  }
+}
+
+function addComment(idx) {
+  const nameEl = document.getElementById("cname-" + idx);
+  const textEl = document.getElementById("ctext-" + idx);
+  const name = nameEl.value.trim();
+  const text = textEl.value.trim();
+  if (!name || !text) { alert("名前とコメントを入力してください"); return; }
+
+  const all = selectedFactory === "all" ? DATA : DATA.filter(r => r.factory === selectedFactory);
+  const notes = all.filter(r=>r.note&&r.note.trim());
+  const report = notes[idx];
+  if (!report) { alert("報告が見つかりません"); return; }
+
+  const reportID = report.reportID;
+  const now = new Date();
+  const dateStr = now.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+
+  // 先に画面に表示
+  if (!noteComments[idx]) noteComments[idx] = [];
+  noteComments[idx].push({ name: name, date: dateStr, text: text });
+  nameEl.value = "";
+  textEl.value = "";
+  render();
+
+  // JSONP でコメントGASに保存
+  const callbackName = "__saveComment_" + Date.now();
+  window[callbackName] = function(res) {
+    delete window[callbackName];
+    if (res && res.success) {
+      console.log("コメント保存成功");
+    } else {
+      console.warn("コメント保存失敗:", res);
+    }
+  };
+  const params = new URLSearchParams({
+    callback: callbackName,
+    action: "saveComment",
+    reportID: reportID,
+    name: name,
+    comment: text
+  });
+  const script = document.createElement("script");
+  script.src = COMMENT_GAS_URL + "?" + params.toString();
+  script.onerror = function() { console.warn("コメント保存スクリプトエラー"); delete window[callbackName]; };
+  document.body.appendChild(script);
+}
+
+// ============ 報告修正機能 ============
+const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdJPO_ITm7MfCCblzGLwmkRw_sKFKesvDNOeT37-VxwECLnaw/formResponse";
+const ENTRY = {
+  date:      "entry.944738366",
+  factory:   "entry.501834034",
+  yashioTag: "entry.379565283",
+  members_y: "entry.1362875424",
+  normal_y:  "entry.807919908",
+  extra_y:   "entry.256371396",
+  advance_y: "entry.1341406708",
+  storage_y: "entry.652201599",
+  hours_y:   "entry.183870470",
+  note_y:    "entry.634642434",
+  higashiTag:"entry.168611808",
+  members_h: "entry.880049975",
+  normal_h:  "entry.1172710846",
+  extra_h:   "entry.10070697",
+  advance_h: "entry.438329680",
+  hours_h:   "entry.471625568",
+  note_h:    "entry.788074705",
+};
+
+let editTarget = null;
+
+function openEditModal(date, factory) {
+  const r = DATA.find(d => d.date === date && d.factory === factory);
+  if (!r) return;
+  editTarget = r;
+  const isY = r.factory.includes("八潮");
+  document.getElementById("edit-normalLot").value = r.normalLot;
+  document.getElementById("edit-extraLot").value = r.extraLot;
+  document.getElementById("edit-advance").value = r.advance;
+  document.getElementById("edit-hours").value = r.hours;
+  document.getElementById("edit-members").value = r.members;
+  document.getElementById("edit-note").value = r.note;
+  document.getElementById("edit-storage-wrap").style.display = isY ? "block" : "none";
+  document.getElementById("edit-storage").value = r.storage || 0;
+  document.getElementById("edit-modal").classList.add("show");
+}
+
+function closeEditModal() {
+  document.getElementById("edit-modal").classList.remove("show");
+  editTarget = null;
+}
+
+function submitEdit() {
+  if (!editTarget) return;
+  const r = editTarget;
+  const isY = r.factory.includes("八潮");
+
+  const fd = new FormData();
+  // 報告日（YYYY-MM-DD → MM/DD/YYYY形式でフォームに送信）
+  const d = new Date(r.date + "T00:00:00+09:00");
+  const dateStr = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+  fd.append(ENTRY.date, dateStr);
+  fd.append(ENTRY.factory, r.factory);
+
+  if (isY) {
+    fd.append(ENTRY.yashioTag, "八潮ドライ工場");
+    fd.append(ENTRY.members_y, document.getElementById("edit-members").value);
+    fd.append(ENTRY.normal_y,  document.getElementById("edit-normalLot").value);
+    fd.append(ENTRY.extra_y,   document.getElementById("edit-extraLot").value);
+    fd.append(ENTRY.advance_y, document.getElementById("edit-advance").value);
+    fd.append(ENTRY.storage_y, document.getElementById("edit-storage").value);
+    fd.append(ENTRY.hours_y,   document.getElementById("edit-hours").value);
+    fd.append(ENTRY.note_y,    document.getElementById("edit-note").value);
+  } else {
+    fd.append(ENTRY.higashiTag, "東川口ワイシャツ工場");
+    fd.append(ENTRY.members_h, document.getElementById("edit-members").value);
+    fd.append(ENTRY.normal_h,  document.getElementById("edit-normalLot").value);
+    fd.append(ENTRY.extra_h,   document.getElementById("edit-extraLot").value);
+    fd.append(ENTRY.advance_h, document.getElementById("edit-advance").value);
+    fd.append(ENTRY.hours_h,   document.getElementById("edit-hours").value);
+    fd.append(ENTRY.note_h,    document.getElementById("edit-note").value);
+  }
+
+  fetch(FORM_URL, { method: "POST", body: fd, mode: "no-cors" })
+    .then(() => {
+      // ローカルデータも即時更新
+      r.normalLot = parseFloat(document.getElementById("edit-normalLot").value) || 0;
+      r.extraLot  = parseFloat(document.getElementById("edit-extraLot").value) || 0;
+      r.advance   = parseFloat(document.getElementById("edit-advance").value) || 0;
+      r.hours     = parseFloat(document.getElementById("edit-hours").value) || 0;
+      r.members   = document.getElementById("edit-members").value;
+      r.note      = document.getElementById("edit-note").value;
+      if (isY) r.storage = parseFloat(document.getElementById("edit-storage").value) || 0;
+      closeEditModal();
+      render();
+      alert("修正を送信しました。ページをリロードすると最新データが反映されます。");
+    })
+    .catch(e => { console.error(e); alert("送信に失敗しました"); });
+}
+
+// モーダル外クリックで閉じる
+document.getElementById("edit-modal").addEventListener("click", function(e) {
+  if (e.target === this) closeEditModal();
+});
+
+// ============ 月次レポート機能 ============
+(function initReportSelectors() {
+  const now = new Date();
+  const yearSel = document.getElementById("report-year");
+  const monthSel = document.getElementById("report-month");
+  for (let y = now.getFullYear(); y >= now.getFullYear()-2; y--) {
+    const o = document.createElement("option");
+    o.value = y; o.textContent = y + "年";
+    yearSel.appendChild(o);
+  }
+  for (let m = 1; m <= 12; m++) {
+    const o = document.createElement("option");
+    o.value = m; o.textContent = m + "月";
+    if (m === now.getMonth()+1) o.selected = true;
+    monthSel.appendChild(o);
+  }
+})();
+
+async function generateReport() {
+  const year  = parseInt(document.getElementById("report-year").value);
+  const month = parseInt(document.getElementById("report-month").value);
+  const factory = document.getElementById("report-factory").value;
+  const btn = document.getElementById("report-gen-btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ 生成中...";
+
+  // 対象データ絞り込み
+  const pad = n => String(n).padStart(2,"0");
+  const prefix = `${year}-${pad(month)}`;
+  let rows = DATA.filter(r => r.date.startsWith(prefix));
+  if (factory !== "all") rows = rows.filter(r => r.factory === factory);
+  rows.sort((a,b) => a.date.localeCompare(b.date));
+
+  if (rows.length === 0) {
+    alert("該当月のデータがありません");
+    btn.disabled = false;
+    btn.textContent = "📄 レポート生成";
+    return;
+  }
+
+  // 集計
+  const totalNormal  = rows.reduce((s,r) => s+r.normalLot, 0);
+  const totalExtra   = rows.reduce((s,r) => s+r.extraLot, 0);
+  const totalAdvance = rows.reduce((s,r) => s+r.advance, 0);
+  const totalStorage = rows.reduce((s,r) => s+(r.storage||0), 0);
+  const totalPts     = rows.reduce((s,r) => s+totalPoints(r), 0);
+  const totalHours   = rows.reduce((s,r) => s+r.hours, 0);
+  const avgProd      = totalHours > 0 ? (totalPts/totalHours).toFixed(2) : "0";
+  const totalCost    = rows.reduce((s,r) => {
+    const rate = r.factory.includes("八潮") ? 1260 : 1160;
+    return s + Math.round(r.hours * rate);
+  }, 0);
+
+  // 日別テーブル文字列
+  const dailyRows = rows.map(r => {
+    const tp = totalPoints(r);
+    const prod = r.hours > 0 ? (tp/r.hours).toFixed(2) : "-";
+    const isY = r.factory.includes("八潮");
+    return `<tr>
+      <td>${r.date.slice(5)}(${dayName(r.date)})</td>
+      <td>${isY?"八潮":"東川口"}</td>
+      <td>${r.normalLot}</td><td>${r.extraLot}</td>
+      <td>${r.advance}</td><td>${r.storage??"-"}</td>
+      <td>${tp}</td><td>${r.hours.toFixed(2)}</td><td>${prod}</td>
+    </tr>`;
+  }).join("");
+
+  // Claude APIで考察生成
+  const summaryForAI = `
+工場: ${factory === "all" ? "全工場" : factory}
+対象月: ${year}年${month}月
+稼働日数: ${rows.length}日
+総点数: ${totalPts}点
+総稼働時間: ${totalHours.toFixed(2)}h
+平均生産性: ${avgProd}点/h
+通常ロット: ${totalNormal}点
+ロット外: ${totalExtra}点
+先付け処理: ${totalAdvance}点
+保管処理: ${totalStorage}点
+人件費合計: ¥${totalCost.toLocaleString()}
+日別データ: ${rows.map(r=>`${r.date}(${dayName(r.date)}) 総点数${totalPoints(r)}点 ${r.hours}h 生産性${r.hours>0?(totalPoints(r)/r.hours).toFixed(2):"0"}点/h`).join(", ")}
+`;
+
+  let analysis = "AIによる考察を生成中...";
+  let advice = "AIによるアドバイスを生成中...";
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1000,
+        messages: [{
+          role: "user",
+          content: `以下の工場作業報告データを分析してください。
+
+${summaryForAI}
+
+以下の2点を日本語で回答してください：
+
+【生産性が低い条件の考察】
+データから読み取れる、生産性が低下している日や条件のパターンを具体的に分析してください（200字程度）。
+
+【生産性改善アドバイス】
+データに基づいた具体的な改善提案を3〜5点、箇条書きで記述してください。
+
+回答形式：
+考察:
+（考察内容）
+
+アドバイス:
+（箇条書き）`
+        }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || "";
+    const [analysisRaw, adviceRaw] = text.split(/アドバイス:/);
+    analysis = (analysisRaw || "").replace("考察:","").trim();
+    advice   = (adviceRaw || "").trim();
+  } catch(e) {
+    console.error("AI生成エラー:", e);
+    analysis = "AI考察の生成に失敗しました。";
+    advice = "AI考察の生成に失敗しました。";
+  }
+
+  // レポートHTML生成
+  const html = `
+    <h1>🏭 工場作業月次レポート</h1>
+    <p style="color:#64748b;font-size:12px">${year}年${month}月 ｜ ${factory==="all"?"全工場":factory} ｜ 稼働${rows.length}日</p>
+
+    <h2>📊 月次集計</h2>
+    <table>
+      <tr><th>項目</th><th>数値</th></tr>
+      <tr><td>総点数</td><td><strong>${totalPts.toLocaleString()}点</strong></td></tr>
+      <tr><td>　通常ロット</td><td>${totalNormal.toLocaleString()}点</td></tr>
+      <tr><td>　ロット外</td><td>${totalExtra.toLocaleString()}点</td></tr>
+      <tr><td>　先付け処理</td><td>${totalAdvance.toLocaleString()}点</td></tr>
+      <tr><td>　保管処理</td><td>${totalStorage.toLocaleString()}点</td></tr>
+      <tr><td>総稼働時間</td><td><strong>${totalHours.toFixed(2)}h</strong></td></tr>
+      <tr><td>平均生産性</td><td><strong>${avgProd}点/h</strong></td></tr>
+      <tr><td>人件費合計（目安）</td><td><strong>¥${totalCost.toLocaleString()}</strong></td></tr>
+    </table>
+
+    <h2>🔍 生産性が低い条件の考察</h2>
+    <p style="white-space:pre-wrap">${analysis}</p>
+
+    <h2>💡 生産性改善アドバイス</h2>
+    <p style="white-space:pre-wrap">${advice}</p>
+
+    <h2>📋 日別レポート</h2>
+    <table>
+      <thead><tr>
+        <th>日付</th><th>工場</th><th>通常</th><th>ロット外</th>
+        <th>先付け</th><th>保管</th><th>総点数</th><th>時間</th><th>生産性</th>
+      </tr></thead>
+      <tbody>${dailyRows}</tbody>
+    </table>
+    <p style="font-size:11px;color:#94a3b8;margin-top:16px">生成日時: ${new Date().toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"})}</p>
+  `;
+
+  document.getElementById("report-preview").innerHTML = html;
+  document.getElementById("report-output").style.display = "block";
+  btn.disabled = false;
+  btn.textContent = "📄 レポート生成";
+}
+
+function downloadPDF() {
+  const preview = document.getElementById("report-preview");
+  const year  = document.getElementById("report-year").value;
+  const month = document.getElementById("report-month").value;
+  const factory = document.getElementById("report-factory").value;
+  const fname = factory === "all" ? "全工場" : factory.includes("八潮") ? "八潮" : "東川口";
+
+  const w = window.open("","_blank");
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${year}年${month}月 工場レポート</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans JP', sans-serif; padding: 32px; color: #1e293b; font-size: 13px; line-height: 1.8; }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      h2 { font-size: 15px; font-weight: 700; margin: 20px 0 8px; border-bottom: 2px solid #e2e6ed; padding-bottom: 6px; }
+      table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+      th { background: #f4f6f9; padding: 7px 10px; text-align: center; border: 1px solid #e2e6ed; font-weight: 600; }
+      td { padding: 6px 10px; text-align: center; border: 1px solid #e2e6ed; }
+      tr:nth-child(even) td { background: #f8fafc; }
+      p { white-space: pre-wrap; }
+      @media print { body { padding: 16px; } }
+    </style>
+  </head><body>${preview.innerHTML}</body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 800);
+}
+
+// Show more rows
+document.getElementById("table-more-btn").addEventListener("click", () => {
+  tableShowCount += 10;
+  render();
+});
+
+// Filter buttons
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedFactory = btn.dataset.factory;
+    tableShowCount = 10;
+    render();
+  });
+});
+
+loadData();
+</script><script src="./factory_report_files/exec"></script><script src="./factory_report_files/exec(1)"></script>
+
+
+</body></html>
