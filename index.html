@@ -13,12 +13,12 @@
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="icon" sizes="32x32" href="favicon-32.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="polished.css?v=211">
+<link rel="stylesheet" href="polished.css?v=212">
 </head>
 <body>
 <div id="root"></div>
@@ -32,9 +32,9 @@
 <script type="text/babel" src="tweaks-panel.jsx?v=211"></script>
 <script type="text/babel" src="polished-cloud.jsx?v=211"></script>
 <script type="text/babel" src="polished-atoms.jsx?v=211"></script>
-<script type="text/babel" src="polished-sidebar.jsx?v=211"></script>
-<script type="text/babel" src="polished-board.jsx?v=211"></script>
-<script type="text/babel" src="polished-dashboard.jsx?v=211"></script>
+<script type="text/babel" src="polished-sidebar.jsx?v=212"></script>
+<script type="text/babel" src="polished-board.jsx?v=212"></script>
+<script type="text/babel" src="polished-dashboard.jsx?v=212"></script>
 
 <script type="text/babel" data-presets="env,react">
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -63,13 +63,13 @@ const App = () => {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
   React.useEffect(() => {
-    const a = ACCENTS[t.accentPreset] || ACCENTS.forest;
+    // ヘッダーの緑ブランドと統一：アクセントをグリーン系に固定
     const root = document.documentElement;
-    root.style.setProperty("--accent", "oklch(0.62 0.19 256)");
-    root.style.setProperty("--accent-soft", "oklch(0.93 0.05 256)");
-    root.style.setProperty("--accent-ink", "oklch(0.42 0.16 256)");
-    root.style.setProperty("--accent-glow", "oklch(0.62 0.19 256 / 0.18)");
-    root.style.setProperty("--c-1", "oklch(0.62 0.19 256)");
+    root.style.setProperty("--accent",     "oklch(0.55 0.16 155)");
+    root.style.setProperty("--accent-soft","oklch(0.92 0.05 155)");
+    root.style.setProperty("--accent-ink", "oklch(0.38 0.13 155)");
+    root.style.setProperty("--accent-glow","oklch(0.55 0.16 155 / 0.2)");
+    root.style.setProperty("--c-1",        "oklch(0.55 0.16 155)");
 
     const bg = BG_TONES[t.bgTone] || BG_TONES.lavender;
     if (document.documentElement.getAttribute("data-theme") !== "dark") {

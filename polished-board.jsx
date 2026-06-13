@@ -353,7 +353,7 @@ const BoardPost = ({ post, onDelete, onOpenImg, clamp = false, onConfirm, confir
         {onConfirm && (
           <div className="bd-confirm-row">
             {confirmed
-              ? <span className="bd-seen">✓ 確認済み{isToday ? "（本日中は表示）" : ""}</span>
+              ? <span className="bd-seen">✓ 確認済み</span>
               : <button className="bd-confirm" onClick={() => onConfirm(post)}>✓ 確認した</button>}
           </div>
         )}

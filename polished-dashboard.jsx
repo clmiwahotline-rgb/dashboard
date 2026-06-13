@@ -1,7 +1,7 @@
 // Hi-fi みわダッシュボード — main view (v2 レイアウト)
 
 // ★ アプリ版数 — 全データをフォルダ出力するたびに +0.01 する（2.01 スタート）
-const APP_VERSION = "2.11";
+const APP_VERSION = "2.14";
 
 const Sidebar = () => <AppSidebar active="dashboard" />;
 
@@ -315,7 +315,7 @@ const SalesProgressCard = () => {
     <div className="chart-card">
       <div className="card-head">
         <h3 className="card-title">当月の日別売上</h3>
-        <span className="card-sub">{NOW.getMonth() + 1}月 ・ 昨年実績比</span>
+        <span className="card-sub">{NOW.getMonth() + 1}月（{today}日まで途中経過）・ 昨年比</span>
         <div className="chart-legend">
           <span className="lg"><span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--accent)" }}></span>今年</span>
           <span className="lg"><span style={{ width: 14, height: 3, borderRadius: 2, background: "var(--c-2)" }}></span>昨年</span>

@@ -775,9 +775,27 @@ function nowStr() {
 function setChatFontSize(px) {
   document.documentElement.style.setProperty('--chat-fs', px + 'px');
   try { localStorage.setItem('miwa_chat_fs', String(px)); } catch (e) {}
-  document.querySelectorAll('#fs-options .fs-btn').forEach(b => {
-    b.classList.toggle('active', Number(b.dataset.fs) === px);
-  });
+  const btns = document.querySelectorAll('.fs-btn');
+  btns.forEach(b => b.classList.toggle('active', Number(b.dataset.fs) === px));
+}
+
+// ═══════════════════════════════════════════════
+//  料金マスキングトグル
+// ═══════════════════════════════════════════════
+const PRICE_MASK_KEY = 'miwa_price_mask';
+function applyPriceMaskUI(enabled) {
+  const wrap = document.getElementById('price-mask-toggle');
+  const lbl  = document.getElementById('price-mask-label');
+  if (!wrap || !lbl) return;
+  wrap.style.background = enabled ? 'var(--primary, #1a8f5c)' : 'var(--border)';
+  wrap.querySelector('.toggle-knob').style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+  lbl.textContent = enabled ? 'ON（料金をマスクして「💴 料金表参照」表示）' : 'OFF（料金をそのまま表示）';
+}
+function togglePriceMask() {
+  const cur = localStorage.getItem(PRICE_MASK_KEY) === '1';
+  const next = !cur;
+  try { localStorage.setItem(PRICE_MASK_KEY, next ? '1' : '0'); } catch (e) {}
+  applyPriceMaskUI(next);
 }
 function initChatFontSize() {
   let px = 15;
@@ -926,6 +944,25 @@ const FAQ_ADMIN_MARKUP = `
       <div class="fs-preview">
         <div class="fs-preview-bubble">あ、こんにちは！文字サイズの見え方はこのくらいです。</div>
       </div>
+
+      <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text)">💴 料金マスキング</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;">
+          ONにすると、知識ベースの回答に含まれる金額（¥〇〇・〇〇円）を<b>「💴 料金表参照」</b>に置き換えます。<br>
+          料金表スプレッドシートに移行済みの場合にONにしてください。
+        </div>
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+          <div class="toggle-wrap" id="price-mask-toggle" onclick="togglePriceMask()" style="
+            width:44px;height:24px;border-radius:12px;background:var(--border);
+            position:relative;transition:background .2s;cursor:pointer;flex-shrink:0;">
+            <div class="toggle-knob" style="
+              position:absolute;top:3px;left:3px;width:18px;height:18px;
+              border-radius:50%;background:#fff;transition:transform .2s;
+              box-shadow:0 1px 3px rgba(0,0,0,.3);"></div>
+          </div>
+          <span style="font-size:13px;font-weight:600;" id="price-mask-label">OFF（料金をそのまま表示）</span>
+        </label>
+      </div>
     </div>
   </div>
 `;
@@ -938,6 +975,8 @@ function initFaqAdmin() {
   faqLog = loadLocalLog();
   faqLogSource = 'local';
   updateStats();
+  // 料金マスクの初期状態を復元
+  try { const v = localStorage.getItem(PRICE_MASK_KEY); if (v !== null) applyPriceMaskUI(v === '1'); } catch (e) {}
   initChatFontSize();
   renderKB();
   renderUnanswered();

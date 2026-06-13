@@ -343,6 +343,11 @@ function importVehicleForm() {
     var seenF = {}, seenM = {};
     fuelExisting.forEach(function (r) { if (r.formTs) seenF[String(r.formTs)] = 1; });
     maintExisting.forEach(function (r) { if (r.formTs) seenM[String(r.formTs)] = 1; });
+    // 削除済みのトゥームストーンを参照（削除した投稿が再取込されるのを防ぐ）
+    var delF = deletedFormTsSet_(FUEL_SHEET_NAME);
+    var delM = deletedFormTsSet_(MAINT_SHEET_NAME);
+    Object.keys(delF).forEach(function (ft) { seenF[ft] = 1; });
+    Object.keys(delM).forEach(function (ft) { seenM[ft] = 1; });
 
     var fuelN = 0, maintN = 0, total = 0;
     for (var i = 1; i < values.length; i++) {
