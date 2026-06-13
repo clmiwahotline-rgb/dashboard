@@ -30,6 +30,7 @@ window.AppSidebar = ({ active = "dashboard" }) => {
       { id: "ai-report", label: "AI レポート",  icon: Ico.sparkle, href: "AIレポート.html" },
     ]},
     { group: "社内", items: [
+      { id: "price",    label: "料金表",           icon: Ico.price, href: encodeURIComponent("料金表.html") },
       { id: "shift",     label: "シフト",           icon: Ico.store, href: encodeURIComponent("シフト.html") },
       { id: "invoice",   label: "請求書管理",       icon: Ico.invoice, href: encodeURIComponent("請求書管理.html") },
       { id: "thanks",    label: "ありがとうカード", icon: Ico.heart, href: encodeURIComponent("ありがとうカード.html") },
@@ -118,7 +119,7 @@ window.AppSidebar = ({ active = "dashboard" }) => {
           </div>
           <div>
             <div className="brand-name">クリーニングみわ</div>
-            <div className="brand-sub">SaaS情報管理システム</div>
+            <div className="brand-sub">全店舗・工場・スタッフ 統合管理</div>
           </div>
         </div>
 

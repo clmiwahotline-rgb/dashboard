@@ -108,7 +108,7 @@ body {
 
 /* ── ホーム：時刻/挨拶ヒーロー ──────────────────────── */
 .m-hero {
-  background: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent) 60%, #7c4dff));
+  background: linear-gradient(135deg, #0e8b52, #1db366);
   border-radius: 22px;
   padding: 18px 18px 16px;
   color: #fff;

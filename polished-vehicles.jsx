@@ -471,7 +471,82 @@ const RecentReports = ({ fuel, maint }) => {
   );
 };
 
-// ── 入力モーダル（車両・給油・整備）────────────────────
+// 車両フォーム回答シートのCSVダイレクト取込（GAS未接続時のフォールバック）
+const VEH_FORM_CSV_KEY = 'miwa.vehicle.formCsvUrl.v1';
+const VEH_FORM_CSV_DEFAULT = 'https://docs.google.com/spreadsheets/d/1gkGDEGAO8NW-70lk_HmA1e0Elhb1rka9iDMAFfDGlxQ/gviz/tq?tqx=out:csv&gid=0';
+function vehParseCSV(text) {
+  const rows=[]; let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c=='"'){if(text[i+1]=='"'){cur+='"';i++;}else q=false;}else cur+=c;}else if(c=='"')q=true;else if(c===','){row.push(cur);cur='';}else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';}else if(c!=='\r')cur+=c;}
+  if(cur||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+function vehColIdx(headers, re) { return headers.findIndex(h => re.test(h)); }
+async function vehImportCsvDirect(fuelState, maintState) {
+  let url = '';
+  try { url = localStorage.getItem(VEH_FORM_CSV_KEY)||''; } catch(e){}
+  if (!url) url = VEH_FORM_CSV_DEFAULT;
+  if (url.includes('/edit')) {
+    const m = url.match(/\/d\/([A-Za-z0-9_-]+)/);
+    const gid = (url.match(/[?#&]gid=(\d+)/)||[])[1]||'0';
+    if (m) url = `https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  }
+  const res = await fetch(url, { redirect: 'follow' });
+  if (!res.ok) throw new Error('CSV取得失敗 HTTP' + res.status);
+  const text = await res.text();
+  const rows = vehParseCSV(text);
+  if (rows.length < 2) return { fuel: 0, maint: 0 };
+  const H = rows[0].map(h => (h||'').replace(/\s+/g,' ').trim());
+  const ci = (re) => vehColIdx(H, re);
+  const cTs=0, cDate=ci(/日付/), cVeh=ci(/車両/), cType=ci(/どのような報告/);
+  const cLit=ci(/給油量/), cAmt=ci(/金額/), cOdo=ci(/走行距離/);
+  const cMType=ci(/どんな整備|整備.*行/), cCost=ci(/費用/), cDetail=ci(/内容/), cShop=ci(/店舗|整備工場/);
+  // formTsをISO形式に正規化（重複検知用）
+  function normTs(ts) {
+    if (!ts) return '';
+    const s = String(ts).trim();
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0,16); // 秒以下無視で分単位比較
+    const m = s.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (m) {
+      // スプレッドシートのタイムスタンプはJST（UTC+9）→UTCに変換して比較
+      const jstMs = Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]),Number(m[5]),Number(m[6]||0));
+      const utcMs = jstMs - 9*3600000;
+      return new Date(utcMs).toISOString().slice(0,16);
+    }
+    return s.slice(0,16);
+  }
+  // 既存のformTsセット（重複防止）
+  const seenF = new Set((fuelState||[]).map(r=>normTs(r.formTs)).filter(Boolean));
+  const seenM = new Set((maintState||[]).map(r=>normTs(r.formTs)).filter(Boolean));
+  const newFuel=[], newMaint=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]; if(r.every(c=>!c)) continue;
+    const ts=r[cTs]||''; if(!ts) continue;
+    const date=(cDate>=0?r[cDate]:'')||ts.slice(0,10);
+    const isoDate = date.replace(/\//g,'-').slice(0,10);
+    const vehicle=r[cVeh]||'';
+    const typeRaw=cType>=0?r[cType]:'';
+    const liters=parseFloat(cLit>=0?r[cLit]:'')||0;
+    const amount=parseFloat(cAmt>=0?r[cAmt]:'')||0;
+    const odo=parseFloat(cOdo>=0?r[cOdo]:'')||0;
+    const maintType=cMType>=0?r[cMType]:'';
+    const cost=parseFloat(cCost>=0?r[cCost]:'')||0;
+    const detail=cDetail>=0?r[cDetail]:'';
+    const shop=cShop>=0?r[cShop]:'';
+    const isWash=/洗車/.test(typeRaw);
+    const isFuel=/給油/.test(typeRaw);
+    const isMaint=isWash||/整備|修理|点検|車検|タイヤ|オイル/.test(typeRaw)||!!maintType||!!detail;
+    const isoTs = normTs(ts);
+    if(isFuel&&!seenF.has(isoTs)){
+      newFuel.push({id:'VF'+Date.now()+Math.floor(Math.random()*100),formTs:isoTs,date:isoDate,vehicle,liters,amount,odometer:odo});
+      seenF.add(isoTs);
+    }
+    if(isMaint&&!seenM.has(isoTs)){
+      newMaint.push({id:'VM'+Date.now()+Math.floor(Math.random()*100),formTs:isoTs,date:isoDate,vehicle,type:isWash?'洗車':(maintType||'整備'),detail,cost,shop});
+      seenM.add(isoTs);
+    }
+  }
+  return { newFuel, newMaint, fuel: newFuel.length, maint: newMaint.length };
+}
 const VEH_STORES = ["本部", "本店", "新田店", "草加西口店", "モール草加店", "蒲生店", "西友伊原店", "東川口店", "東川口2号店", "マミー安行店", "八潮工場", "東川口工場", "ルート"];
 
 const VField = ({ label, children, full }) => (
@@ -591,16 +666,33 @@ const VehiclePage = () => {
   const [importMsg, setImportMsg] = React.useState(null); // {ok, text}
 
   const importFromForm = async () => {
-    if (!cloudOn || importing) return;
+    if (importing) return;
     setImporting(true); setImportMsg(null);
     try {
-      const res = (typeof cloudImportVehicleForm === "function") ? await cloudImportVehicleForm() : { ok: false, message: "未設定" };
-      if (res && res.ok) {
-        await pull();
-        const n = (res.fuel || 0) + (res.maint || 0);
-        setImportMsg({ ok: true, text: n > 0 ? `フォームから取り込みました（給油 ${res.fuel || 0}件・整備/洗車 ${res.maint || 0}件）` : "新しいフォーム回答はありませんでした" });
+      // GAS接続時：GAS経由でインポート（サーバー側で重複除去）
+      if (cloudOn && typeof cloudImportVehicleForm === 'function') {
+        const res = await cloudImportVehicleForm();
+        if (res && res.ok) {
+          await pull();
+          const n = (res.fuel||0) + (res.maint||0);
+          setImportMsg({ ok: true, text: n > 0 ? `フォームから取り込みました（給油 ${res.fuel||0}件・整備/洗車 ${res.maint||0}件）` : '新しいフォーム回答はありませんでした' });
+          return;
+        }
+        // GAS失敗時はフォールバックに続行
+      }
+      // フォールバック：CSVダイレクト取込（車両回答スプレットシートから直接）
+      const result = await vehImportCsvDirect(fuel, maint);
+      if (result.fuel > 0 || result.maint > 0) {
+        if (result.newFuel && result.newFuel.length > 0) {
+          result.newFuel.forEach(r => fuelMut.upsert(r, true));
+        }
+        if (result.newMaint && result.newMaint.length > 0) {
+          result.newMaint.forEach(r => maintMut.upsert(r, true));
+        }
+        const n = result.fuel + result.maint;
+        setImportMsg({ ok: true, text: `フォームから取り込みました（給油 ${result.fuel}件・整備/洗車 ${result.maint}件）` });
       } else {
-        setImportMsg({ ok: false, text: (res && res.message) || "取込に失敗しました" });
+        setImportMsg({ ok: true, text: '新しいフォーム回答はありませんでした' });
       }
     } catch (e) {
       setImportMsg({ ok: false, text: String((e && e.message) || e) });
@@ -649,7 +741,13 @@ const VehiclePage = () => {
       return {
         ...v,
         odometer: Math.max(Number(v.odometer) || 0, repOdo),
-        washLastDate: v.washLastDate || lastWashByVehicle[name] || "",
+        washLastDate: (() => {
+          const fromMaint = lastWashByVehicle[name] || "";
+          const fromVehicle = v.washLastDate || "";
+          // 最新の洗車日を使用（整備履歴から自動取得を優先）
+          if (fromMaint && fromVehicle) return fromMaint > fromVehicle ? fromMaint : fromVehicle;
+          return fromMaint || fromVehicle;
+        })(),
       };
     }),
     [vehicles, lastWashByVehicle, latestOdoByVehicle]
@@ -676,7 +774,7 @@ const VehiclePage = () => {
               </div>
             </div>
             <div className="right">
-              <button className="btn btn-ghost" onClick={importFromForm} disabled={!cloudOn || importing} title="Googleフォームの回答（給油・整備・洗車）を取り込む">
+              <button className="btn btn-ghost" onClick={importFromForm} disabled={importing} title="Googleフォームの回答（給油・整備・洗車）を取り込む">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={importing ? { animation: "spin 1s linear infinite" } : null}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 {importing ? "取込中…" : "フォームから取込"}
               </button>

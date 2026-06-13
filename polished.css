@@ -12,11 +12,11 @@
   --line: #ebe9f4;
   --line-strong: #d8d5e8;
 
-  /* Accent (green, tweakable) */
-  --accent: oklch(0.62 0.19 256);
-  --accent-soft: oklch(0.93 0.05 256);
-  --accent-ink: oklch(0.42 0.16 256);
-  --accent-glow: oklch(0.62 0.19 256 / 0.18);
+  /* Accent (緑ブランドカラー ・ 全ページ共通) */
+  --accent:      oklch(0.55 0.16 155);
+  --accent-soft: oklch(0.92 0.05 155);
+  --accent-ink:  oklch(0.38 0.13 155);
+  --accent-glow: oklch(0.55 0.16 155 / 0.2);
 
   /* Chart palette (mirrors BNTBank: red/lime/blue/purple) */
   --c-1: #4285F4; /* google blue */
@@ -43,8 +43,8 @@
   --ink-faint: #4d4f73;
   --line: #2a2856;
   --line-strong: #3a3870;
-  --accent-soft: oklch(0.3 0.12 256);
-  --accent-glow: oklch(0.62 0.19 256 / 0.32);
+  --accent-soft: oklch(0.28 0.10 155);
+  --accent-glow: oklch(0.55 0.16 155 / 0.32);
   --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.3);
   --shadow-lift: 0 12px 36px rgba(0, 0, 0, 0.4);
 }

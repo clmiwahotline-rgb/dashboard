@@ -102,7 +102,9 @@ const MApp = () => {
         <button className="m-header-icon" onClick={() => go("about")} title="アカウント・その他" aria-label="アカウント・その他">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6" /></svg>
         </button>
-        <a className="m-header-icon" href="index.html?view=pc" title="PC版を見る" style={{ textDecoration: "none", fontSize: 11, fontWeight: 800 }}>PC</a>
+        <a className="m-header-icon" href="index.html?view=pc" title="PC版を見る" style={{ textDecoration: "none" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </a>
       </div>
 
       <div className="m-scroll" ref={scrollRef}>

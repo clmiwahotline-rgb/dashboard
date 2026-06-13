@@ -22,6 +22,7 @@ const MMenu = ({ go, registerHeader, registerFab }) => {
     if (it.kind === "view") go(it.target);
     else location.href = encodeURIComponent(it.target) + "?view=pc";
   };
+  const pcBadge = <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--ink-mute)", background: "var(--card-2)", borderRadius: 999, padding: "2px 8px", marginTop: 4, display: "inline-block" }}>PCページ</span>;
   // 未解決クレーム数バッジ
   const claimN = (() => { try { return (JSON.parse(localStorage.getItem("miwa.claim.v1")) || []).filter((c) => ["受付", "対応中"].includes(c.status)).length; } catch { return 0; } })();
   const badge = { claims: claimN };
@@ -34,7 +35,7 @@ const MMenu = ({ go, registerHeader, registerFab }) => {
             <div className="m-menu-ic" style={{ background: it.bg }}>{it.icon}{badge[it.key] > 0 && <span className="m-menu-badge">{badge[it.key]}</span>}</div>
             <div className="m-menu-label">{it.label}</div>
             <div className="m-menu-sub">{it.sub}</div>
-            {it.kind === "page" && <span className="m-menu-ext">PC版で開く ↗</span>}
+            {it.kind === "page" && pcBadge}
           </button>
         ))}
       </div>
