@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>料金表 · みわダッシュボード</title>
 <script src="auth-config.js"></script>
 <script src="polished-auth.js"></script>
@@ -55,6 +55,10 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 .pr-search-wrap .pr-search { flex: 1; max-width: none; min-width: 0; padding-right: 34px; }
 .pr-search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border: none; background: var(--text-muted); color: #fff; border-radius: 50%; cursor: pointer; align-items: center; justify-content: center; padding: 0; display: none; }
 .pr-search-clear:hover { background: var(--text); }
+/* 全タブ横断検索結果セクション */
+.pr-search-section { margin-bottom: 8px; }
+.pr-search-section-head { font-size: 12px; font-weight: 800; color: var(--green); letter-spacing: .06em; padding: 10px 16px 6px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.pr-search-section-count { font-size: 11px; font-weight: 700; background: var(--green-bg,#e6f4ea); color: var(--green); border-radius: 999px; padding: 2px 8px; }
 .tax-toggle { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .tax-btn { padding: 7px 14px; font-size: 12px; font-weight: 700; border: none; background: #fff; cursor: pointer; color: var(--text-muted); }
 .tax-btn.active { background: var(--green); color: #fff; }
@@ -537,6 +541,33 @@ function renderAll() {
   // クリアボタンの表示制御
   const clrBtn = document.getElementById('pr-search-clear');
   if (clrBtn) clrBtn.style.display = q ? 'flex' : 'none';
+
+  // ── 検索ワードがある場合は全タブ横断表示 ──
+  if (nq) {
+    const funcData = (() => { try { const s=localStorage.getItem(LS_FUNC); if(s) return JSON.parse(s); } catch(e){} return window.FUNCTION_SEED || null; })();
+    const salesData = (() => { try { const s=localStorage.getItem(LS_SALES); if(s) return JSON.parse(s); } catch(e){} return window.SALES_SEED || null; })();
+    const sections = [
+      { label: 'クリーニング料金', items: priceData.cleaning, order: CLEAN_ORDER },
+      { label: '特殊品',         items: priceData.special,  order: SPECIAL_ORDER },
+      { label: 'リフォーム',         items: priceData.reform   },
+      { label: '加工',             items: funcData ? funcData.items : [] },
+      { label: '物販',             items: salesData ? salesData.items : [] },
+    ].filter(s => filterArr(s.items||[]).length > 0);
+
+    if (!sections.length) {
+      html = '<div class="pr-empty">該当する商品が見つかりません（全タブ検索）</div>';
+    } else {
+      html = sections.map(s => {
+        const matched = filterArr(s.items||[]).length;
+        return `<div class="pr-search-section">
+          <div class="pr-search-section-head">${s.label} <span class="pr-search-section-count">${matched}件</span></div>
+          ${s.order ? renderTab(s.items, s.order) : renderFlat(s.items, '')}
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('pr-content').innerHTML = html;
+    return;
+  }
 
   let html = '';
 
