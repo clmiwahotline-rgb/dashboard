@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<script src="auth-config.js"></script>
+<script src="polished-auth.js"></script>
+<script src="polished-device.js"></script>
+<script src="polished-mobile-footer.js"></script>
+<title>FAQ管理 ・ みわダッシュボード</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="icon" sizes="32x32" href="favicon-32.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="polished.css">
+<link rel="stylesheet" href="faq-admin.css">
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- 管理画面ロジック（miwa_faq_demo の管理部を流用・プレーンJS） -->
+<script src="faq-admin.js"></script>
+
+<script type="text/babel" src="polished-cloud.jsx"></script>
+<script type="text/babel" src="polished-atoms.jsx"></script>
+<script type="text/babel" src="polished-sidebar.jsx"></script>
+<script type="text/babel" src="polished-faq-admin.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const root = document.documentElement;
+root.style.setProperty("--accent", "oklch(0.62 0.19 256)");
+root.style.setProperty("--accent-soft", "oklch(0.93 0.05 256)");
+root.style.setProperty("--accent-ink", "oklch(0.42 0.16 256)");
+root.style.setProperty("--accent-glow", "oklch(0.62 0.19 256 / 0.18)");
+root.style.setProperty("--bg", "#f1f3f4");
+root.style.setProperty("--bg-2", "#e8eaed");
+
+ReactDOM.createRoot(document.getElementById("root")).render(<FaqAdminPage />);
+</script>
+<script src="polished-fontscale.js"></script>
+</body>
+</html>

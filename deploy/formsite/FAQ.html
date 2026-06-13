@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>クリーニングみわ 社内FAQ（体験版）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --surface: #ffffff;
+    --surface2: #f0f4f8;
+    --border: #dde3ea;
+    --primary: #2563eb;
+    --primary-light: #eff6ff;
+    --primary-dark: #1d4ed8;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warn: #d97706;
+    --warn-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --text: #1e293b;
+    --text-sub: #64748b;
+    --text-muted: #94a3b8;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+    /* ─ LINE風チャット用トークン ─ */
+    --line-bg: #8caace;
+    --bubble-me: #06c755;
+    --bubble-them: #ffffff;
+    --notfound-bg: #fff7ed;
+  }
+  :root {
+    --app-w: 540px;
+    --chat-fs: 15px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-y; }
+  body {
+    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+    max-width: var(--app-w);
+    margin: 0 auto;
+  }
+  .header-brand {
+    display: flex; align-items: center; gap: 10px;
+    white-space: nowrap;
+  }
+  .header-brand .brand-info { display: flex; flex-direction: column; line-height: 1.25; }
+  .header-brand .brand-name { font-weight: 700; font-size: 14.5px; color: var(--text); }
+  .header-brand .brand-status { font-size: 11px; color: var(--success); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .header-brand .brand-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(5,150,105,.16); }
+  .header-brand .dot {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: #fff url('miwa_avatar.png') center/86% no-repeat;
+    box-shadow: 0 1px 3px rgba(40,55,80,.18), inset 0 0 0 1px rgba(40,55,80,.06);
+    flex-shrink: 0;
+  }
+  .header-badge {
+    font-size: 11px; background: var(--warn-light);
+    color: var(--warn); border: 1px solid #fde68a;
+    padding: 2px 8px; border-radius: 20px; font-weight: 600;
+  }
+  .tab-nav {
+    display: flex; gap: 2px;
+  }
+  .tab-btn {
+    padding: 6px 14px; border: none; background: none;
+    font-size: 13px; color: var(--text-sub); cursor: pointer;
+    border-radius: var(--radius-sm); font-weight: 500;
+    transition: all .15s;
+  }
+  .tab-btn.active {
+    background: var(--primary-light);
+    color: var(--primary); font-weight: 600;
+  }
+  .tab-btn:hover:not(.active) { background: var(--surface2); }
+
+  /* ─── Layout ─── */
+  .main { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
+
+  /* ─── LINE風チャット ─── */
+  body.chat-mode { overflow: hidden; background: #d3dae4; }
+  /* チャット見出しはグローバルヘッダーと重複のため非表示 */
+  #tab-faq.line-chat {
+    max-width: var(--app-w); margin: 0 auto;
+    height: calc(100dvh - 56px);
+    display: flex; flex-direction: column;
+    background: var(--line-bg);
+    padding: 0;
+    box-shadow: 0 0 0 1px rgba(40,60,90,.05), 0 18px 50px -14px rgba(40,60,90,.32);
+  }
+  .chat-subhead {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 11px;
+    flex-shrink: 0;
+  }
+  .chat-subhead .avatar {
+    width: 40px; height: 40px; border-radius: 11px;
+    background: #fff url('miwa_avatar.png') center/86% no-repeat;
+    flex-shrink: 0;
+    box-shadow: 0 1px 4px rgba(40,55,80,.16), inset 0 0 0 1px rgba(40,55,80,.06);
+  }
+  .chat-subhead .info { min-width: 0; }
+  .chat-subhead .info .name { font-size: 14.5px; font-weight: 700; color: var(--text); letter-spacing: .01em; white-space: nowrap; }
+  .chat-subhead .info .status { font-size: 11.5px; color: var(--success); display: flex; align-items: center; gap: 5px; margin-top: 1px; }
+  .chat-subhead .info .status::before {
+    content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+    box-shadow: 0 0 0 3px rgba(5,150,105,.16);
+  }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto;
+    padding: 18px 14px 12px;
+    display: flex; flex-direction: column; gap: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .chat-messages::-webkit-scrollbar { width: 6px; }
+  .chat-messages::-webkit-scrollbar-thumb { background: rgba(40,55,80,.22); border-radius: 3px; }
+
+  .chat-day {
+    align-self: center;
+    background: rgba(55,72,98,.34);
+    color: #fff; font-size: 11px; font-weight: 600;
+    padding: 3px 14px; border-radius: 20px;
+    margin: 2px 0 12px;
+  }
+
+  .msg-row { display: flex; gap: 7px; align-items: flex-start; margin-bottom: 11px; }
+  .msg-row.me { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: #fff url('miwa_avatar.png') center/86% no-repeat;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(40,55,80,.16), inset 0 0 0 1px rgba(40,55,80,.06);
+  }
+  .msg-group { display: flex; flex-direction: column; max-width: 80%; }
+  .msg-name { font-size: 11.5px; color: rgba(255,255,255,.96); margin: 0 0 4px 4px; font-weight: 600; text-shadow: 0 1px 1px rgba(40,55,80,.25); }
+
+  .msg-bundle { display: flex; align-items: flex-end; gap: 6px; }
+  .msg-row.them .msg-group { margin-top: 0; }
+  .msg-row.me .msg-bundle { flex-direction: row-reverse; }
+
+  .bubble {
+    position: relative;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: var(--chat-fs); line-height: 1.65;
+    word-break: break-word;
+    box-shadow: 0 1px 1.5px rgba(40,55,80,.14);
+  }
+  .bubble.them {
+    background: var(--bubble-them); color: var(--text);
+    border-top-left-radius: 5px;
+  }
+  .bubble.them::before {
+    content: ''; position: absolute; top: 0; left: -5px;
+    width: 11px; height: 15px; background: var(--bubble-them);
+    clip-path: polygon(100% 0, 100% 100%, 0 0);
+  }
+  .bubble.me {
+    background: var(--bubble-me); color: #fff;
+    border-top-right-radius: 5px;
+  }
+  .bubble.me::before {
+    content: ''; position: absolute; top: 0; right: -5px;
+    width: 11px; height: 15px; background: var(--bubble-me);
+    clip-path: polygon(0 0, 0 100%, 100% 0);
+  }
+  .bubble.notfound { background: var(--notfound-bg); color: var(--text); box-shadow: 0 1px 1.5px rgba(40,55,80,.14), inset 0 0 0 1px #fde6cf; }
+  .bubble.notfound::before { background: var(--notfound-bg); }
+
+  .msg-time { font-size: 10px; color: rgba(255,255,255,.9); flex-shrink: 0; margin-bottom: 2px; text-shadow: 0 1px 1px rgba(40,55,80,.25); }
+  .msg-row.them .msg-time { color: rgba(255,255,255,.9); }
+
+  /* バブル内の3部構成見出し */
+  .bubble .sec-h { font-weight: 700; font-size: calc(var(--chat-fs) - 3px); margin: 8px 0 3px; letter-spacing: .03em; }
+  .bubble .sec-h:first-child { margin-top: 0; }
+  .bubble ul { margin: 5px 0 5px 20px; padding: 0; }
+  .bubble li { margin: 2px 0; }
+  .bubble .src {
+    margin-top: 9px; font-size: calc(var(--chat-fs) - 4px); color: var(--text-muted);
+    border-top: 1px solid rgba(40,55,80,.09); padding-top: 7px; line-height: 1.5;
+  }
+  .bubble .imgs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+  .bubble .imgs img {
+    max-width: 132px; max-height: 100px; border-radius: 10px;
+    border: 1px solid var(--border); object-fit: cover; cursor: pointer;
+    transition: transform .15s;
+  }
+  .bubble .imgs img:hover { transform: scale(1.03); }
+
+  /* タイピングインジケータ */
+  .typing { display: flex; gap: 4px; padding: 4px 2px; align-items: center; }
+  .typing span {
+    width: 7px; height: 7px; border-radius: 50%; background: #aab2bd;
+    animation: typing 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: .45; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* ─── ストリーミングカーソル ─── */
+  .stream-cursor { display: inline-block; animation: blink .7s infinite; color: var(--primary); font-weight: 400; }
+  @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+
+  /* ─── ついで読み（関連回答） ─── */
+  .related-wrap { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .related-label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 7px; letter-spacing: .04em; }
+  .related-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 4px; background: var(--surface2); border-radius: var(--radius-sm); cursor: pointer; transition: background .15s; }
+  .related-item:hover { background: var(--primary-light); }
+  .related-q { font-size: 13px; color: var(--text); flex: 1; line-height: 1.4; }
+  .related-arr { font-size: 15px; color: var(--text-muted); flex-shrink: 0; }
+
+  /* ─── 料金マスク ─── */
+  .price-masked { background: #fef9c3; color: #92400e; border-radius: 4px; padding: 1px 7px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+  /* 入力バー */
+  .chat-inputbar {
+    flex-shrink: 0;
+    background: #ffffff;
+    border-top: 1px solid var(--border);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    display: flex; align-items: flex-end; gap: 9px;
+  }
+  .chat-inputbar textarea {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 22px;
+    padding: 10px 16px;
+    font-size: 15px; font-family: inherit;
+    resize: none; outline: none;
+    max-height: 100px; min-height: 42px;
+    background: var(--surface2);
+    line-height: 1.45;
+    transition: border-color .15s, background .15s;
+  }
+  .chat-inputbar textarea:focus { border-color: var(--bubble-me); background: #fff; }
+  .chat-send {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: none; background: var(--bubble-me); color: white;
+    font-size: 18px; cursor: pointer; flex-shrink: 0;
+    display: grid; place-items: center;
+    transition: background .15s, transform .1s;
+    box-shadow: 0 2px 8px rgba(6,199,85,.32);
+  }
+  .chat-send:hover { background: #05b34c; }
+  .chat-send:active { transform: scale(.92); }
+  .chat-send:disabled { background: #c5ccd3; cursor: not-allowed; box-shadow: none; }
+
+  .chat-quick {
+    display: flex; gap: 7px; padding: 0 14px 11px; flex-wrap: wrap;
+    flex-shrink: 0; background: var(--line-bg);
+  }
+  .chat-quick button {
+    background: rgba(255,255,255,.96); border: none;
+    border-radius: 18px; padding: 7px 14px;
+    font-size: 12.5px; color: var(--primary); cursor: pointer;
+    font-family: inherit; white-space: nowrap; font-weight: 600;
+    box-shadow: 0 1px 3px rgba(40,55,80,.14);
+    transition: transform .1s, background .15s;
+  }
+  .chat-quick button:hover { background: #fff; transform: translateY(-1px); }
+  .chat-quick button:active { transform: translateY(0); }
+
+  /* ─── 文字サイズ設定 ─── */
+  .fs-options { display: flex; gap: 8px; flex-wrap: wrap; }
+  .fs-btn {
+    flex: 1; min-width: 64px;
+    padding: 10px 12px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text-sub);
+    border-radius: 10px; cursor: pointer; font-family: inherit;
+    font-weight: 600; font-size: 14px; transition: all .15s;
+  }
+  .fs-btn:nth-child(1) { font-size: 13px; }
+  .fs-btn:nth-child(2) { font-size: 15px; }
+  .fs-btn:nth-child(3) { font-size: 17px; }
+  .fs-btn:nth-child(4) { font-size: 19px; }
+  .fs-btn:hover { border-color: var(--bubble-me); }
+  .fs-btn.active {
+    background: var(--bubble-me); border-color: var(--bubble-me);
+    color: #fff; box-shadow: 0 2px 8px rgba(6,199,85,.28);
+  }
+  .fs-preview {
+    margin-top: 14px; padding: 14px; border-radius: 12px;
+    background: var(--line-bg);
+  }
+  .fs-preview-bubble {
+    display: inline-block; background: #fff; color: var(--text);
+    padding: 10px 14px; border-radius: 18px; border-top-left-radius: 5px;
+    font-size: var(--chat-fs); line-height: 1.65;
+    box-shadow: 0 1px 1.5px rgba(40,55,80,.14); max-width: 90%;
+  }
+
+  /* ─── Card ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .card-head {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-head h2 { font-size: 14px; font-weight: 600; color: var(--text); }
+  .card-body { padding: 20px; }
+
+  /* ─── FAQ画面 ─── */
+  .search-wrap {
+    display: flex; gap: 8px; margin-bottom: 20px;
+  }
+  .search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search-input:focus { border-color: var(--primary); }
+  .btn {
+    padding: 10px 20px;
+    border: none; border-radius: var(--radius-sm);
+    font-size: 14px; font-family: inherit;
+    font-weight: 600; cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-primary:disabled { background: var(--text-muted); cursor: not-allowed; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #047857; }
+  .btn-outline {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-sub); font-weight: 500;
+  }
+  .btn-outline:hover { background: var(--surface2); }
+
+  .answer-box {
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .answer-box.found {
+    background: var(--success-light);
+    border: 1px solid #a7f3d0;
+  }
+  .answer-box.notfound {
+    background: var(--warn-light);
+    border: 1px solid #fde68a;
+  }
+  .answer-box.loading {
+    background: var(--primary-light);
+    border: 1px solid #bfdbfe;
+    color: var(--primary);
+  }
+  .answer-label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .answer-box.found .answer-label { color: var(--success); }
+  .answer-box.notfound .answer-label { color: var(--warn); }
+  .answer-text { color: var(--text); }
+  .answer-source {
+    margin-top: 10px; font-size: 12px;
+    color: var(--text-muted); font-style: italic;
+  }
+  .answer-images {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+  }
+  .answer-images img {
+    max-width: 160px; max-height: 120px;
+    border-radius: 8px; border: 1px solid var(--border);
+    object-fit: cover; cursor: pointer;
+    transition: transform .15s;
+  }
+  .answer-images img:hover { transform: scale(1.03); }
+  .answer-text strong { font-weight: 700; }
+  .answer-text ul { margin: 6px 0 6px 20px; }
+
+  /* ─── 知識ベース ─── */
+  .kb-add-form {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 16px;
+    background: var(--primary-light);
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+  }
+  .kb-add-form label {
+    font-size: 12px; font-weight: 600; color: var(--primary);
+  }
+  .form-input, .form-textarea {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    background: white;
+    transition: border-color .15s;
+  }
+  .form-input:focus, .form-textarea:focus { border-color: var(--primary); }
+  .form-textarea { resize: vertical; min-height: 72px; }
+  .form-row { display: flex; gap: 8px; }
+
+  .kb-list { display: flex; flex-direction: column; gap: 8px; }
+  .kb-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .kb-item-head {
+    padding: 12px 16px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+  }
+  .kb-item-q {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .kb-tag {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+    background: var(--primary-light); color: var(--primary);
+    border: 1px solid #bfdbfe;
+  }
+  .kb-item-body {
+    padding: 12px 16px;
+    font-size: 13px; line-height: 1.7; color: var(--text);
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+  .kb-item-body.open { display: block; }
+  .kb-item-source {
+    margin-top: 8px; font-size: 11px; color: var(--text-muted); font-style: italic;
+  }
+  .kb-empty {
+    text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px;
+  }
+
+  /* ─── 資料から一括取り込み ─── */
+  .import-candidate {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    background: var(--surface);
+  }
+  .import-cand-head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .import-badge {
+    font-size: 11px; font-weight: 700;
+    padding: 2px 9px; border-radius: 20px;
+    background: var(--primary-light); color: var(--primary);
+    border: 1px solid #bfdbfe; flex-shrink: 0;
+  }
+  .import-field { margin-bottom: 8px; }
+  .import-field label {
+    font-size: 11px; font-weight: 600; display: block; margin-bottom: 3px;
+  }
+  .import-field .lbl-k { color: #185fa5; }
+  .import-field .lbl-p { color: #854f0b; }
+  .import-field .lbl-b { color: #0f6e56; }
+  .import-del {
+    width: 30px; height: 30px; padding: 0; flex-shrink: 0;
+    display: grid; place-items: center; color: var(--danger);
+  }
+  .import-summary {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    font-size: 13px; font-weight: 600;
+  }
+  .dup-warn {
+    background: var(--warn-light); border: 1px solid #fde68a;
+    border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .dup-warn-title { color: var(--warn); font-weight: 700; margin-bottom: 4px; }
+  .dup-compare {
+    background: white; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; margin: 6px 0; font-size: 12px; line-height: 1.5;
+  }
+  .dup-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .dup-actions button {
+    font-size: 11px; padding: 5px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: white; cursor: pointer;
+    font-family: inherit; color: var(--text-sub);
+  }
+  .dup-actions button.sel-overwrite { background: var(--primary); color: white; border-color: var(--primary); }
+  .dup-actions button.sel-separate { background: var(--success); color: white; border-color: var(--success); }
+  .dup-actions button.sel-discard { background: var(--danger); color: white; border-color: var(--danger); }
+  .import-cat-row { display: flex; gap: 8px; }
+  .import-cat-row > div { flex: 1; }
+
+  /* ─── 未回答リスト ─── */
+  .unanswered-list { display: flex; flex-direction: column; gap: 8px; }
+  .ua-item {
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--warn-light);
+  }
+  .ua-item-head {
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .ua-item-info { flex: 1; }
+  .ua-item-q { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .ua-item-meta { font-size: 11px; color: var(--text-muted); }
+  .ua-answer-form {
+    padding: 12px 16px;
+    border-top: 1px solid #fde68a;
+    background: white;
+    display: none;
+    gap: 8px;
+    flex-direction: column;
+  }
+  .ua-answer-form.open { display: flex; }
+  .ua-answered {
+    background: var(--success-light);
+    border-color: #a7f3d0;
+  }
+  .ua-answered .ua-item-head { opacity: .6; }
+
+  /* ─── Stats bar ─── */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+  }
+  .stat-num { font-size: 24px; font-weight: 700; color: var(--primary); }
+  .stat-label { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+
+  /* ─── Section title ─── */
+  .sec-title {
+    font-size: 12px; font-weight: 700; color: var(--text-sub);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sec-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    background: var(--danger); color: white;
+    border-radius: 20px; font-size: 11px; font-weight: 700;
+  }
+
+  .notice {
+    background: #fffbeb; border: 1px solid #fde68a;
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    font-size: 13px; color: #92400e; margin-bottom: 20px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .notice-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ─── History ─── */
+  .history { margin-top: 24px; }
+  .history-item {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-q { color: var(--text-sub); }
+  .history-r { color: var(--text); font-weight: 500; }
+  .history-status {
+    margin-left: auto; flex-shrink: 0;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .history-status.ok { background: var(--success-light); color: var(--success); }
+  .history-status.ng { background: var(--warn-light); color: var(--warn); }
+
+  @media (max-width: 600px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .tab-btn { padding: 6px 10px; font-size: 12px; }
+    .header { padding: 0 14px; }
+    .header-brand { font-size: 14px; }
+  }
+  @media (max-width: 540px) {
+    body.chat-mode { background: var(--line-bg); }
+    #tab-faq.line-chat { box-shadow: none; }
+    .msg-group { max-width: 82%; }
+  }
+  /* ─── スプラッシュ ─── */
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(165deg, #ffffff 0%, #f1f6ee 100%);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 1; transition: opacity .5s ease;
+  }
+  #splash.hide { opacity: 0; pointer-events: none; }
+  .splash-inner { display: flex; flex-direction: column; align-items: center; }
+  .splash-logo {
+    width: 168px; height: 168px;
+    background: #fff url('miwa_avatar.png') center/contain no-repeat;
+    filter: drop-shadow(0 8px 22px rgba(40,80,40,.16));
+  }
+  .splash-title {
+    margin-top: 14px; font-size: 23px; font-weight: 700;
+    color: #1c8a3a; letter-spacing: .04em;
+  }
+  .splash-sub {
+    margin-top: 4px; font-size: 14px; font-weight: 600;
+    color: #5a8a64; letter-spacing: .22em; padding-left: .22em;
+    white-space: nowrap;
+  }
+  .splash-bar {
+    margin-top: 22px; width: 120px; height: 3px; border-radius: 3px;
+    background: rgba(28,138,58,.16); overflow: hidden;
+  }
+  .splash-bar span {
+    display: block; height: 100%; width: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, #8dc63f, #1c8a3a);
+    transform-origin: left;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .splash-logo { animation: splashPop .6s cubic-bezier(.2,.8,.3,1.2); }
+    .splash-bar span { animation: splashLoad 1.8s ease-out; }
+  }
+  @keyframes splashPop { 0% { transform: scale(.86); } 100% { transform: scale(1); } }
+  @keyframes splashLoad { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+</style>
+</head>
+<body>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="20" fill="#eaf3e3"/>
+    <g transform="translate(50 44)">
+      <rect x="-13" y="-13" width="26" height="26" rx="5" transform="rotate(45)" fill="#8dc63f"/>
+      <rect x="-13" y="3" width="26" height="26" rx="5" transform="rotate(45)" fill="#e3e600"/>
+    </g>
+    <text x="50" y="84" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#1c8a3a">みわ FAQ</text>
+  </svg>
+</template>
+
+<div id="splash" aria-hidden="true">
+  <div class="splash-inner">
+    <div class="splash-logo"></div>
+    <div class="splash-title">クリーニングみわ</div>
+    <div class="splash-sub">社内FAQ</div>
+    <div class="splash-bar"><span></span></div>
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="dot"></div>
+    <div class="brand-info">
+      <span class="brand-name">クリーニングみわ 社内FAQ</span>
+      <span class="brand-status">オンライン</span>
+    </div>
+  </div>
+</header>
+
+<!-- ─── FAQ タブ（LINE風チャット） ─── -->
+<div id="tab-faq" class="line-chat">
+
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-day">今日</div>
+  </div>
+
+  <div class="chat-quick" id="chat-quick">
+    <button onclick="quickAsk('高級ダウンってどう判断する？')">高級ダウンの判断</button>
+    <button onclick="quickAsk('シルクのシミ抜きは難しい？')">シルクのシミ抜き</button>
+    <button onclick="quickAsk('シミの種類を教えて')">シミの種類</button>
+    <button onclick="quickAsk('ケアラベルの必須項目は？')">ケアラベル</button>
+  </div>
+
+  <div class="chat-inputbar">
+    <textarea
+      id="question-input"
+      rows="1"
+      placeholder="メッセージを入力"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askQuestion();}"
+      oninput="autoGrow(this)"
+    ></textarea>
+    <button class="chat-send" id="ask-btn" onclick="askQuestion()" title="送信">➤</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  ★設定：GASプロキシのURL
+//  Code.gsをデプロイして得た /exec のURLをここに貼る
+//  （空のままだと api.anthropic.com を直接呼ぶ＝claude.ai上の動作確認用）
+// ═══════════════════════════════════════════════
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec';
+
+// ═══════════════════════════════════════════════
+//  データストア（体験版：ブラウザメモリ）
+// ═══════════════════════════════════════════════
+
+let knowledgeBase = [
+  {
+    id: 1,
+    q: "高級ダウンの素材確認方法",
+    a: "タグの素材表示を必ず確認してください。「ダウン80%以上」かつ「表地：ナイロン・ポリエステル製」であれば高級ダウン扱いとなります。ブランドタグ（モンクレール・タトラス等）がある場合は受付時に専用袋に入れて識別してください。",
+    category: "素材確認",
+    source: "社内マニュアル",
+    addedAt: "2026-06-01"
+  },
+  {
+    id: 2,
+    q: "シミ抜きの追加料金はいくらか",
+    a: "シミ抜きは基本料金にプラスして1箇所あたり550円（税込）です。広範囲（手のひらサイズ以上）は1,100円になります。受付時にお客様に必ず説明し了承を得てください。",
+    category: "料金",
+    source: "料金表2026年版",
+    addedAt: "2026-06-01"
+  },
+  {
+    id: 3,
+    q: "集配の締め切り時間",
+    a: "集配の受付締め切りは午前10時です。10時以降の受付分は翌日の集配便となります。ドライバーの出発は11時のため、10時〜11時の間に受けた分は翌日扱いで対応してください。",
+    category: "集配",
+    source: "運用ルール",
+    addedAt: "2026-06-01"
+  },
+  {
+    id: 4,
+    q: "毛皮・レザーの取扱い可否",
+    a: "【知識】\n- 本毛皮（ミンク・フォックス等）は工場での対応不可\n- フェイクファーは通常クリーニングで対応可能\n- レザー（本革）は専門業者への外注\n【対応手順】\n- 本毛皮は受付しない\n- レザーは外注となり、仕上がりまで3〜4週間かかる旨をお伝えする\n【ベスト提案】\n- レザーは納期に余裕をもって早めのお預けをおすすめする",
+    category: "素材確認",
+    source: "社内マニュアル",
+    addedAt: "2026-06-01"
+  },
+  {
+    id: 5,
+    q: "仕上がり日数の目安",
+    a: "通常品は3〜5営業日が目安です。繁忙期（12〜1月・3〜4月）は5〜7営業日になることがあります。特急（翌日仕上げ）は別途特急料金が発生します。受付時に必ずお伝えください。",
+    category: "受付",
+    source: "社内マニュアル",
+    addedAt: "2026-06-01"
+  },
+  {
+    id: 6,
+    q: "高級ダウンの判断基準",
+    a: "【知識】\n以下のいずれかに該当する場合、高級ダウン扱いとします。\n- ブランド品：モンクレール、タトラス、カナダグース、デュベティカ、ヘルノなどの高級ブランド\n- ダウン率80%以上かつ販売価格が概ね5万円以上と思われるもの\n- お客様自身が「高級品として扱ってほしい」と申告されたもの\n【対応手順】\n- 通常品と区別して専用袋に入れる\n- 判断に迷う場合は店長または工場（八潮）に確認する\n【ベスト提案】\n- 高級ダウン専用コースをご案内する\n- 撥水加工の追加をおすすめする（保温性・防汚の観点）",
+    category: "素材確認",
+    source: "社内マニュアル",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 7,
+    q: "ケアラベル（品質表示）の必須項目は",
+    a: "ケアラベルには次の4項目の表示が義務付けられています。\n- 繊維の組成（例：綿100%）\n- はっ水性（はっ水加工の有無。永久的ではない旨も記載）\n- 家庭洗濯等の取り扱い方法\n- 表示者名及び連絡先\n並行輸入品（海外製品）にも必ず日本語で表示する義務があります。ただしマフラー・水着・靴下などは表示が不要な場合もあります。",
+    category: "表示・ケアラベル",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 8,
+    q: "手洗いコースと手洗い表示は同じか",
+    a: "違います。洗濯機の「手洗いコース」「ドライコース」は、機械力を標準より弱くしてはいますが、結果的に機械の力を使って洗う方法です。水による縮みや風合い変化からデリケートな衣類を守る目的のもので、洗濯表示の「手洗い」とは異なります。",
+    category: "洗濯表示",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 9,
+    q: "シミ・汚れの付いた衣類を受付するときのポイント",
+    a: "次の4ステップで対応します。項目がひとつ欠けると全く違った接客になります。\n1. 見た目で判断（検品・現状把握）：撥水加工、不溶性・合皮・本革・デニムなどを確認\n2. お客様に聞いてみる（事情聴取）：いつ何が付いたか／何か処理をしたか／状態は変化したか\n3. どんなお手伝いができるか（提案）：汗抜き、部分シミ抜き、部位漂白、全体漂白、特殊洗浄など\n4. 今後のアドバイス：シミ抜き困難な素材、シワ加工・プリーツなどには一言アドバイスを添える",
+    category: "接客・受付",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 10,
+    q: "検品のときに注意すること",
+    a: "風合いやニオイの確認に加え、日焼け・退色の可能性、キズ・スレにも注意します。撥水加工の有無や、不溶性・合皮・本革・デニムといった素材かどうかも見ます。気になる点はお客様への事情聴取につなげます。",
+    category: "接客・受付",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 11,
+    q: "お客様がクリーニングに求めていること",
+    a: "「洋服をキレイにしてほしい」＋「なるべく安い方法で」の両方です。洋服がキレイになることを前提に、最もお得な提案をすることが大切です。お客様は提案を待っています。",
+    category: "接客・心構え",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 12,
+    q: "シミ抜きとは（定義）",
+    a: "シミ抜きとは、通常のクリーニングでは落としきれないものを、特殊な薬品を用いて処理することです。",
+    category: "シミ抜き知識",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 13,
+    q: "シミの種類にはどんなものがあるか",
+    a: "シミは主に8種類に分類されます。\n- 油溶性：油ジミ、マニキュア、口紅 など\n- 水油性：花粉 など\n- 水溶性：飲料、ヤニ、調味料 など\n- たんぱく質：血液、乳製品 など\n- 色素：ボールペン、水性・油性マジック、ワイン など\n- 不溶性：ボールペン（カーボン）、泥、墨汁、歯磨き粉 など\n- 変色：サビ、黄ばみ、汗ジミ など\n- 変色Ⅱ：やけ、ガス変色、退色 など",
+    category: "シミ抜き知識",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 14,
+    q: "シルクのシミ抜きは難しいのか",
+    a: "【知識】\n難しいです。シミ抜きの多くは温度を上げて処理しますが、シルクは30℃くらいが限度です。染色の際の温度が低いため色が出やすく、その分シミ抜きが困難になります。単色なら修整できるものもありますが、柄や異色使いは修整が不可です。\n【対応手順】\n- 柄物・異色使いかどうかを確認する\n- 完全に落とせない可能性・色泣きのリスクを受付時にお客様へ説明する\n- 判断に迷う場合は工場に確認する\n【ベスト提案】\n- リスクを説明したうえで部分シミ抜きを提案する\n- 無理な処理は避け、目立たなくする方向での仕上げも選択肢として案内する",
+    category: "シミ抜き知識・素材",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 15,
+    q: "金糸はシミ抜きできるか",
+    a: "基本的にできません（×）。金糸は最近は主にアルミニウムですが、少し前までは銅糸・鉄糸が使われていました。銅や鉄の糸は酸素系漂白で錆びて変色します。アルミニウムは糸に蒸着させていて薄いため、漂白でなくなる可能性があります。ステンレスはシミ抜き可能ですが肉眼で判別できないため、基本的に危険です。変色・脆化の原因になります。",
+    category: "シミ抜き知識・素材",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  },
+  {
+    id: 16,
+    q: "酸素系漂白とは",
+    a: "繊維に大量の酸素を与えて酸化させ、シミを取る方法です。",
+    category: "シミ抜き知識",
+    source: "研修資料（シミ抜き接客応対）",
+    addedAt: "2026-06-10"
+  }
+];
+
+let unansweredList = [];
+let historyLog = [];
+let nextId = 100;
+let statsAnswered = 0;
+
+// ═══════════════════════════════════════════════
+//  FAQ 回答エンジン（ローカル検索）
+// ═══════════════════════════════════════════════
+
+function searchKnowledge(question) {
+  const q = question.replace(/[？。、！\s]/g, '').toLowerCase();
+  if (!q) return null;
+
+  let best = null;
+  let bestScore = 0;
+
+  for (const item of knowledgeBase) {
+    const qText = item.q.replace(/[？。、！\s]/g, '').toLowerCase();
+    const aText = item.a.replace(/[？。、！\s]/g, '').toLowerCase();
+    const catText = (item.category || '').toLowerCase();
+
+    let score = 0;
+
+    // 完全一致
+    if (qText.includes(q) || q.includes(qText)) score += 50;
+
+    // 部分マッチ（2文字以上のチャンク）
+    for (let len = Math.min(q.length, 6); len >= 2; len--) {
+      for (let i = 0; i <= q.length - len; i++) {
+        const chunk = q.slice(i, i + len);
+        if (qText.includes(chunk)) score += len * 3;
+        if (aText.includes(chunk)) score += len;
+        if (catText.includes(chunk)) score += len * 2;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = { item, score };
+    }
+  }
+
+  // スコアが低すぎる場合はヒットなし
+  if (bestScore < 6) return null;
+  return best;
+}
+
+// ═══════════════════════════════════════════════
+//  AI回答（Anthropic API）
+// ═══════════════════════════════════════════════
+
+async function getAIAnswer(question) {
+  // 知識ベースをテキスト化
+  const kbText = knowledgeBase.map((item, i) =>
+    `[${i+1}] Q: ${item.q}\nA: ${item.a}${item.category ? `\nカテゴリ: ${item.category}` : ''}`
+  ).join('\n\n');
+
+  const systemPrompt = `あなたはクリーニング店「クリーニングみわ」の社内FAQ AIです。受付・工場スタッフからの質問に、知識ベースの内容だけを根拠に答えます。
+
+【絶対ルール】
+- 回答の根拠は知識ベースの内容に限る。知識ベースに書かれていない事実・数値・手順・提案を創作してはいけない
+- 関連する複数の知識を組み合わせてよい（例：事実の知識＋受付手順の知識＋提案の知識）
+- 質問の意図に合致する知識がない場合は回答しない。テーマが似ていても角度が違う知識で代用しない
+
+【回答の構成】
+知識ベースに根拠がある観点だけ、次の見出しを付けて書く。根拠が無い観点は省略する（無理に埋めない）。
+【知識】聞かれたことの事実・基準・理由
+【対応手順】受付や処理で実際にどう動くか
+【ベスト提案】お客様にどう提案すると良いか
+※単純な用語説明など【知識】だけで十分なものは【知識】のみでよい。
+簡潔・実用的に。箇条書きは「- 」で書く。
+
+【出力形式（必ずこの形式で書く）】
+1行目: 回答できる場合は「STATUS:FOUND」、できない場合は「STATUS:NOT_FOUND」とだけ書く
+2行目: 回答に使った知識の番号を「REF:1,3」の形式で書く。回答できない場合は「REF:なし」
+3行目以降: 上記の構成で回答本文。回答できない場合は本文不要
+
+【知識ベース】
+${kbText || '（まだ知識が登録されていません）'}`;
+
+  // GAS_URLが設定されていればGAS経由（本番）、空ならapi.anthropic.com直叩き（claude.ai上の確認用）
+  const useGas = GAS_URL && GAS_URL.trim() !== '';
+  const endpoint = useGas ? GAS_URL : 'https://api.anthropic.com/v1/messages';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    // GAS経由はCORSプリフライト回避のため text/plain、直叩きは application/json
+    headers: { 'Content-Type': useGas ? 'text/plain;charset=utf-8' : 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: question }]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.error || `API Error ${response.status}`);
+  }
+
+  const data = await response.json();
+  // GASプロキシやAnthropicがerror本文を返した場合
+  if (data.error) {
+    throw new Error(typeof data.error === 'string' ? data.error : (data.error.message || 'APIエラー'));
+  }
+  const raw = data.content?.find(c => c.type === 'text')?.text || '';
+
+  // 構造化レスポンスを解析
+  const lines = raw.split('\n');
+  let unanswered = true;
+  let refs = [];
+  let bodyStart = 0;
+
+  for (let i = 0; i < Math.min(lines.length, 3); i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('STATUS:')) {
+      unanswered = !line.includes('FOUND') || line.includes('NOT_FOUND');
+      bodyStart = i + 1;
+    } else if (line.startsWith('REF:')) {
+      refs = (line.replace('REF:', '').match(/\d+/g) || [])
+        .map(n => parseInt(n, 10) - 1)
+        .filter(idx => idx >= 0 && idx < knowledgeBase.length);
+      bodyStart = i + 1;
+    }
+  }
+
+  const text = lines.slice(bodyStart).join('\n').trim() || raw;
+  const refItems = refs.map(idx => knowledgeBase[idx]);
+
+  return { text, unanswered, refItems };
+}
+
+// ═══════════════════════════════════════════════
+//  チャット描画ヘルパー（LINE風）
+// ═══════════════════════════════════════════════
+
+let lastQuestion = '';
+
+function nowTime() {
+  return new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+}
+
+function scrollChat() {
+  const c = document.getElementById('chat-messages');
+  c.scrollTop = c.scrollHeight;
+}
+
+function addUserBubble(text) {
+  const c = document.getElementById('chat-messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row me';
+  row.innerHTML = `
+    <div class="msg-group">
+      <div class="msg-bundle">
+        <span class="msg-time">${nowTime()}</span>
+        <div class="bubble me">${escHtml(text).replace(/\n/g, '<br>')}</div>
+      </div>
+    </div>`;
+  c.appendChild(row);
+  scrollChat();
+}
+
+function addTyping() {
+  const c = document.getElementById('chat-messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row them';
+  row.innerHTML = `
+    <div class="msg-avatar"></div>
+    <div class="msg-group">
+      <div class="msg-bundle">
+        <div class="bubble them"><div class="typing"><span></span><span></span><span></span></div></div>
+      </div>
+    </div>`;
+  c.appendChild(row);
+  scrollChat();
+  return row;
+}
+
+// botバブルを追加（typingRowがあれば置き換え）
+function addBotBubble(innerHtml, opts = {}, typingRow = null) {
+  const c = document.getElementById('chat-messages');
+  const row = typingRow || document.createElement('div');
+  row.className = 'msg-row them';
+  const bubbleClass = opts.notfound ? 'bubble them notfound' : 'bubble them';
+  row.innerHTML = `
+    <div class="msg-avatar"></div>
+    <div class="msg-group">
+      <div class="msg-name">FAQ</div>
+      <div class="msg-bundle">
+        <div class="${bubbleClass}">${innerHtml}</div>
+        <span class="msg-time">${nowTime()}</span>
+      </div>
+    </div>`;
+  if (!typingRow) c.appendChild(row);
+  scrollChat();
+  return row;
+}
+
+// ─── ストリーミング表示（タイピング風） ─────────────────────
+// GASはSSEを使えないため「全文受信→文字を順次表示」で体感速度を改善
+function streamIntoBubble(typingRow, rawText, finalHtml, opts = {}) {
+  return new Promise(resolve => {
+    const bubbleClass = opts.notfound ? 'bubble them notfound' : 'bubble them';
+    typingRow.className = 'msg-row them';
+    typingRow.innerHTML = `
+      <div class="msg-avatar"></div>
+      <div class="msg-group">
+        <div class="msg-name">FAQ</div>
+        <div class="msg-bundle">
+          <div class="${bubbleClass}"><span class="stream-text"></span><span class="stream-cursor">\u2502</span></div>
+        </div>
+      </div>`;
+    scrollChat();
+    const span = typingRow.querySelector('.stream-text');
+    const cursor = typingRow.querySelector('.stream-cursor');
+    // 速度：約150〜200文字/秒（16ms × 3文字 = 56ms/10文字 ≒ 180文字/秒）
+    const chars = [...rawText]; let i = 0;
+    const id = setInterval(() => {
+      const end = Math.min(i + 4, chars.length);
+      span.textContent += chars.slice(i, end).join(''); i = end; scrollChat();
+      if (i >= chars.length) {
+        clearInterval(id); cursor.remove();
+        const b = typingRow.querySelector('.msg-bundle');
+        b.innerHTML = `<div class="${bubbleClass}">${finalHtml}</div><span class="msg-time">${nowTime()}</span>`;
+        scrollChat(); resolve();
+      }
+    }, 18);
+  });
+}
+
+// ─── 関連回答（ついで読み） ──────────────────────────────────
+function findRelated(question, usedRefs, topN = 3) {
+  const usedIds = new Set((usedRefs || []).map(r => r.id));
+  const cats = new Set((usedRefs || []).map(r => r.category).filter(Boolean));
+  const qNorm = question.replace(/[？。、！\s]/g, '').toLowerCase();
+  return knowledgeBase
+    .filter(kb => !usedIds.has(kb.id))
+    .map(kb => {
+      let score = 0;
+      if (cats.has(kb.category)) score += 3;
+      const kbStr = (kb.q + kb.a).toLowerCase();
+      // 2文字以上の部分一致
+      for (let j = 0; j < qNorm.length - 1; j++) {
+        const bi = qNorm.slice(j, j + 2);
+        if (kbStr.includes(bi)) score += 0.5;
+      }
+      return { kb, score };
+    })
+    .filter(x => x.score >= 1)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN)
+    .map(x => x.kb);
+}
+function renderRelated(items) {
+  if (!items.length) return '';
+  return `<div class="related-wrap">
+    <div class="related-label">\ud83d\udcd6 \u3064\u3044\u3067\u8aad\u307f — \u95a2\u9023\u3059\u308b\u5185\u5bb9</div>
+    ${items.map(kb => `<div class="related-item" onclick="showRelatedKB(${kb.id})">
+      <span class="related-q">${escHtml(kb.q)}</span><span class="related-arr">\u203a</span></div>`).join('')}
+  </div>`;
+}
+function showRelatedKB(id) {
+  const kb = knowledgeBase.find(k => k.id === id);
+  if (!kb) return;
+  const finalHtml = maskPrices(mdToHtml(kb.a))
+    + imagesHtml([kb]).replace('answer-images', 'imgs')
+    + `<div class="src">\ud83d\udcda \u95a2\u9023\uff1a${escHtml(kb.category || '')}</div>`;
+  addBotBubble(finalHtml);
+}
+
+// ─── 料金マスキング ───────────────────────────────────────────
+// FAQ管理ページのトグルとlocalStorage（miwa_price_mask）を共有
+let PRICE_MASK_ENABLED = (function() {
+  try { return localStorage.getItem('miwa_price_mask') === '1'; } catch(e) { return false; }
+})();
+window.addEventListener('storage', function(e) {
+  if (e.key === 'miwa_price_mask') PRICE_MASK_ENABLED = (e.newValue === '1');
+});
+function maskPrices(html) {
+  if (!PRICE_MASK_ENABLED) return html;
+  return html
+    .replace(/¥[\d,]+/g, '<span class="price-masked">\ud83d\udcb4 \u6599\u91d1\u8868\u53c2\u7167</span>')
+    .replace(/\d[\d,]*円(?:\s*(?:税込|税抜|[\(（][^)\uff09]{0,12}[\)\uff09]))?/g, '<span class="price-masked">\ud83d\udcb4 \u6599\u91d1\u8868\u53c2\u7167</span>');
+}
+
+function quickAsk(text) {
+  document.getElementById('question-input').value = text;
+  askQuestion();
+}
+
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+// ═══════════════════════════════════════════════
+//  質問送信
+// ═══════════════════════════════════════════════
+
+async function askQuestion() {
+  const input = document.getElementById('question-input');
+  const question = input.value.trim();
+  if (!question) return;
+  lastQuestion = question;
+
+  const btn = document.getElementById('ask-btn');
+  btn.disabled = true;
+  addUserBubble(question);
+  input.value = '';
+  autoGrow(input);
+
+  const typingRow = addTyping();
+
+  try {
+    const result = await getAIAnswer(question);
+    const answered = !result.unanswered;
+
+    if (answered) {
+      statsAnswered++;
+      const related = findRelated(question, result.refItems);
+      const finalHtml = maskPrices(mdToHtml(result.text))
+        + imagesHtml(result.refItems).replace('answer-images', 'imgs')
+        + `<div class="src">\ud83d\udcda \u77e5\u8b58\u30d9\u30fc\u30b9\u3088\u308a\u56de\u7b54${refLabel(result.refItems)}</div>`
+        + renderRelated(related);
+      await streamIntoBubble(typingRow, result.text, finalHtml);
+    } else {
+      addToUnanswered(question);
+      addBotBubble(
+        `この質問への回答はまだ知識ベースに登録されていません。<br>管理者が確認して回答を追加します🙏<br><span class="src">⚠️ 未回答リストに記録しました</span>`,
+        { notfound: true }, typingRow);
+    }
+
+    historyLog.unshift({ q: question, answered, time: nowStr() });
+    updateStats();
+
+  } catch (err) {
+    addBotBubble(
+      `⚠️ APIに接続できませんでした<br><span style="font-size:12px;color:var(--text-muted)">${escHtml(err.message)}</span><br><br>
+       APIキーなしでもローカル検索で動作確認できます。<br>
+       <button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="askLocal()">ローカル検索で試す</button>`,
+      { notfound: true }, typingRow);
+  }
+
+  btn.disabled = false;
+}
+
+function askLocal() {
+  const question = (document.getElementById('question-input').value.trim()) || lastQuestion;
+  if (!question) return;
+
+  const result = searchKnowledge(question);
+
+  if (result) {
+    statsAnswered++;
+    const html = `${mdToHtml(result.item.a)}
+      ${imagesHtml([result.item]).replace('answer-images', 'imgs')}
+      <div class="src">📚 ローカル検索｜${escHtml(result.item.category || '未分類')}</div>`;
+    addBotBubble(html);
+    historyLog.unshift({ q: question, answered: true, time: nowStr() });
+  } else {
+    addToUnanswered(question);
+    addBotBubble(
+      `この質問への回答はまだ登録されていません。<br><span class="src">⚠️ 未回答リストに記録しました</span>`,
+      { notfound: true });
+    historyLog.unshift({ q: question, answered: false, time: nowStr() });
+  }
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════
+//  未回答リスト
+// ═══════════════════════════════════════════════
+
+function addToUnanswered(question) {
+  // 重複チェック
+  if (unansweredList.find(u => u.q === question)) return;
+  unansweredList.unshift({
+    id: nextId++,
+    q: question,
+    addedAt: nowStr(),
+    answered: false
+  });
+  renderUnanswered();
+}
+
+function renderUnanswered() {
+  const list = document.getElementById('ua-list');
+  const badge = document.getElementById('ua-badge');
+  if (!list) return;
+  const pending = unansweredList.filter(u => !u.answered);
+
+  if (unansweredList.length === 0) {
+    list.innerHTML = '<div class="kb-empty">未回答の質問はありません ✨</div>';
+    badge.style.display = 'none';
+    return;
+  }
+
+  badge.textContent = pending.length;
+  badge.style.display = pending.length > 0 ? 'inline-flex' : 'none';
+
+  list.innerHTML = unansweredList.map(item => `
+    <div class="ua-item ${item.answered ? 'ua-answered' : ''}" id="ua-${item.id}">
+      <div class="ua-item-head">
+        <div class="ua-item-info">
+          <div class="ua-item-q">${escHtml(item.q)}</div>
+          <div class="ua-item-meta">${item.addedAt}${item.answered ? ' · ✅ 回答済み・知識化済み' : ''}</div>
+        </div>
+        ${!item.answered ? `<button class="btn btn-sm btn-success" onclick="toggleUAForm(${item.id})">回答して知識化</button>` : ''}
+      </div>
+      <div class="ua-answer-form" id="ua-form-${item.id}">
+        <label style="font-size:12px;font-weight:600;color:var(--success)">回答内容</label>
+        <textarea class="form-textarea" id="ua-a-${item.id}" placeholder="この質問への正しい回答を入力..."></textarea>
+        <label style="font-size:12px;font-weight:600;color:var(--success)">カテゴリ（任意）</label>
+        <input class="form-input" id="ua-cat-${item.id}" placeholder="例：受付・料金・素材確認">
+        <label style="font-size:12px;font-weight:600;color:var(--success)">参考画像URL（任意・最大5枚・改行かカンマ区切り）</label>
+        <textarea class="form-textarea" id="ua-img-${item.id}" placeholder="https://..." style="min-height:48px"></textarea>
+        <div class="form-row">
+          <button class="btn btn-success btn-sm" onclick="approveAnswer(${item.id})">✅ 知識ベースに追加</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleUAForm(${item.id})">キャンセル</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleUAForm(id) {
+  const form = document.getElementById(`ua-form-${id}`);
+  form.classList.toggle('open');
+}
+
+function approveAnswer(id) {
+  const item = unansweredList.find(u => u.id === id);
+  if (!item) return;
+  const a = document.getElementById(`ua-a-${id}`).value.trim();
+  const cat = document.getElementById(`ua-cat-${id}`).value.trim();
+  const imgs = parseImageUrls(document.getElementById(`ua-img-${id}`).value);
+  if (!a) { alert('回答内容を入力してください'); return; }
+
+  // 知識ベースに追加
+  knowledgeBase.push({
+    id: nextId++,
+    q: item.q,
+    a,
+    category: cat || '未分類',
+    source: '未回答リストから追加',
+    images: imgs,
+    addedAt: nowStr()
+  });
+
+  item.answered = true;
+  renderUnanswered();
+  renderKB();
+  updateStats();
+
+  // 成功フィードバック
+  const el = document.getElementById(`ua-${id}`);
+  el.style.background = '#ecfdf5';
+}
+
+// ═══════════════════════════════════════════════
+//  資料から一括取り込み
+// ═══════════════════════════════════════════════
+
+let importCandidates = [];
+
+// AI呼び出し（生テキストを返す共通関数。GAS_URLがあればGAS経由）
+async function callAIRaw(systemPrompt, userContent, maxTokens) {
+  const useGas = GAS_URL && GAS_URL.trim() !== '';
+  const endpoint = useGas ? GAS_URL : 'https://api.anthropic.com/v1/messages';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': useGas ? 'text/plain;charset=utf-8' : 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: maxTokens || 1500,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userContent }]
+    })
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.error || `API Error ${response.status}`);
+  }
+  const data = await response.json();
+  if (data.error) throw new Error(typeof data.error === 'string' ? data.error : (data.error.message || 'APIエラー'));
+  return data.content?.find(c => c.type === 'text')?.text || '';
+}
+
+// 既存カテゴリ一覧
+function existingCategories() {
+  return [...new Set(knowledgeBase.map(k => k.category).filter(Boolean))];
+}
+
+// 質問文ベースの類似既存知識を探す（重複検出用）
+function findSimilarKnowledge(question) {
+  const q = (question || '').replace(/[？。、！\s]/g, '').toLowerCase();
+  if (!q) return null;
+  let best = null, bestScore = 0;
+  for (const item of knowledgeBase) {
+    const qT = item.q.replace(/[？。、！\s]/g, '').toLowerCase();
+    let score = 0;
+    if (qT.includes(q) || q.includes(qT)) score += 40;
+    for (let len = Math.min(q.length, 6); len >= 2; len--) {
+      for (let i = 0; i <= q.length - len; i++) {
+        if (qT.includes(q.slice(i, i + len))) score += len * 2;
+      }
+    }
+    if (score > bestScore) { bestScore = score; best = item; }
+  }
+  return bestScore >= 12 ? { item: best, score: bestScore } : null;
+}
+
+// 「AIで仕分け」
+async function bulkSort() {
+  const src = document.getElementById('import-src').value.trim();
+  if (!src) { alert('資料テキストを貼り付けてください'); return; }
+
+  const btn = document.getElementById('import-btn');
+  const result = document.getElementById('import-result');
+  btn.disabled = true;
+  btn.textContent = '⏳ 仕分け中...';
+  result.innerHTML = '<div style="font-size:13px;color:var(--text-sub)">AIが資料を読んで知識候補に分けています...</div>';
+
+  const cats = existingCategories();
+  const systemPrompt = `あなたはクリーニング店「クリーニングみわ」の知識ベース編集アシスタントです。
+渡された資料テキストを、社内FAQ用の「知識候補」に分解してください。
+
+【ルール】
+- 1つの話題ごとに1件の候補に分ける
+- 各候補は次の項目を持つ：
+  - question：受付・工場スタッフが実際に聞きそうな質問文
+  - knowledge：事実・基準・理由
+  - procedure：受付や処理での手順（資料に無ければ空文字 ""）
+  - proposal：お客様への提案（資料に無ければ空文字 ""）
+  - category：カテゴリ
+- categoryは可能な限り既存カテゴリから選ぶ。合うものが無いときだけ新しいカテゴリ名を付ける
+- 資料に書かれていないことは創作しない。手順・提案が無ければ空文字にする
+- 既存カテゴリ一覧：${cats.join('、') || '（まだ無し）'}
+
+【出力形式】
+JSON配列だけを出力する。前置き・説明・コードフェンス(\`\`\`)は一切付けない。
+[{"question":"...","knowledge":"...","procedure":"...","proposal":"...","category":"..."}]`;
+
+  try {
+    const raw = await callAIRaw(systemPrompt, src, 2500);
+    // JSON抽出（保険：最初の[から最後の]まで）
+    let jsonText = raw.trim();
+    const s = jsonText.indexOf('['), e = jsonText.lastIndexOf(']');
+    if (s !== -1 && e !== -1) jsonText = jsonText.slice(s, e + 1);
+    const arr = JSON.parse(jsonText);
+
+    importCandidates = arr.map((c, i) => {
+      const q = c.question || '';
+      const dup = findSimilarKnowledge(q);
+      return {
+        id: 'imp' + i,
+        q,
+        knowledge: c.knowledge || '',
+        procedure: c.procedure || '',
+        proposal: c.proposal || '',
+        category: c.category || '未分類',
+        image: '',
+        catMode: cats.includes(c.category) ? 'existing' : (c.category ? 'new' : 'existing'),
+        dup,
+        decision: dup ? 'overwrite' : 'new'   // 重複時は既定で上書き提案（変更可）
+      };
+    });
+
+    renderImport();
+  } catch (err) {
+    result.innerHTML = `<div class="dup-warn"><div class="dup-warn-title">⚠️ 仕分けに失敗しました</div>
+      <div>${escHtml(err.message)}</div>
+      <div style="margin-top:6px;color:var(--text-muted)">AIの応答がJSON形式にならなかった可能性があります。テキストを短くするか、もう一度お試しください。</div></div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🪄 AIで仕分け';
+}
+
+// 編集中のDOM値を状態へ反映（再描画前に呼ぶ）
+function syncImportFromDom() {
+  for (const c of importCandidates) {
+    const get = (suf) => { const el = document.getElementById(`${suf}-${c.id}`); return el ? el.value : undefined; };
+    const q = get('imp-q'); if (q !== undefined) c.q = q;
+    const k = get('imp-k'); if (k !== undefined) c.knowledge = k;
+    const p = get('imp-p'); if (p !== undefined) c.procedure = p;
+    const b = get('imp-b'); if (b !== undefined) c.proposal = b;
+    const img = get('imp-img'); if (img !== undefined) c.image = img;
+    if (c.catMode === 'new') { const cn = get('imp-catnew'); if (cn !== undefined) c.category = cn; }
+    else { const cs = get('imp-cat'); if (cs !== undefined && cs !== '__new__') c.category = cs; }
+  }
+}
+
+function renderImport() {
+  const result = document.getElementById('import-result');
+  const active = importCandidates.filter(c => c.decision !== 'discard');
+  if (importCandidates.length === 0) { result.innerHTML = ''; return; }
+
+  const cats = existingCategories();
+
+  let html = `<div class="import-summary">
+    <span style="color:var(--primary)">✨ ${importCandidates.length}件の知識候補に仕分けしました</span>
+    <span style="font-size:12px;color:var(--text-muted);font-weight:400">確認・修正してから追加してください</span>
+  </div>`;
+
+  importCandidates.forEach((c, idx) => {
+    const discarded = c.decision === 'discard';
+    if (discarded) {
+      html += `<div class="import-candidate" style="opacity:.55">
+        <div class="import-cand-head">
+          <span class="import-badge">候補 ${idx + 1}</span>
+          <span style="flex:1;font-size:13px;color:var(--text-muted)">🗑 破棄予定：${escHtml(c.q)}</span>
+          <button class="btn btn-sm btn-outline" onclick="setDecision('${c.id}','new')">戻す</button>
+        </div>
+      </div>`;
+      return;
+    }
+
+    // 重複警告パネル
+    let dupHtml = '';
+    if (c.dup) {
+      const ex = c.dup.item;
+      const exPreview = escHtml((ex.a || '').replace(/【.*?】/g, '').replace(/\n/g, ' ').slice(0, 80));
+      dupHtml = `<div class="dup-warn">
+        <div class="dup-warn-title">⚠️ 既存の知識と似ています</div>
+        <div class="dup-compare">
+          <div style="color:var(--text-muted);margin-bottom:2px">既存（旧）：</div>
+          <div style="font-weight:600">${escHtml(ex.q)}</div>
+          <div style="color:var(--text-sub)">${exPreview}…</div>
+          <div style="color:var(--text-muted);font-size:11px;margin-top:3px">追加日: ${escHtml(ex.addedAt || '—')}｜カテゴリ: ${escHtml(ex.category || '—')}</div>
+        </div>
+        <div style="color:var(--text-sub)">どう扱いますか？</div>
+        <div class="dup-actions">
+          <button class="${c.decision === 'overwrite' ? 'sel-overwrite' : ''}" onclick="setDecision('${c.id}','overwrite')">↻ 上書き更新（新で置き換え）</button>
+          <button class="${c.decision === 'new' ? 'sel-separate' : ''}" onclick="setDecision('${c.id}','new')">＋ 別物として追加</button>
+          <button class="${c.decision === 'discard' ? 'sel-discard' : ''}" onclick="setDecision('${c.id}','discard')">🗑 この候補を破棄</button>
+        </div>
+      </div>`;
+    }
+
+    // カテゴリ選択
+    const catOptions = cats.map(cat =>
+      `<option value="${escHtml(cat)}" ${c.catMode === 'existing' && c.category === cat ? 'selected' : ''}>${escHtml(cat)}</option>`
+    ).join('');
+    const catSelect = c.catMode === 'new'
+      ? `<input class="form-input" id="imp-catnew-${c.id}" value="${escHtml(c.category)}" placeholder="新しいカテゴリ名">
+         <div style="margin-top:3px"><button class="btn btn-sm btn-outline" onclick="setCatMode('${c.id}','existing')">既存から選ぶ</button></div>`
+      : `<select class="form-input" id="imp-cat-${c.id}" onchange="onCatChange('${c.id}',this.value)">
+           ${catOptions}
+           <option value="__new__">＋ 新しいカテゴリ…</option>
+         </select>`;
+
+    html += `<div class="import-candidate">
+      <div class="import-cand-head">
+        <span class="import-badge">候補 ${idx + 1}</span>
+        <input class="form-input" id="imp-q-${c.id}" value="${escHtml(c.q)}" style="flex:1;font-weight:600" placeholder="質問文">
+        <button class="btn btn-outline import-del" onclick="setDecision('${c.id}','discard')" title="破棄">✕</button>
+      </div>
+      ${dupHtml}
+      <div class="import-field">
+        <label class="lbl-k">📘 知識</label>
+        <textarea class="form-textarea" id="imp-k-${c.id}" style="min-height:44px">${escHtml(c.knowledge)}</textarea>
+      </div>
+      <div class="import-field">
+        <label class="lbl-p">🛠 対応手順<span style="font-weight:400;color:var(--text-muted)">（無ければ空欄でOK）</span></label>
+        <textarea class="form-textarea" id="imp-p-${c.id}" style="min-height:44px">${escHtml(c.procedure)}</textarea>
+      </div>
+      <div class="import-field">
+        <label class="lbl-b">💡 ベスト提案<span style="font-weight:400;color:var(--text-muted)">（無ければ空欄でOK）</span></label>
+        <textarea class="form-textarea" id="imp-b-${c.id}" style="min-height:44px">${escHtml(c.proposal)}</textarea>
+      </div>
+      <div class="import-cat-row">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">カテゴリ</label>
+          ${catSelect}
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">画像URL（任意）</label>
+          <input class="form-input" id="imp-img-${c.id}" value="${escHtml(c.image)}" placeholder="https://...">
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="form-row" style="margin-top:6px;align-items:center">
+    <button class="btn btn-primary btn-sm" onclick="commitImport()">✅ ${active.length}件を知識ベースに追加</button>
+    <button class="btn btn-outline btn-sm" onclick="clearImport()">すべて破棄</button>
+    <span style="font-size:12px;color:var(--text-muted);margin-left:4px">追加後はFAQですぐ回答に使われます</span>
+  </div>`;
+
+  result.innerHTML = html;
+}
+
+function setDecision(id, decision) {
+  syncImportFromDom();
+  const c = importCandidates.find(x => x.id === id);
+  if (c) c.decision = decision;
+  renderImport();
+}
+
+function onCatChange(id, val) {
+  syncImportFromDom();
+  const c = importCandidates.find(x => x.id === id);
+  if (!c) return;
+  if (val === '__new__') { c.catMode = 'new'; c.category = ''; }
+  else { c.category = val; }
+  renderImport();
+}
+
+function setCatMode(id, mode) {
+  syncImportFromDom();
+  const c = importCandidates.find(x => x.id === id);
+  if (c) c.catMode = mode;
+  renderImport();
+}
+
+// 3部構成の回答テキストを組み立て
+function buildAnswerField(c) {
+  const parts = [];
+  if (c.knowledge && c.knowledge.trim()) parts.push('【知識】\n' + c.knowledge.trim());
+  if (c.procedure && c.procedure.trim()) parts.push('【対応手順】\n' + c.procedure.trim());
+  if (c.proposal && c.proposal.trim()) parts.push('【ベスト提案】\n' + c.proposal.trim());
+  return parts.join('\n');
+}
+
+function commitImport() {
+  syncImportFromDom();
+  const toAdd = importCandidates.filter(c => c.decision !== 'discard');
+  if (toAdd.length === 0) { alert('追加する候補がありません'); return; }
+
+  let added = 0, updated = 0;
+  for (const c of toAdd) {
+    if (!c.q.trim()) continue;
+    const a = buildAnswerField(c);
+    const imgs = parseImageUrls(c.image);
+
+    if (c.decision === 'overwrite' && c.dup) {
+      const target = knowledgeBase.find(k => k.id === c.dup.item.id);
+      if (target) {
+        target.q = c.q.trim();
+        target.a = a;
+        target.category = c.category || '未分類';
+        if (imgs.length) target.images = imgs;
+        target.source = '一括取り込み（更新）';
+        target.addedAt = nowStr();
+        updated++;
+        continue;
+      }
+    }
+    knowledgeBase.push({
+      id: nextId++,
+      q: c.q.trim(),
+      a,
+      category: c.category || '未分類',
+      source: '一括取り込み',
+      images: imgs,
+      addedAt: nowStr()
+    });
+    added++;
+  }
+
+  importCandidates = [];
+  document.getElementById('import-src').value = '';
+  document.getElementById('import-result').innerHTML =
+    `<div class="dup-warn" style="background:var(--success-light);border-color:#a7f3d0">
+      <div class="dup-warn-title" style="color:var(--success)">✅ 取り込み完了</div>
+      <div>新規追加 ${added}件${updated ? ` ／ 上書き更新 ${updated}件` : ''} を知識ベースに反映しました。</div>
+    </div>`;
+  renderKB();
+  updateStats();
+}
+
+function clearImport() {
+  importCandidates = [];
+  document.getElementById('import-src').value = '';
+  document.getElementById('import-result').innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════
+//  知識ベース管理
+// ═══════════════════════════════════════════════
+
+function renderKB() {
+  const list = document.getElementById('kb-list');
+  const searchVal = document.getElementById('kb-search')?.value.toLowerCase() || '';
+  const items = knowledgeBase.filter(item =>
+    !searchVal ||
+    item.q.toLowerCase().includes(searchVal) ||
+    item.a.toLowerCase().includes(searchVal) ||
+    (item.category || '').toLowerCase().includes(searchVal)
+  );
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="kb-empty">該当する知識がありません</div>';
+    return;
+  }
+
+  list.innerHTML = items.map(item => `
+    <div class="kb-item">
+      <div class="kb-item-head" onclick="toggleKB(${item.id})">
+        <div class="kb-item-q">
+          <span class="kb-tag">${escHtml(item.category || '未分類')}</span>
+          ${escHtml(item.q)}
+        </div>
+        <span style="color:var(--text-muted);font-size:12px">▼</span>
+      </div>
+      <div class="kb-item-body" id="kb-body-${item.id}">
+        ${mdToHtml(item.a)}
+        ${imagesHtml([item])}
+        <div class="kb-item-source">出典: ${escHtml(item.source || '—')} | 追加日: ${escHtml(item.addedAt || '—')}${(item.images||[]).length ? ` | 🖼 画像${item.images.length}枚` : ''}</div>
+        <div style="margin-top:10px">
+          <button class="btn btn-sm btn-outline" onclick="deleteKB(${item.id})">🗑 削除</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleKB(id) {
+  const body = document.getElementById(`kb-body-${id}`);
+  body.classList.toggle('open');
+}
+
+function deleteKB(id) {
+  if (!confirm('この知識を削除しますか？')) return;
+  knowledgeBase = knowledgeBase.filter(k => k.id !== id);
+  renderKB();
+  updateStats();
+}
+
+let addFormOpen = false;
+function toggleAddForm() {
+  addFormOpen = !addFormOpen;
+  document.getElementById('add-form-wrap').style.display = addFormOpen ? 'block' : 'none';
+}
+
+function addKB() {
+  const q = document.getElementById('new-q').value.trim();
+  const a = document.getElementById('new-a').value.trim();
+  const cat = document.getElementById('new-cat').value.trim();
+  const src = document.getElementById('new-src').value.trim();
+  const imgs = parseImageUrls(document.getElementById('new-img').value);
+  if (!q || !a) { alert('質問と回答は必須です'); return; }
+
+  knowledgeBase.push({
+    id: nextId++,
+    q, a,
+    category: cat || '未分類',
+    source: src || '手動追加',
+    images: imgs,
+    addedAt: nowStr()
+  });
+
+  document.getElementById('new-q').value = '';
+  document.getElementById('new-a').value = '';
+  document.getElementById('new-cat').value = '';
+  document.getElementById('new-src').value = '';
+  document.getElementById('new-img').value = '';
+  toggleAddForm();
+  renderKB();
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════
+//  履歴・統計
+// ═══════════════════════════════════════════════
+
+function renderHistory() { /* チャット自体が履歴のため不要 */ }
+
+function updateStats() {
+  const k = document.getElementById('stat-kb');
+  const a = document.getElementById('stat-answered');
+  const u = document.getElementById('stat-unanswered');
+  if (k) k.textContent = knowledgeBase.length;
+  if (a) a.textContent = statsAnswered;
+  if (u) u.textContent = unansweredList.filter(x => !x.answered).length;
+}
+
+// ═══════════════════════════════════════════════
+//  タブ切り替え
+// ═══════════════════════════════════════════════
+
+function showTab(name) {
+  const isFaq = name === 'faq';
+  document.getElementById('tab-faq').style.display = isFaq ? 'flex' : 'none';
+  document.getElementById('admin-wrap').style.display = isFaq ? 'none' : 'block';
+  document.body.classList.toggle('chat-mode', isFaq);
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && isFaq) || (i === 1 && !isFaq));
+  });
+  if (!isFaq) { renderKB(); renderUnanswered(); }
+  if (isFaq) scrollChat();
+}
+
+// ═══════════════════════════════════════════════
+//  ユーティリティ
+// ═══════════════════════════════════════════════
+
+function escHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// 簡易Markdown整形（見出し【】・太字・箇条書き）
+function mdToHtml(s) {
+  const escaped = escHtml(s);
+  const lines = escaped.split('\n');
+  let html = '';
+  let inList = false;
+  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+
+  const sectionStyle = {
+    '知識': { color: '#2563eb', icon: '📘' },
+    '対応手順': { color: '#d97706', icon: '🛠' },
+    'ベスト提案': { color: '#059669', icon: '💡' }
+  };
+
+  for (const line of lines) {
+    const t = line.trim();
+    const head = t.match(/^【(.+?)】(.*)$/);
+    if (head) {
+      closeList();
+      const label = head[1];
+      const st = sectionStyle[label] || { color: 'var(--text-sub)', icon: '' };
+      html += `<div style="font-weight:700;font-size:12px;color:${st.color};margin:10px 0 4px;letter-spacing:.03em">${st.icon} ${label}</div>`;
+      if (head[2].trim()) html += `<div>${head[2].trim()}</div>`;
+    } else if (t.startsWith('- ') || t.startsWith('・')) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += `<li>${t.replace(/^(- |・)/, '')}</li>`;
+    } else {
+      closeList();
+      if (t) html += `<div>${t}</div>`;
+    }
+  }
+  closeList();
+  return html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+// 知識項目の画像をまとめてギャラリー表示
+function imagesHtml(items) {
+  const urls = [];
+  for (const item of (items || [])) {
+    for (const url of (item.images || [])) {
+      if (url && !urls.includes(url)) urls.push(url);
+    }
+  }
+  if (urls.length === 0) return '';
+  return `<div class="answer-images">${
+    urls.slice(0, 5).map(u =>
+      `<img src="${escHtml(u)}" alt="参考画像" onclick="window.open('${escHtml(u)}','_blank')" onerror="this.style.display='none'">`
+    ).join('')
+  }</div>`;
+}
+
+// 参照した知識のタイトル表示
+function refLabel(items) {
+  if (!items || items.length === 0) return '';
+  return '：' + items.map(i => escHtml(i.q)).join('、');
+}
+
+// 画像URL入力欄のテキストを配列化（改行・カンマ区切り、最大5枚）
+function parseImageUrls(text) {
+  return (text || '')
+    .split(/[\n,]/)
+    .map(s => s.trim())
+    .filter(s => s.startsWith('http'))
+    .slice(0, 5);
+}
+
+function nowStr() {
+  return new Date().toLocaleDateString('ja-JP', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  文字サイズ設定
+// ═══════════════════════════════════════════════
+function setChatFontSize(px) {
+  document.documentElement.style.setProperty('--chat-fs', px + 'px');
+  try { localStorage.setItem('miwa_chat_fs', String(px)); } catch (e) {}
+  document.querySelectorAll('#fs-options .fs-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.fs) === px);
+  });
+}
+function initChatFontSize() {
+  let px = 15;
+  try { const s = localStorage.getItem('miwa_chat_fs'); if (s) px = Number(s); } catch (e) {}
+  setChatFontSize(px);
+}
+
+// 初期化
+updateStats();
+initChatFontSize();
+
+// ピンチ／ダブルタップ拡大を無効化（iOS Safari は viewport の user-scalable を無視するため）
+(function(){
+  // ピンチ（ジェスチャー）を無効化
+  ['gesturestart','gesturechange','gestureend'].forEach(function(ev){
+    document.addEventListener(ev, function(e){ e.preventDefault(); }, { passive: false });
+  });
+  // 2本指タッチを無効化
+  document.addEventListener('touchmove', function(e){
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+  // ダブルタップ拡大を無効化
+  let lastTouch = 0;
+  document.addEventListener('touchend', function(e){
+    const now = Date.now();
+    if (now - lastTouch <= 300) e.preventDefault();
+    lastTouch = now;
+  }, { passive: false });
+})();
+
+document.body.classList.add('chat-mode');
+addBotBubble(
+  `クリーニングみわ FAQへようこそ！<br>業務でわからないことを質問してください。<br><span class="src">登録された知識だけを参照して回答します。答えが無い質問は管理者に届きます。</span>`
+);
+
+// スプラッシュを2秒後にフェードアウト
+(function(){
+  const sp = document.getElementById('splash');
+  if (!sp) return;
+  setTimeout(() => {
+    sp.classList.add('hide');
+    setTimeout(() => sp.remove(), 600);
+  }, 2000);
+})();
+</script>
+</body>
+</html>
