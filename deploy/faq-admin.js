@@ -14,6 +14,16 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8Dssk
 //  データストア（暫定：localStorage。後日スプレッドシート化）
 // ═══════════════════════════════════════════════
 const FAQ_LS_KEY = 'miwa.faq.kb.v1';
+const FAQ_CLOUD_KEY = 'miwa.faq.cloud.v1'; // { gasUrl, token, enabled }
+
+// ── クラウド設定の読み書き ──
+function loadCloudCfg() {
+  try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) return JSON.parse(s); } catch(e) {}
+  return { gasUrl: '', token: '', enabled: false };
+}
+function saveCloudCfg(cfg) {
+  try { localStorage.setItem(FAQ_CLOUD_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
 
 const FAQ_KB_SEED = [
   { id: 1, q: "高級ダウンの素材確認方法", a: "タグの素材表示を必ず確認してください。「ダウン80%以上」かつ「表地：ナイロン・ポリエステル製」であれば高級ダウン扱いとなります。ブランドタグ（モンクレール・タトラス等）がある場合は受付時に専用袋に入れて識別してください。", category: "素材確認", source: "社内マニュアル", addedAt: "2026-06-01" },
@@ -63,6 +73,131 @@ function loadFaq() {
     nextId = 100;
     statsAnswered = 0;
   }
+}
+
+// ═══════════════════════════════════════════════
+//  クラウド同期（Googleスプレッドシート経由）
+// ═══════════════════════════════════════════════
+let _cldSt = 'idle'; // idle | syncing | ok | error
+
+function _cldBadge() {
+  const b = document.getElementById('cloud-badge');
+  if (!b) return;
+  const cfg = loadCloudCfg();
+  if (!cfg.enabled || !cfg.gasUrl) { b.textContent = '☁️ 未設定'; b.style.cssText = 'background:#f3f4f6;color:#6b7280'; return; }
+  const M = { idle:'☁️ クラウド', syncing:'⏳ 同期中…', ok:'✅ 同期済み', error:'⚠️ エラー' };
+  const C = { idle:'#e0f2fe;color:#0369a1', syncing:'#fef9c3;color:#854d0e', ok:'#dcfce7;color:#166534', error:'#fee2e2;color:#991b1b' };
+  b.textContent = M[_cldSt] || M.idle;
+  b.style.cssText = 'padding:2px 10px;border-radius:20px;font-weight:700;font-size:12px;background:' + (C[_cldSt] || C.idle);
+}
+
+async function _cldPost(action, extra) {
+  const cfg = loadCloudCfg();
+  if (!cfg.enabled || !cfg.gasUrl) return null;
+  _cldSt = 'syncing'; _cldBadge();
+  try {
+    const body = Object.assign({ action }, extra || {});
+    if (cfg.token && action !== 'add_ua') body.token = cfg.token;
+    const res = await fetch(cfg.gasUrl, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data && data.error === 'unauthorized') throw new Error('認証エラー：トークンを確認してください');
+    if (data && data.error) throw new Error(data.error);
+    _cldSt = 'ok'; _cldBadge();
+    return data;
+  } catch(e) {
+    _cldSt = 'error'; _cldBadge();
+    _cldMsg('⚠️ ' + e.message, 5000);
+    console.warn('FAQ cloud:', e);
+    return null;
+  }
+}
+
+function _cldMsg(text, ms) {
+  const el = document.getElementById('cloud-sync-msg');
+  if (!el) return;
+  el.textContent = text; el.style.display = 'block';
+  setTimeout(() => { if(el) el.style.display = 'none'; }, ms || 3000);
+}
+
+async function syncKBFromCloud() {
+  const cfg = loadCloudCfg();
+  if (!cfg.enabled || !cfg.gasUrl) return;
+  _cldSt = 'syncing'; _cldBadge();
+  try {
+    const [kbData, uaData] = await Promise.all([
+      fetch(cfg.gasUrl + '?action=get_kb').then(r => r.json()),
+      fetch(cfg.gasUrl + '?action=get_ua').then(r => r.json()),
+    ]);
+    if (Array.isArray(kbData) && kbData.length > 0) {
+      knowledgeBase = kbData.map(item => ({
+        ...item,
+        images: typeof item.images === 'string'
+          ? item.images.split(',').filter(Boolean)
+          : (Array.isArray(item.images) ? item.images : []),
+        enabled: item.enabled !== false,
+      }));
+    }
+    if (Array.isArray(uaData)) {
+      unansweredList = uaData.map(item => ({
+        ...item, answered: item.status === '回答済み',
+      }));
+    }
+    persistFaq();
+    _cldSt = 'ok'; _cldBadge();
+    updateStats(); renderKB(); renderUnanswered();
+    _cldMsg(`✅ クラウドから取得しました（知識 ${knowledgeBase.length} 件）`);
+  } catch(e) { _cldSt = 'error'; _cldBadge(); }
+}
+
+async function forceSyncFromCloud() { await syncKBFromCloud(); }
+
+async function forcePushToCloud() {
+  const cfg = loadCloudCfg();
+  if (!cfg.enabled || !cfg.gasUrl || !cfg.token) { alert('GAS URL とトークンを設定してください'); return; }
+  if (!confirm(`知識ベース ${knowledgeBase.length} 件をクラウドへ全件送信しますか？\n（スプレッドシートの既存データは上書きされます）`)) return;
+  const res = await _cldPost('bulk_replace_kb', { items: knowledgeBase });
+  if (res && res.ok) _cldMsg(`✅ ${knowledgeBase.length} 件を送信しました`);
+}
+
+function saveCloudSettingsFromUI() {
+  const url = (document.getElementById('cloud-gas-url')?.value || '').trim();
+  const token = (document.getElementById('cloud-token')?.value || '').trim();
+  const enabled = document.getElementById('cloud-enable-toggle')?.dataset.on === '1';
+  saveCloudCfg({ gasUrl: url, token, enabled });
+  _cldBadge();
+  _cldMsg('設定を保存しました');
+  if (enabled && url) syncKBFromCloud();
+}
+
+function toggleCloudEnabled() {
+  const tg = document.getElementById('cloud-enable-toggle');
+  const kn = document.getElementById('cloud-toggle-knob');
+  const lb = document.getElementById('cloud-enable-label');
+  if (!tg) return;
+  const on = tg.dataset.on !== '1';
+  tg.dataset.on = on ? '1' : '0';
+  tg.style.background = on ? '#059669' : 'var(--border)';
+  if (kn) kn.style.transform = on ? 'translateX(20px)' : 'translateX(0)';
+  if (lb) lb.textContent = on ? 'ON（クラウド同期する）' : 'OFF（ローカルのみ）';
+}
+
+function initCloudUI() {
+  const cfg = loadCloudCfg();
+  const urlEl = document.getElementById('cloud-gas-url');
+  const tokEl = document.getElementById('cloud-token');
+  const tg = document.getElementById('cloud-enable-toggle');
+  const kn = document.getElementById('cloud-toggle-knob');
+  const lb = document.getElementById('cloud-enable-label');
+  if (urlEl) urlEl.value = cfg.gasUrl || '';
+  if (tokEl) tokEl.value = cfg.token || '';
+  const on = !!(cfg.enabled && cfg.gasUrl);
+  if (tg) { tg.dataset.on = on ? '1' : '0'; tg.style.background = on ? '#059669' : 'var(--border)'; }
+  if (kn) kn.style.transform = on ? 'translateX(20px)' : 'translateX(0)';
+  if (lb) lb.textContent = on ? 'ON（クラウド同期する）' : 'OFF（ローカルのみ）';
+  _cldBadge();
 }
 
 // ═══════════════════════════════════════════════
@@ -148,17 +283,19 @@ function approveAnswer(id) {
   const imgs = parseImageUrls(document.getElementById(`ua-img-${id}`).value);
   if (!a) { alert('回答内容を入力してください'); return; }
 
-  knowledgeBase.push({
+  const newKb = {
     id: nextId++, q: item.q, a,
     category: cat || '未分類', source: '未回答リストから追加',
     images: imgs, addedAt: nowStr()
-  });
+  };
+  knowledgeBase.push(newKb);
 
   item.answered = true;
   persistFaq();
   renderUnanswered();
   renderKB();
   updateStats();
+  _cldPost('answer_ua', { ua_id: id, item: newKb });
 
   const el = document.getElementById(`ua-${id}`);
   if (el) el.style.background = '#ecfdf5';
@@ -170,11 +307,13 @@ function addUnansweredManual() {
   const q = (el?.value || '').trim();
   if (!q) return;
   if (unansweredList.find(u => u.q === q)) { alert('同じ質問がすでに未回答リストにあります'); el.value = ''; return; }
-  unansweredList.unshift({ id: nextId++, q, addedAt: nowStr(), answered: false });
+  const newUa = { id: nextId++, q, addedAt: nowStr(), answered: false };
+  unansweredList.unshift(newUa);
   el.value = '';
   persistFaq();
   renderUnanswered();
   updateStats();
+  _cldPost('add_ua', { q });
 }
 
 // ═══════════════════════════════════════════════
@@ -456,6 +595,11 @@ function commitImport() {
   persistFaq();
   renderKB();
   updateStats();
+  // クラウドへ一括添加
+  const cloudNewItems = toAdd.filter(c => c.decision !== 'discard' && c.decision !== 'overwrite').map(c => knowledgeBase[knowledgeBase.length - toAdd.filter(x => x.decision !== 'discard').indexOf(c) - 1]).filter(Boolean);
+  const cloudUpdItems = toAdd.filter(c => c.decision === 'overwrite' && c.dup);
+  if (cloudNewItems.length) _cldPost('bulk_add_kb', { items: cloudNewItems });
+  cloudUpdItems.forEach(c => { const t = knowledgeBase.find(k => k.id === c.dup.item.id); if(t) _cldPost('update_kb', { item: t }); });
 }
 
 function clearImport() {
@@ -515,6 +659,7 @@ function deleteKB(id) {
   persistFaq();
   renderKB();
   updateStats();
+  _cldPost('delete_kb', { id });
 }
 
 let addFormOpen = false;
@@ -531,11 +676,12 @@ function addKB() {
   const imgs = parseImageUrls(document.getElementById('new-img').value);
   if (!q || !a) { alert('質問と回答は必須です'); return; }
 
-  knowledgeBase.push({
+  const addedKb = {
     id: nextId++, q, a,
     category: cat || '未分類', source: src || '手動追加',
     images: imgs, addedAt: nowStr()
-  });
+  };
+  knowledgeBase.push(addedKb);
 
   document.getElementById('new-q').value = '';
   document.getElementById('new-a').value = '';
@@ -546,6 +692,7 @@ function addKB() {
   persistFaq();
   renderKB();
   updateStats();
+  _cldPost('add_kb', { item: addedKb });
 }
 
 // ═══════════════════════════════════════════════
@@ -965,6 +1112,41 @@ const FAQ_ADMIN_MARKUP = `
       </div>
     </div>
   </div>
+
+  <!-- クラウド設定 -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-head">
+      <span>☁️</span>
+      <h2>Googleスプレッドシート連携</h2>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline btn-sm" onclick="forceSyncFromCloud()">🔄 取得</button>
+      <button class="btn btn-outline btn-sm" onclick="forcePushToCloud()" style="margin-left:6px">⬆️ 全件送信</button>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;line-height:1.7">
+        GASウェブアプリのURLを設定すると、知識ベース・未回答リストが全店舗で共有されます。<br>
+        <span style="font-size:12px;color:var(--text-muted)">スクリプト: <code>gas/faq-knowledge-base.gs</code> をコピペしてデプロイしてください</span>
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px">GAS ウェブアプリ URL</label>
+          <input class="form-input" id="cloud-gas-url" placeholder="https://script.google.com/macros/s/..." style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px">認証トークン（書き込み用・AUTH_TOKEN）</label>
+          <input class="form-input" id="cloud-token" type="password" placeholder="スクリプトプロパティに設定した値" style="width:100%">
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:14px">
+        <div id="cloud-enable-toggle" data-on="0" onclick="toggleCloudEnabled()" style="width:44px;height:24px;border-radius:12px;background:var(--border);position:relative;transition:background .2s;cursor:pointer;flex-shrink:0">
+          <div id="cloud-toggle-knob" style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>
+        </div>
+        <span style="font-size:13px;font-weight:600" id="cloud-enable-label">OFF（ローカルのみ）</span>
+      </label>
+      <button class="btn btn-primary btn-sm" onclick="saveCloudSettingsFromUI()">保存して同期</button>
+      <div id="cloud-sync-msg" style="display:none;margin-top:10px;font-size:12px;color:var(--text-sub);padding:8px 12px;background:var(--surface2);border-radius:8px"></div>
+    </div>
+  </div>
 `;
 
 // ═══════════════════════════════════════════════
@@ -975,12 +1157,13 @@ function initFaqAdmin() {
   faqLog = loadLocalLog();
   faqLogSource = 'local';
   updateStats();
-  // 料金マスクの初期状態を復元
   try { const v = localStorage.getItem(PRICE_MASK_KEY); if (v !== null) applyPriceMaskUI(v === '1'); } catch (e) {}
   initChatFontSize();
   renderKB();
   renderUnanswered();
   renderFaqLog();
+  // クラウドUI初期化と同期
+  setTimeout(() => { initCloudUI(); syncKBFromCloud(); }, 100);
 }
 
 // グローバル公開（jsx 側 / inline onclick から参照）

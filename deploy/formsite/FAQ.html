@@ -77,7 +77,7 @@
   .header-brand .brand-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(5,150,105,.16); }
   .header-brand .dot {
     width: 30px; height: 30px; border-radius: 8px;
-    background: #fff url('miwa_avatar.png') center/86% no-repeat;
+    background: #fff url('../favicon.png') center/80% no-repeat;
     box-shadow: 0 1px 3px rgba(40,55,80,.18), inset 0 0 0 1px rgba(40,55,80,.06);
     flex-shrink: 0;
   }
@@ -124,7 +124,7 @@
   }
   .chat-subhead .avatar {
     width: 40px; height: 40px; border-radius: 11px;
-    background: #fff url('miwa_avatar.png') center/86% no-repeat;
+    background: #fff url('../favicon.png') center/80% no-repeat;
     flex-shrink: 0;
     box-shadow: 0 1px 4px rgba(40,55,80,.16), inset 0 0 0 1px rgba(40,55,80,.06);
   }
@@ -158,7 +158,7 @@
 
   .msg-avatar {
     width: 36px; height: 36px; border-radius: 10px;
-    background: #fff url('miwa_avatar.png') center/86% no-repeat;
+    background: #fff url('../favicon.png') center/80% no-repeat;
     flex-shrink: 0;
     box-shadow: 0 1px 3px rgba(40,55,80,.16), inset 0 0 0 1px rgba(40,55,80,.06);
   }
@@ -646,7 +646,7 @@
   .splash-inner { display: flex; flex-direction: column; align-items: center; }
   .splash-logo {
     width: 168px; height: 168px;
-    background: #fff url('miwa_avatar.png') center/contain no-repeat;
+    background: #fff url('../favicon.png') center/contain no-repeat;
     filter: drop-shadow(0 8px 22px rgba(40,80,40,.16));
   }
   .splash-title {
@@ -740,6 +740,36 @@
 //  （空のままだと api.anthropic.com を直接呼ぶ＝claude.ai上の動作確認用）
 // ═══════════════════════════════════════════════
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec';
+
+// ── クラウド知識ベース（FAQ管理と共有）──────────────────────────
+const FAQ_CHAT_CLOUD_KEY = 'miwa.faq.cloud.v1';
+
+async function loadKBFromCloud() {
+  try {
+    const s = localStorage.getItem(FAQ_CHAT_CLOUD_KEY);
+    if (!s) return;
+    const cfg = JSON.parse(s);
+    if (!cfg.enabled || !cfg.gasUrl) return;
+    const res = await fetch(cfg.gasUrl + '?action=get_kb');
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      const loaded = data
+        .filter(item => item.enabled !== false)
+        .map(item => ({
+          ...item,
+          images: typeof item.images === 'string'
+            ? item.images.split(',').filter(Boolean)
+            : (Array.isArray(item.images) ? item.images : []),
+        }));
+      if (loaded.length > 0) {
+        knowledgeBase = loaded;
+        console.log('[FAQ] クラウドから知識ベースを読み込みました：', loaded.length, '件');
+      }
+    }
+  } catch(e) {
+    console.warn('[FAQ] クラウドKB読み込み失敗（ローカルで継続）:', e.message);
+  }
+}
 
 // ═══════════════════════════════════════════════
 //  データストア（体験版：ブラウザメモリ）
@@ -1873,17 +1903,14 @@ function initChatFontSize() {
 updateStats();
 initChatFontSize();
 
-// ピンチ／ダブルタップ拡大を無効化（iOS Safari は viewport の user-scalable を無視するため）
+// ピンチ／ダブルタップ拡大を無効化
 (function(){
-  // ピンチ（ジェスチャー）を無効化
   ['gesturestart','gesturechange','gestureend'].forEach(function(ev){
     document.addEventListener(ev, function(e){ e.preventDefault(); }, { passive: false });
   });
-  // 2本指タッチを無効化
   document.addEventListener('touchmove', function(e){
     if (e.touches && e.touches.length > 1) e.preventDefault();
   }, { passive: false });
-  // ダブルタップ拡大を無効化
   let lastTouch = 0;
   document.addEventListener('touchend', function(e){
     const now = Date.now();
@@ -1892,19 +1919,17 @@ initChatFontSize();
   }, { passive: false });
 })();
 
-document.body.classList.add('chat-mode');
-addBotBubble(
-  `クリーニングみわ FAQへようこそ！<br>業務でわからないことを質問してください。<br><span class="src">登録された知識だけを参照して回答します。答えが無い質問は管理者に届きます。</span>`
-);
+// クラウド知識ベース読み込み（設定済みの場合）→ 完了後にスプラッシュを消す
+(async function(){
+  await loadKBFromCloud();
 
-// スプラッシュを2秒後にフェードアウト
-(function(){
+  document.body.classList.add('chat-mode');
+  addBotBubble(
+    `クリーニングみわ FAQへようこそ！<br>業務でわからないことを質問してください。<br><span class="src">登録された知識だけを参照して回答します。答えが無い質問は管理者に届きます。</span>`
+  );
+
   const sp = document.getElementById('splash');
-  if (!sp) return;
-  setTimeout(() => {
-    sp.classList.add('hide');
-    setTimeout(() => sp.remove(), 600);
-  }, 2000);
+  if (sp) { setTimeout(() => { sp.classList.add('hide'); setTimeout(() => sp.remove(), 600); }, 400); }
 })();
 </script>
 </body>

@@ -27,7 +27,7 @@ const FaqAdminPage = () => {
               <div className="sub">社内FAQ AIの知識ベース・未回答対応・資料の一括取り込みを管理します</div>
             </div>
             <div className="right">
-              <a className="btn btn-primary" href={FAQ_CHAT_URL} target="_blank" rel="noopener"
+            <a className="btn btn-primary" href={FAQ_CHAT_URL} target="_blank" rel="noopener"
                  style={{ textDecoration: "none" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
@@ -45,7 +45,8 @@ const FaqAdminPage = () => {
             スタッフ用FAQは<b>ログイン不要の別入口</b>、この管理画面は<b>ダッシュボードのログインの内側</b>に置いています。
             <br />
             <span style={{ color: "var(--text-muted)" }}>
-              ※ 現在の知識データはこの端末に保存されます。全店共有（Googleスプレッドシート化）と書き込みの認証制限は次の段階で対応予定です。
+              ページ最下部の「Googleスプレッドシート連携」でGAS URLを設定すると、知識ベースが全店舗で共有されます。
+              未設定の場合はこの端末のみに保存されます。
             </span>
           </div>
 
