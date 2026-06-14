@@ -506,7 +506,21 @@ body {
 .m-pr-course .lbl { font-size: 14px; font-weight: 700; color: var(--ink-soft); }
 .m-pr-course .val { margin-left: auto; font-size: 14px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
 .m-pr-hl { background: #fef3cd; color: inherit; border-radius: 3px; padding: 0 1px; }
-.m-pr-note { font-size: 11.5px; color: var(--ink-mute); line-height: 1.6; margin: 14px 4px 0; padding: 12px 14px; background: var(--card-2); border-radius: 12px; }
+.m-pr-sqm-unit { font-size: 11px; font-weight: 700; color: var(--ink-mute); margin-left: 2px; }
+.m-pr-sqm-calc { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.m-pr-sqm-inputs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.m-pr-sqm-inputs label { font-size: 13px; font-weight: 700; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+.m-pr-sqm-input { width: 80px; padding: 8px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px; font-size: 15px; font-family: inherit; background: var(--bg); color: var(--ink); outline: none; }
+.m-pr-sqm-input:focus { border-color: var(--accent); }
+.m-pr-sqm-x { font-size: 18px; font-weight: 800; color: var(--ink-mute); }
+.m-pr-sqm-total { margin-top: 10px; padding: 10px 12px; background: var(--accent-soft); border-radius: 10px; font-size: 14px; font-weight: 700; color: var(--accent-ink); }
+.m-pr-sqm-total b { font-size: 20px; margin: 0 4px; }
+.m-pr-sqm-hint { margin-top: 8px; font-size: 12px; color: var(--ink-mute); }
+/* カテゴリトグル */
+.m-pr-cat-toggle { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.m-pr-cat-toggle:active { opacity: 0.7; }
+.m-pr-cat-right { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+.m-pr-cat > span:first-child, .m-pr-cat-toggle > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* PC幅でのプレビュー時に端末風の枠を付ける（任意） */
 @media (min-width: 521px) {
