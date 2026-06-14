@@ -203,6 +203,9 @@ body {
 .m-sales-kpi.big .m-sales-kpi-val { font-size: 30px; color: var(--accent-ink); }
 .m-sales-kpi-val .u { font-size: 13px; font-weight: 700; color: var(--ink-mute); margin-left: 2px; }
 .m-sales-kpi-sub { font-size: 11px; font-weight: 600; color: var(--ink-mute); margin-top: 3px; }
+.ms-yoy { font-size: 11.5px; font-weight: 800; margin-left: 7px; padding: 1px 6px; border-radius: 999px; }
+.ms-yoy.up { color: #1e8e3e; background: #e6f4ea; }
+.ms-yoy.dn { color: #c5221f; background: #fde2e2; }
 .m-sales-section { margin-top: 18px; }
 .m-sales-rank { padding: 9px 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .m-sales-rank + .m-sales-rank { border-top: 1px solid var(--line); }

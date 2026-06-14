@@ -99,11 +99,16 @@ const MSales = ({ registerHeader, registerFab }) => {
   const kpi = React.useMemo(() => {
     const sum = (k) => monthRows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
     const sales = sum("sales"), customers = sum("customers"), items = sum("items");
+    const salesLY = sum("lastYear"), customersLY = sum("customersLastYear"), itemsLY = sum("itemsLastYear");
+    const yoy = (cur, prev) => prev > 0 ? Math.round((cur / prev - 1) * 1000) / 10 : null;
     return {
       sales, customers, items,
       newCustomers: sum("newCustomers"),
       itemPrice: customers > 0 ? Math.round(sales / customers) : 0,
       days: new Set(monthRows.map((r) => r.date)).size,
+      salesYoy: yoy(sales, salesLY),
+      customersYoy: yoy(customers, customersLY),
+      itemsYoy: yoy(items, itemsLY),
     };
   }, [monthRows]);
 
@@ -153,12 +158,12 @@ const MSales = ({ registerHeader, registerFab }) => {
       <div className="m-sales-kpis">
         <div className="m-sales-kpi big">
           <div className="m-sales-kpi-label">売上{store ? "" : "（全店）"}</div>
-          <div className="m-sales-kpi-val">{msYenShort(kpi.sales)}</div>
-          <div className="m-sales-kpi-sub">{monthLabel} ・ {kpi.days}日分</div>
+          <div className="m-sales-kpi-val">{msYenShort(kpi.sales)}{kpi.salesYoy !== null && <span className={`ms-yoy ${kpi.salesYoy >= 0 ? "up" : "dn"}`}>{kpi.salesYoy >= 0 ? "▲" : "▼"}{Math.abs(kpi.salesYoy)}%</span>}</div>
+          <div className="m-sales-kpi-sub">{monthLabel} ・ {kpi.days}日分{kpi.salesYoy !== null ? "（昨年比）" : ""}</div>
         </div>
         <div className="m-sales-kpi">
           <div className="m-sales-kpi-label">客数</div>
-          <div className="m-sales-kpi-val">{msNum(kpi.customers)}<span className="u">人</span></div>
+          <div className="m-sales-kpi-val">{msNum(kpi.customers)}<span className="u">人</span>{kpi.customersYoy !== null && <span className={`ms-yoy ${kpi.customersYoy >= 0 ? "up" : "dn"}`}>{kpi.customersYoy >= 0 ? "▲" : "▼"}{Math.abs(kpi.customersYoy)}%</span>}</div>
         </div>
         <div className="m-sales-kpi">
           <div className="m-sales-kpi-label">客単価</div>
@@ -170,7 +175,7 @@ const MSales = ({ registerHeader, registerFab }) => {
         </div>
         <div className="m-sales-kpi">
           <div className="m-sales-kpi-label">点数</div>
-          <div className="m-sales-kpi-val">{msNum(kpi.items)}<span className="u">点</span></div>
+          <div className="m-sales-kpi-val">{msNum(kpi.items)}<span className="u">点</span>{kpi.itemsYoy !== null && <span className={`ms-yoy ${kpi.itemsYoy >= 0 ? "up" : "dn"}`}>{kpi.itemsYoy >= 0 ? "▲" : "▼"}{Math.abs(kpi.itemsYoy)}%</span>}</div>
         </div>
       </div>
 
