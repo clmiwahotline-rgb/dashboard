@@ -100,15 +100,18 @@ const MSales = ({ registerHeader, registerFab }) => {
     const sum = (k) => monthRows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
     const sales = sum("sales"), customers = sum("customers"), items = sum("items");
     const salesLY = sum("lastYear"), customersLY = sum("customersLastYear"), itemsLY = sum("itemsLastYear");
-    const yoy = (cur, prev) => prev > 0 ? Math.round((cur / prev - 1) * 1000) / 10 : null;
+    const itemPrice = customers > 0 ? Math.round(sales / customers) : 0;
+    const itemPriceLY = customersLY > 0 ? Math.round(salesLY / customersLY) : 0;
+    const yoy = (cur, prev) => prev > 0 ? Math.round(cur / prev * 100) : null;
     return {
       sales, customers, items,
       newCustomers: sum("newCustomers"),
-      itemPrice: customers > 0 ? Math.round(sales / customers) : 0,
+      itemPrice, itemPriceLY,
       days: new Set(monthRows.map((r) => r.date)).size,
       salesYoy: yoy(sales, salesLY),
       customersYoy: yoy(customers, customersLY),
       itemsYoy: yoy(items, itemsLY),
+      itemPriceYoy: yoy(itemPrice, itemPriceLY),
     };
   }, [monthRows]);
 
@@ -116,9 +119,14 @@ const MSales = ({ registerHeader, registerFab }) => {
   const byStore = React.useMemo(() => {
     const map = {};
     rows.filter((r) => (r.date || "").startsWith(month)).forEach((r) => {
-      map[r.store] = (map[r.store] || 0) + (Number(r.sales) || 0);
+      if (!map[r.store]) map[r.store] = { sales: 0, lastYear: 0 };
+      map[r.store].sales    += Number(r.sales) || 0;
+      map[r.store].lastYear += Number(r.lastYear) || 0;
     });
-    return Object.entries(map).map(([s, v]) => ({ store: s, sales: v })).sort((a, b) => b.sales - a.sales);
+    return Object.entries(map).map(([s, v]) => ({
+      store: s, sales: v.sales,
+      yoy: v.lastYear > 0 ? Math.round(v.sales / v.lastYear * 100) : null,
+    })).sort((a, b) => b.sales - a.sales);
   }, [rows, month]);
   const maxStore = byStore.length ? byStore[0].sales : 1;
 
@@ -158,16 +166,16 @@ const MSales = ({ registerHeader, registerFab }) => {
       <div className="m-sales-kpis">
         <div className="m-sales-kpi big">
           <div className="m-sales-kpi-label">売上{store ? "" : "（全店）"}</div>
-          <div className="m-sales-kpi-val">{msYenShort(kpi.sales)}{kpi.salesYoy !== null && <span className={`ms-yoy ${kpi.salesYoy >= 0 ? "up" : "dn"}`}>{kpi.salesYoy >= 0 ? "▲" : "▼"}{Math.abs(kpi.salesYoy)}%</span>}</div>
+          <div className="m-sales-kpi-val">{msYenShort(kpi.sales)}{kpi.salesYoy !== null && <span className={`ms-yoy ${kpi.salesYoy >= 100 ? "up" : "dn"}`}>{kpi.salesYoy}%</span>}</div>
           <div className="m-sales-kpi-sub">{monthLabel} ・ {kpi.days}日分{kpi.salesYoy !== null ? "（昨年比）" : ""}</div>
         </div>
         <div className="m-sales-kpi">
           <div className="m-sales-kpi-label">客数</div>
-          <div className="m-sales-kpi-val">{msNum(kpi.customers)}<span className="u">人</span>{kpi.customersYoy !== null && <span className={`ms-yoy ${kpi.customersYoy >= 0 ? "up" : "dn"}`}>{kpi.customersYoy >= 0 ? "▲" : "▼"}{Math.abs(kpi.customersYoy)}%</span>}</div>
+          <div className="m-sales-kpi-val">{msNum(kpi.customers)}<span className="u">人</span>{kpi.customersYoy !== null && <span className={`ms-yoy ${kpi.customersYoy >= 100 ? "up" : "dn"}`}>{kpi.customersYoy}%</span>}</div>
         </div>
         <div className="m-sales-kpi">
           <div className="m-sales-kpi-label">客単価</div>
-          <div className="m-sales-kpi-val">{msYen(kpi.itemPrice)}</div>
+          <div className="m-sales-kpi-val">{msYen(kpi.itemPrice)}{kpi.itemPriceYoy !== null && <span className={`ms-yoy ${kpi.itemPriceYoy >= 100 ? "up" : "dn"}`}>{kpi.itemPriceYoy}%</span>}</div>
         </div>
         <div className="m-sales-kpi">
           <div className="m-sales-kpi-label">新規客</div>
@@ -175,7 +183,7 @@ const MSales = ({ registerHeader, registerFab }) => {
         </div>
         <div className="m-sales-kpi">
           <div className="m-sales-kpi-label">点数</div>
-          <div className="m-sales-kpi-val">{msNum(kpi.items)}<span className="u">点</span>{kpi.itemsYoy !== null && <span className={`ms-yoy ${kpi.itemsYoy >= 0 ? "up" : "dn"}`}>{kpi.itemsYoy >= 0 ? "▲" : "▼"}{Math.abs(kpi.itemsYoy)}%</span>}</div>
+          <div className="m-sales-kpi-val">{msNum(kpi.items)}<span className="u">点</span>{kpi.itemsYoy !== null && <span className={`ms-yoy ${kpi.itemsYoy >= 100 ? "up" : "dn"}`}>{kpi.itemsYoy}%</span>}</div>
         </div>
       </div>
 
@@ -190,7 +198,7 @@ const MSales = ({ registerHeader, registerFab }) => {
                   <div className="m-sales-rank-top">
                     <span className="m-sales-rank-no">{i + 1}</span>
                     <span className="m-sales-rank-name">{MS_STORE_SHORT[s.store] || s.store}</span>
-                    <span className="m-sales-rank-val">{msYenShort(s.sales)}</span>
+                    <span className="m-sales-rank-val">{msYenShort(s.sales)}{s.yoy !== null && <span className={`ms-yoy ${s.yoy >= 100 ? "up" : "dn"}`}>{s.yoy}%</span>}</span>
                   </div>
                   <div className="m-sales-bar"><div className="m-sales-bar-fill" style={{ width: `${(s.sales / maxStore) * 100}%`, background: MS_COLOR[s.store] }}></div></div>
                 </div>
