@@ -1,6 +1,6 @@
 // モバイル版 ─ フィードバック（閲覧中心）
 // データ: cloudGet("フィードバック") → localStorage miwa.feedback.v3
-//   各行: { id, reportDate, factory, store, type, status, content, item, fileId }
+//   各行: { id, reportDate, factory, store, type, status, content, item, fileId, tagNo }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const MFB_KEY   = "miwa.feedback.v3";
@@ -15,10 +15,16 @@ const MFB_TYPE_COLORS = {
   "再包装":    { bg: "#f3e8fd", color: "#8430ce" },
   "その他":    { bg: "#f1f3f4", color: "#5f6368" },
 };
-const mfbTypeColor = (t) => MFB_TYPE_COLORS[t] || { bg: "#fde7f3", color: "#b80672" };
-const mfbFmt = (s) => { if (!s) return ""; const [,m,d] = (s||"").split("-"); return `${parseInt(m)}/${parseInt(d)}`; };
+const mfbTypeColor  = (t) => MFB_TYPE_COLORS[t] || { bg: "#fde7f3", color: "#b80672" };
+const mfbFmt        = (s) => { if (!s) return ""; const [,m,d] = (s||"").split("-"); return `${parseInt(m)}/${parseInt(d)}`; };
 const mfbDriveThumb = (id) => `https://lh3.googleusercontent.com/d/${id}=w400`;
 const mfbDriveView  = (id) => `https://drive.google.com/file/d/${id}/view`;
+// タグ番号を 0-000 形式にフォーマット
+const mfbTagFmt = (n) => {
+  if (!n) return null;
+  const s = String(n).replace(/\D/g, "").padStart(4, "0");
+  return s.length >= 4 ? s.slice(0, 1) + "-" + s.slice(-3) : null;
+};
 
 // ── データフック ────────────────────────────────────
 const useMFbData = () => {
@@ -57,9 +63,11 @@ const MFbCard = ({ row, onImg }) => {
   const tc = mfbTypeColor(row.type);
   const [expanded, setExpanded] = React.useState(false);
   const long = (row.content || "").length > 100;
+  const tag = mfbTagFmt(row.tagNo);
   return (
     <div className="mfb-card">
       <div className="mfb-card-head">
+        {tag && <span className="mfb-tag">{tag}</span>}
         <span className="mfb-type-badge" style={{ background: tc.bg, color: tc.color }}>{row.type || "その他"}</span>
         {row.status && <span className="mfb-status">{row.status}</span>}
         <span className="mfb-date">{mfbFmt(row.reportDate)}</span>
@@ -76,7 +84,8 @@ const MFbCard = ({ row, onImg }) => {
       )}
       {long && <button className="m-board-more" onClick={() => setExpanded(v => !v)}>{expanded ? "閉じる" : "続きを読む"}</button>}
       {row.fileId && (
-        <a className="mfb-photo-link" href={mfbDriveView(row.fileId)} target="_blank" rel="noreferrer" onClick={(e) => { e.preventDefault(); onImg(mfbDriveThumb(row.fileId)); }}>
+        <a className="mfb-photo-link" href={mfbDriveView(row.fileId)} target="_blank" rel="noreferrer"
+           onClick={(e) => { e.preventDefault(); onImg(mfbDriveThumb(row.fileId)); }}>
           <img src={mfbDriveThumb(row.fileId)} alt="" referrerPolicy="no-referrer" />
         </a>
       )}
@@ -107,8 +116,9 @@ const MFeedback = ({ registerHeader, registerFab }) => {
     return m;
   }, [rows]);
 
-  const typeOrder = Object.keys(MFB_TYPE_COLORS);
-  const activeTypes = typeOrder.filter((t) => typeCounts[t] > 0);
+  const allTypes = Object.keys(MFB_TYPE_COLORS);
+  // KPI: データのある上位2区分
+  const activeTypes = allTypes.filter((t) => typeCounts[t] > 0);
 
   const filtered = typeFilter === "all" ? sorted : sorted.filter((r) => (r.type || "その他") === typeFilter);
 
@@ -131,17 +141,22 @@ const MFeedback = ({ registerHeader, registerFab }) => {
         })}
       </div>
 
-      {/* 区分フィルタ */}
+      {/* 区分フィルタ：常に全7種表示 */}
       <div className="m-chips" style={{ marginBottom: 12 }}>
         <button className={`m-chip ${typeFilter === "all" ? "active" : ""}`} onClick={() => setTypeFilter("all")}>
           すべて<span className="m-pr-tabn">{rows.length}</span>
         </button>
-        {activeTypes.map((t) => (
-          <button key={t} className={`m-chip ${typeFilter === t ? "active" : ""}`} onClick={() => setTypeFilter(t)}
-            style={typeFilter === t ? {} : { borderColor: mfbTypeColor(t).color + "44" }}>
-            {t}<span className="m-pr-tabn">{typeCounts[t]}</span>
-          </button>
-        ))}
+        {allTypes.map((t) => {
+          const n = typeCounts[t] || 0;
+          const tc = mfbTypeColor(t);
+          return (
+            <button key={t} className={`m-chip ${typeFilter === t ? "active" : ""}`}
+              onClick={() => setTypeFilter(t)}
+              style={typeFilter === t ? {} : n === 0 ? { opacity: 0.4 } : { borderColor: tc.color + "44" }}>
+              {t}{n > 0 && <span className="m-pr-tabn">{n}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* リスト */}

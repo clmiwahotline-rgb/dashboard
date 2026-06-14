@@ -402,6 +402,7 @@ const FB_HEADER_HINTS = {
   cause:       ["原因"],
   improvement: ["改善", "対策"],
   content:     ["内容", "詳細", "状況"],
+  tagNo:       ["タグ番号", "タグ", "管理番号", "受付番号", "番号"],
 };
 
 const matchHeader = (h) => {

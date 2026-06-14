@@ -251,20 +251,33 @@ const MVehicle = ({ registerHeader, registerFab }) => {
       {/* アラートバナー */}
       <MVehAlerts vehicles={vehiclesEnriched} />
 
-      {/* インポートボタン */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <button className="m-btn m-btn-ghost" style={{ flex: 1, fontSize: 13 }} onClick={importFromForm} disabled={importing}>
-          {importing ? "取込中…" : "📥 フォームから取込"}
-        </button>
-        <button className="m-btn m-btn-ghost" style={{ flex: "0 0 auto", padding: "13px 14px", fontSize: 13 }} onClick={pull} disabled={!cloudOn || cloudState === "loading"}>
-          🔄
-        </button>
-      </div>
-      {importMsg && (
-        <div style={{ background: importMsg.ok ? "#e6f4ea" : "#fde2e2", color: importMsg.ok ? "#1e7a36" : "#b5271b", borderRadius: 10, padding: "9px 13px", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
-          {importMsg.ok ? "✓ " : "⚠ "}{importMsg.text}
-        </div>
-      )}
+      {/* 直近の報告ログ */}
+      {(fuel.length > 0 || maint.length > 0) && (() => {
+        const items = [
+          ...fuel.map((r) => ({ date: r.date, label: `給油 ${(parseFloat(r.liters)||0).toFixed(1)}L`, vehicle: r.vehicle, sub: window.fmtYenV(r.amount), kind: "fuel" })),
+          ...maint.map((r) => ({ date: r.date, label: r.type || "整備", vehicle: r.vehicle, sub: [r.detail, r.cost ? window.fmtYenV(r.cost) : ""].filter(Boolean).join(" ・ "), kind: r.type === "洗車" ? "wash" : "maint" })),
+        ].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5);
+        const kindColor = { fuel: "#4285F4", maint: "#5f6368", wash: "#00A0B0" };
+        return (
+          <div className="m-card" style={{ marginBottom: 14 }}>
+            <div className="m-card-head">
+              <span className="m-card-title">🕒 直近の報告</span>
+              <button className="m-btn m-btn-ghost" style={{ padding: "6px 12px", fontSize: 12, marginLeft: "auto" }} onClick={pull} disabled={!cloudOn || cloudState === "loading"}>🔄</button>
+            </div>
+            <div className="m-card-body" style={{ padding: "8px 16px 14px" }}>
+              {items.map((it, i) => (
+                <div key={i} className="mveh-row">
+                  <div className="mveh-row-date">{(it.date || "").slice(5).replaceAll("-", "/")}</div>
+                  <div className="mveh-row-main">
+                    <div className="mveh-row-title">{it.vehicle} <span className="mveh-type-tag" style={{ background: (kindColor[it.kind] || "#5f6368") + "22", color: kindColor[it.kind] || "#5f6368" }}>{it.label}</span></div>
+                    {it.sub && <div className="mveh-row-sub">{it.sub}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* タブ */}
       <div className="m-chips" style={{ marginBottom: 12 }}>
@@ -282,9 +295,16 @@ const MVehicle = ({ registerHeader, registerFab }) => {
       {/* 車両タブ */}
       {tab === "vehicles" && (
         <div>
-          <button className="mveh-add-full" onClick={() => setEditVeh("new")}>＋ 車両を追加</button>
+          <button className="mveh-add-full" onClick={importFromForm} disabled={importing}>
+            {importing ? "📥 取込中…" : "📥 フォームから取込"}
+          </button>
+          {importMsg && (
+            <div style={{ background: importMsg.ok ? "#e6f4ea" : "#fde2e2", color: importMsg.ok ? "#1e7a36" : "#b5271b", borderRadius: 10, padding: "9px 13px", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+              {importMsg.ok ? "✓ " : "⚠ "}{importMsg.text}
+            </div>
+          )}
           {sortedVehicles.length === 0
-            ? <div className="m-empty">車両がありません</div>
+            ? <div className="m-empty">車両データがありません</div>
             : sortedVehicles.map((v) => (
               <MVehCard key={v.id || v.name} v={v} economy={eco[v.name]} report={latestReportByVehicle[(v.name || "").trim()]} onEdit={setEditVeh} />
             ))
