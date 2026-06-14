@@ -14,7 +14,6 @@ const M_MENU_ITEMS = [
   { key: "feedback", icon: "💬", label: "フィードバック", sub: "改善・原因", kind: "view", target: "feedback", accent: "#be3a82", bg: "#fde2ef" },
   { key: "vehicle", icon: "🚚", label: "車両管理", sub: "期限・給油・整備", kind: "view", target: "vehicle", accent: "#d9730a", bg: "#fdebcf" },
   { key: "invoice", icon: "🧾", label: "請求書管理", sub: "入金待ち・PDF", kind: "view", target: "invoice", accent: "#0b8043", bg: "#e6f4ea" },
-  { key: "report", icon: "📑", label: "AIレポート", sub: "自動分析・出力", kind: "page", target: "AIレポート.html", accent: "#0f9d8f", bg: "#d9f3ef" },
   { key: "about", icon: "👤", label: "アカウント・その他", sub: "情報・報告・説明書", kind: "view", target: "about", accent: "#5f6368", bg: "#eef0f2" },
 ];
 
