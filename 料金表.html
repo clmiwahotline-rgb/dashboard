@@ -688,7 +688,7 @@ function openEditModal(code, sheet) {
   }
   document.getElementById('pr-edit-p4-wrap').style.display = item.p4 !== undefined && !item.ys && !isSqm ? '' : 'none';
   document.getElementById('pr-edit-p5-wrap').style.display = item.p5 !== undefined && !item.ys && !isSqm ? '' : 'none';
-  document.getElementById('pr-edit-p6-wrap').style.display = item.p6 !== undefined && !item.ys && !isSqm ? '' : 'none';
+  document.getElementById('pr-edit-p6-wrap').style.display = item.p6 !== undefined && !item.ys && !isSqm && !isBlueModal ? '' : 'none';
   if (item.p4) document.getElementById('pr-edit-p4').value = item.p4 || '';
   if (item.p5) document.getElementById('pr-edit-p5').value = item.p5 || '';
   if (item.p6) document.getElementById('pr-edit-p6').value = item.p6 || '';

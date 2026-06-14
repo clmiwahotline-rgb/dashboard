@@ -46,6 +46,17 @@ function mpSheetItems(sheet, brand, edits) {
     const seedSource = brand === "blue" ? (window.PRICE_SEED_BLUE || {}) : (window.PRICE_SEED || {});
     const data = mpLS(mainKey, null) || seedSource;
     base = (data[sheet] || []).map(i => mpApplyEdits(i, edits)).filter(i => !i.deleted);
+    // 青のみわ: localStorageデータのp4/p5が欠落している場合、seedで補完
+    if (brand === "blue" && data !== seedSource) {
+      const seedMap = {};
+      (seedSource[sheet] || []).forEach(i => { if (i.code) seedMap[i.code] = i; });
+      base = base.map(i => {
+        if (i.p4 > 0 || i.p5 > 0) return i; // 既にコース有
+        const s = seedMap[i.code];
+        if (s && (s.p4 > 0 || s.p5 > 0)) return { ...i, p4: s.p4 || 0, p5: s.p5 || 0 };
+        return i;
+      });
+    }
     // YS: 両ブランド共通ーseedから固定
     // 青のみわは青seedのYSを優先、なければ緑seedにフォールバック
     if (sheet === "cleaning") {
