@@ -1,10 +1,9 @@
-// モバイル版 ─ 請求書管理（閲覧中心）
+// モバイル版 ─ 請求書管理（閲覧＋入金ステータス変更）
 // データ: useInvoiceData（polished-invoices-data.jsx）流用
 //   クラウド: "請求書" シート / localStorage: miwa.invoice.v1
 //   各行: { id, no, vendor, title, issueDate, dueDate, amount, status, note, files[] }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// ── ユーティリティ（polished-invoices-data.jsx の window export を流用） ──
 const minvYen   = (n) => "¥" + Math.round(n || 0).toLocaleString("ja-JP");
 const minvSlash = (s) => (s || "").replaceAll("-", "/");
 const minvDays  = (s) => { if (!s) return null; const d = new Date(s + "T00:00:00"); if (isNaN(d)) return null; return Math.round((d - new Date()) / 864e5); };
@@ -14,15 +13,23 @@ const MInvDue = ({ inv }) => {
   if (inv.status === "入金済") return <span className="minv-due minv-paid">{minvSlash(inv.dueDate) || "入金済"}</span>;
   if (!inv.dueDate) return <span className="minv-due minv-none">期限未設定</span>;
   const d = minvDays(inv.dueDate);
-  if (d < 0) return <span className="minv-due minv-over">{minvSlash(inv.dueDate)} ・ {-d}日超過</span>;
+  if (d < 0)  return <span className="minv-due minv-over">{minvSlash(inv.dueDate)} ・ {-d}日超過</span>;
   if (d === 0) return <span className="minv-due minv-over">本日期限</span>;
   if (d <= 7) return <span className="minv-due minv-urgent">{minvSlash(inv.dueDate)} ・ あと{d}日</span>;
   return <span className="minv-due minv-ok">{minvSlash(inv.dueDate)} ・ あと{d}日</span>;
 };
 
 // ── 請求書カード ───────────────────────────────────
-const MInvCard = ({ inv }) => {
+const MInvCard = ({ inv, onToggle }) => {
   const open = inv.status !== "入金済";
+  const [busy, setBusy] = React.useState(false);
+
+  const handleToggle = async () => {
+    if (busy) return;
+    setBusy(true);
+    try { await onToggle(inv); } finally { setBusy(false); }
+  };
+
   return (
     <div className={`minv-card ${open ? "" : "minv-card-paid"}`}>
       <div className="minv-card-head">
@@ -51,13 +58,20 @@ const MInvCard = ({ inv }) => {
           ))}
         </div>
       )}
+      <button
+        className={`minv-toggle-btn${open ? "" : " revert"}`}
+        onClick={handleToggle}
+        disabled={busy}
+      >
+        {busy ? "処理中…" : open ? "✓ 入金済みにする" : "↩ 入金待ちに戻す"}
+      </button>
     </div>
   );
 };
 
 // ── メイン ─────────────────────────────────────────
 const MInvoice = ({ registerHeader, registerFab }) => {
-  const { invoices, cloudOn, cloudState } = window.useInvoiceData();
+  const { invoices, upsert, cloudOn, cloudState } = window.useInvoiceData();
   const [tab, setTab] = React.useState("open");
 
   React.useEffect(() => {
@@ -68,18 +82,22 @@ const MInvoice = ({ registerHeader, registerFab }) => {
     registerFab && registerFab(null);
   }, [cloudState]);
 
-  const open   = invoices.filter((i) => i.status !== "入金済").sort((a, b) => {
+  const handleToggle = React.useCallback(async (inv) => {
+    const newStatus = inv.status === "入金済" ? "入金待ち" : "入金済";
+    await upsert({ ...inv, status: newStatus }, false);
+  }, [upsert]);
+
+  const open = invoices.filter((i) => i.status !== "入金済").sort((a, b) => {
     const da = minvDays(a.dueDate), db = minvDays(b.dueDate);
     if (da == null && db == null) return 0;
     if (da == null) return 1; if (db == null) return -1;
     return da - db;
   });
-  const paid   = invoices.filter((i) => i.status === "入金済").sort((a, b) => (b.dueDate || "").localeCompare(a.dueDate || ""));
+  const paid = invoices.filter((i) => i.status === "入金済").sort((a, b) => (b.dueDate || "").localeCompare(a.dueDate || ""));
   const overdue = open.filter((i) => { const d = minvDays(i.dueDate); return d !== null && d < 0; });
 
-  const openAmt  = open.reduce((s, i) => s + (i.amount || 0), 0);
-  const paidAmt  = paid.reduce((s, i) => s + (i.amount || 0), 0);
-
+  const openAmt = open.reduce((s, i) => s + (i.amount || 0), 0);
+  const paidAmt = paid.reduce((s, i) => s + (i.amount || 0), 0);
   const list = tab === "open" ? open : paid;
 
   return (
@@ -115,7 +133,7 @@ const MInvoice = ({ registerHeader, registerFab }) => {
       {/* リスト */}
       {list.length === 0
         ? <div className="m-empty">{tab === "open" ? "入金待ちの請求書はありません" : "入金済みの請求書はありません"}</div>
-        : list.map((inv) => <MInvCard key={inv.id} inv={inv} />)
+        : list.map((inv) => <MInvCard key={inv.id} inv={inv} onToggle={handleToggle} />)
       }
 
       <div style={{ height: 16 }}></div>

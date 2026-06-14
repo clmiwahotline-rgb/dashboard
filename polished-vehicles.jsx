@@ -825,3 +825,20 @@ const VehiclePage = () => {
 };
 
 window.VehiclePage = VehiclePage;
+// モバイル版で流用するユーティリティをエクスポート
+window.useVehicleData = useVehicleData;
+window.computeFuelEconomy = computeFuelEconomy;
+window.itemStatus = itemStatus;
+window.daysUntil = daysUntil;
+window.DUE_ITEMS = DUE_ITEMS;
+window.STATUS_RANK = STATUS_RANK;
+window.fmtYenV = fmtYenV;
+window.fmtKm = fmtKm;
+window.dateJP = dateJP;
+window.TODAY_ISO = TODAY_ISO;
+window.VehicleEditor = VehicleEditor;
+window.FuelEditor = FuelEditor;
+window.MaintEditor = MaintEditor;
+window.MAINT_COLOR = MAINT_COLOR;
+window.VEH_STORES = VEH_STORES;
+window.VField = VField;
