@@ -25,6 +25,9 @@ const mfbTagFmt = (n) => {
   const s = String(n).replace(/\D/g, "").padStart(4, "0");
   return s.length >= 4 ? s.slice(0, 1) + "-" + s.slice(-3) : null;
 };
+// クラウド生データのフィールド名ゆれを吸収
+const mfbGetTag = (row) =>
+  row.tagNo || row["タグ番号"] || row["タグ"] || row["番号"] || row["管理番号"] || row["受付番号"] || "";
 
 // ── データフック ────────────────────────────────────
 const useMFbData = () => {
@@ -63,7 +66,7 @@ const MFbCard = ({ row, onImg }) => {
   const tc = mfbTypeColor(row.type);
   const [expanded, setExpanded] = React.useState(false);
   const long = (row.content || "").length > 100;
-  const tag = mfbTagFmt(row.tagNo);
+  const tag = mfbTagFmt(mfbGetTag(row));
   return (
     <div className="mfb-card">
       <div className="mfb-card-head">

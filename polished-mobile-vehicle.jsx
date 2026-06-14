@@ -262,7 +262,10 @@ const MVehicle = ({ registerHeader, registerFab }) => {
           <div className="m-card" style={{ marginBottom: 14 }}>
             <div className="m-card-head">
               <span className="m-card-title">🕒 直近の報告</span>
-              <button className="m-btn m-btn-ghost" style={{ padding: "6px 12px", fontSize: 12, marginLeft: "auto" }} onClick={pull} disabled={!cloudOn || cloudState === "loading"}>🔄</button>
+              <button className="m-import-btn" style={{ marginLeft: "auto" }} onClick={pull} disabled={!cloudOn || cloudState === "loading"}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={cloudState === "loading" ? { animation: "spin 0.8s linear infinite" } : {}}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                更新
+              </button>
             </div>
             <div className="m-card-body" style={{ padding: "8px 16px 14px" }}>
               {items.map((it, i) => (
