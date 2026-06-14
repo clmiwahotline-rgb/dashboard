@@ -14,10 +14,10 @@ const M_TABS = [
   { id: "news", label: "お知らせ", comp: "MNews" },
 ];
 // サブ画面（タブバーには出さず、業務メニュー等から遷移）
-const M_SUBVIEWS = { claims: "MClaims", thanks: "MThanks", about: "MAbout", price: "MPrice" };
-const M_TAB_TITLE = { home: "みわダッシュボード", menu: "業務メニュー", shift: "シフト", news: "お知らせ・ニュース", claims: "クレーム・事故品", thanks: "ありがとうカード", about: "アカウント・その他", price: "料金表" };
+const M_SUBVIEWS = { claims: "MClaims", thanks: "MThanks", about: "MAbout", price: "MPrice", board: "MBoard", sales: "MSales" };
+const M_TAB_TITLE = { home: "みわダッシュボード", menu: "業務メニュー", shift: "シフト", news: "お知らせ・ニュース", claims: "クレーム・事故品", thanks: "ありがとうカード", about: "アカウント・その他", price: "料金表", board: "共有ボード", sales: "売上レポート" };
 // サブ画面で押されたとき、下部タブのどれをハイライトするか
-const M_PARENT_TAB = { claims: "menu", thanks: "menu", about: "menu", price: "menu" };
+const M_PARENT_TAB = { claims: "menu", thanks: "menu", about: "menu", price: "menu", board: "menu", sales: "menu" };
 
 const MApp = () => {
   const initial = (() => {

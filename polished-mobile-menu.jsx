@@ -5,10 +5,10 @@ const M_MENU_ITEMS = [
   { key: "claims", icon: "⚠️", label: "クレーム・事故品", sub: "入力・確認", kind: "view", target: "claims", accent: "#c5221f", bg: "#fde2e2" },
   { key: "thanks", icon: "🙏", label: "ありがとうカード", sub: "閲覧・コメント", kind: "view", target: "thanks", accent: "#1e8e3e", bg: "#e6f4ea" },
   // external … PC版ページへ
-  { key: "board", icon: "📌", label: "共有ボード", sub: "投稿・添付", kind: "page", target: "共有ボード.html", accent: "#2a6fdb", bg: "#e7f0fd" },
+  { key: "board", icon: "📌", label: "共有ボード", sub: "投稿・添付", kind: "view", target: "board", accent: "#2a6fdb", bg: "#e7f0fd" },
   { key: "price", icon: "🏷️", label: "料金表", sub: "クリーニング・加工・物販", kind: "view", target: "price", accent: "#1e8e3e", bg: "#e6f4ea" },
   { key: "faq", icon: "📝", label: "FAQ管理", sub: "知識・回答編集", kind: "page", target: "FAQ管理.html", accent: "#0b8043", bg: "#d9f3ef" },
-  { key: "sales", icon: "💰", label: "売上レポート", sub: "店舗別・昨対比", kind: "page", target: "売上レポート.html", accent: "#9a6700", bg: "#fef3cd" },
+  { key: "sales", icon: "💰", label: "売上レポート", sub: "店舗別・昨対比", kind: "view", target: "sales", accent: "#9a6700", bg: "#fef3cd" },
   { key: "stain", icon: "🧴", label: "シミ抜き報告", sub: "処理・除去率", kind: "page", target: "シミ抜き報告.html", accent: "#1a73e8", bg: "#e3f0fd" },
   { key: "factory", icon: "🏭", label: "工場報告", sub: "生産性・工数", kind: "page", target: "工場報告.html", accent: "#8430ce", bg: "#f3e8fd" },
   { key: "feedback", icon: "💬", label: "フィードバック", sub: "改善・原因", kind: "page", target: "フィードバック.html", accent: "#be3a82", bg: "#fde2ef" },
@@ -41,7 +41,7 @@ const MMenu = ({ go, registerHeader, registerFab }) => {
           </button>
         ))}
       </div>
-      <div className="m-menu-note">📌 共有ボード・売上などはPC版ページで開きます。クレーム／ありがとうはスマホ画面で操作できます。</div>
+      <div className="m-menu-note">クレーム／ありがとう／共有ボード／料金表はスマホ画面で操作できます。</div>
       <div style={{ height: 12 }}></div>
     </div>
   );

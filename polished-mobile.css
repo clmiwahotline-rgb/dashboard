@@ -181,6 +181,42 @@ body {
 .m-card-body > .m-board + .m-board { margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); }
 .m-board-new { font-size: 10px; font-weight: 800; color: #fff; background: var(--accent); padding: 1px 7px; border-radius: 999px; }
 .m-board-foot { margin-top: 8px; display: flex; }
+/* ── 売上レポート ────────────────────────────────────── */
+.m-sales-months { margin-bottom: 10px; }
+.m-sales-storefilter { margin-bottom: 14px; }
+.m-sales-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
+.m-sales-kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px 15px; box-shadow: var(--shadow-card); }
+.m-sales-kpi.big { grid-column: 1 / -1; background: linear-gradient(135deg, var(--accent-soft), var(--card)); }
+.m-sales-kpi-label { font-size: 11.5px; font-weight: 700; color: var(--ink-mute); }
+.m-sales-kpi-val { font-size: 22px; font-weight: 800; color: var(--ink); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.m-sales-kpi.big .m-sales-kpi-val { font-size: 30px; color: var(--accent-ink); }
+.m-sales-kpi-val .u { font-size: 13px; font-weight: 700; color: var(--ink-mute); margin-left: 2px; }
+.m-sales-kpi-sub { font-size: 11px; font-weight: 600; color: var(--ink-mute); margin-top: 3px; }
+.m-sales-section { margin-top: 18px; }
+.m-sales-rank { padding: 9px 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.m-sales-rank + .m-sales-rank { border-top: 1px solid var(--line); }
+.m-sales-rank:active { opacity: 0.6; }
+.m-sales-rank-top { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+.m-sales-rank-no { width: 19px; height: 19px; border-radius: 50%; background: var(--card-2); color: var(--ink-soft); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.m-sales-rank-name { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.m-sales-rank-val { margin-left: auto; font-size: 14px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.m-sales-bar { height: 7px; border-radius: 999px; background: var(--card-2); overflow: hidden; }
+.m-sales-bar-fill { height: 100%; border-radius: 999px; }
+.m-sales-trend { display: flex; align-items: flex-end; gap: 3px; height: 120px; overflow-x: auto; padding-bottom: 4px; }
+.m-sales-trend-col { flex: 1; min-width: 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.m-sales-trend-bar { width: 70%; min-height: 4px; background: var(--accent); border-radius: 4px 4px 0 0; }
+.m-sales-trend-day { font-size: 9px; color: var(--ink-mute); margin-top: 4px; }
+/* 共有ボード フルページ */
+.m-board-chips { margin-bottom: 12px; }
+.m-board-text.clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.m-board-more { margin-top: 4px; border: 0; background: none; color: var(--accent-ink); font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 2px 0; }
+.m-board-docs { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.m-board-doc { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--accent-ink); text-decoration: none; background: var(--card-2); padding: 7px 11px; border-radius: 10px; }
+.m-board-pending { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.m-board-pend-item { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--card-2); display: flex; align-items: center; justify-content: center; }
+.m-board-pend-item img { width: 100%; height: 100%; object-fit: cover; }
+.m-board-pend-doc { font-size: 10px; padding: 4px; text-align: center; color: var(--ink-mute); word-break: break-word; }
+.m-board-pend-x { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.6); color: #fff; font-size: 13px; cursor: pointer; line-height: 1; }
 .m-board-confirm { font-size: 12px; font-weight: 800; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #cfe0f8; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
 .m-board-confirm:active { transform: translateY(1px); }
 .m-board-seen { font-size: 11.5px; font-weight: 700; color: var(--ink-mute); }
