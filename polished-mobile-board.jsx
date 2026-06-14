@@ -128,33 +128,35 @@ const MBoardCard = ({ post, onImg }) => {
   const [expanded, setExpanded] = React.useState(false);
   const long = (post.text || "").length > 120;
   return (
-    <div className="m-board">
-      <div className="m-board-av" style={{ background: `linear-gradient(135deg, oklch(0.66 0.13 ${hue}), oklch(0.55 0.15 ${(hue + 40) % 360}))` }}>
-        {who.replace(/^[^/]*\/\s*/, "").trim()[0] || "?"}
-      </div>
-      <div className="m-board-body">
-        <div className="m-board-head">
-          <span className="m-board-who">{who}</span>
-          {badge && <span className="m-board-badge" style={{ background: badge.b, color: badge.c }}>{post.badge}</span>}
-          <span className="m-board-time">{mbRel(Number(post.ts) || post.ts)}</span>
+    <div className="m-board-post">
+      <div className="m-board">
+        <div className="m-board-av" style={{ background: `linear-gradient(135deg, oklch(0.66 0.13 ${hue}), oklch(0.55 0.15 ${(hue + 40) % 360}))` }}>
+          {who.replace(/^[^/]*\/\s*/, "").trim()[0] || "?"}
         </div>
-        {post.text && (
-          <div className={`m-board-text ${(!expanded && long) ? "clamp" : ""}`} onClick={() => long && setExpanded((v) => !v)}>
-            {post.text}
+        <div className="m-board-body">
+          <div className="m-board-head">
+            <span className="m-board-who">{who}</span>
+            {badge && <span className="m-board-badge" style={{ background: badge.b, color: badge.c }}>{post.badge}</span>}
+            <span className="m-board-time">{mbRel(Number(post.ts) || post.ts)}</span>
           </div>
-        )}
-        {long && <button className="m-board-more" onClick={() => setExpanded((v) => !v)}>{expanded ? "閉じる" : "続きを読む"}</button>}
-        {thumb && <div className="m-board-thumb" onClick={() => onImg(thumb)}><img src={thumb} alt="" referrerPolicy="no-referrer" /></div>}
-        {docs.length > 0 && (
-          <div className="m-board-docs">
-            {docs.map((f, i) => (
-              <a key={i} className="m-board-doc" href={f.href || f.url || "#"} target="_blank" rel="noreferrer">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
-                {f.name}
-              </a>
-            ))}
-          </div>
-        )}
+          {post.text && (
+            <div className={`m-board-text ${(!expanded && long) ? "clamp" : ""}`} onClick={() => long && setExpanded((v) => !v)}>
+              {post.text}
+            </div>
+          )}
+          {long && <button className="m-board-more" onClick={() => setExpanded((v) => !v)}>{expanded ? "閉じる" : "続きを読む"}</button>}
+          {thumb && <div className="m-board-thumb" onClick={() => onImg(thumb)}><img src={thumb} alt="" referrerPolicy="no-referrer" /></div>}
+          {docs.length > 0 && (
+            <div className="m-board-docs">
+              {docs.map((f, i) => (
+                <a key={i} className="m-board-doc" href={f.href || f.url || "#"} target="_blank" rel="noreferrer">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
+                  {f.name}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -265,10 +267,8 @@ const MBoard = ({ registerFab, registerHeader }) => {
       {filtered.length === 0 ? (
         <div className="m-empty" style={{ marginTop: 40 }}>投稿はまだありません</div>
       ) : (
-        <div className="m-card" style={{ padding: 0 }}>
-          <div className="m-card-body" style={{ padding: 0 }}>
-            {filtered.map((p) => <MBoardCard key={String(p.id)} post={p} onImg={setLightbox} />)}
-          </div>
+        <div>
+          {filtered.map((p) => <MBoardCard key={String(p.id)} post={p} onImg={setLightbox} />)}
         </div>
       )}
       <div style={{ height: 16 }}></div>
