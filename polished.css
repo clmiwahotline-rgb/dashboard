@@ -1416,6 +1416,18 @@ textarea.input {
   font-family: ui-monospace, "JetBrains Mono", monospace;
   font-size: 11px;
 }
+.fb-tag-no {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--card-2);
+  border: 1px solid var(--line-strong);
+  padding: 1px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .fb-content {
   font-size: 13.5px;
   line-height: 1.55;

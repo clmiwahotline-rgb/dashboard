@@ -31,6 +31,11 @@ const fmtFbDate = (s) => {
   const [, m, d] = s.split("-");
   return `${parseInt(m)}/${parseInt(d)}`;
 };
+const fmtFbTag = (n) => {
+  if (!n) return null;
+  const s = String(n).replace(/\D/g, "").padStart(4, "0");
+  return s.length >= 4 ? s.slice(0, 1) + "-" + s.slice(-3) : null;
+};
 
 // Useful: localStorage helper
 const useFbState = (key, initial) => {
@@ -201,6 +206,7 @@ const FbCard = ({ fb, onEdit, onDelete, onOpenImg }) => {
       <div className="fb-body">
         <div className="fb-meta">
           <StoreTag name={fb.store} />
+          {fmtFbTag(fb.tag) && <span className="fb-tag-no">{fmtFbTag(fb.tag)}</span>}
           <span className="fb-date">{fmtFbDate(fb.reportDate)}</span>
         </div>
         <div className="fb-content">{fb.content}</div>
