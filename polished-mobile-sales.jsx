@@ -83,21 +83,24 @@ const MSales = ({ registerHeader, registerFab }) => {
 
   return (
     <div>
-      {/* 月セレクタ */}
-      <div className="m-chips m-sales-months">
-        {months.map((m) => (
-          <button key={m} className={`m-chip ${month === m ? "active" : ""}`} onClick={() => setMonth(m)}>
-            {m.slice(0, 4)}/{parseInt(m.slice(5, 7))}月
-          </button>
-        ))}
-      </div>
-
-      {/* 店舗フィルタ */}
-      <div className="m-sales-storefilter">
-        <select className="m-input" value={store} onChange={(e) => setStore(e.target.value)}>
-          <option value="">全店合計</option>
-          {MS_STORES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+      {/* 月・店舗フィルタ */}
+      <div className="m-sales-filters">
+        <div className="m-field">
+          <label className="m-label">対象月</label>
+          <select className="m-input" value={month} onChange={(e) => setMonth(e.target.value)}>
+            {months.length === 0 && <option value="">データなし</option>}
+            {months.map((m) => (
+              <option key={m} value={m}>{m.slice(0, 4)}年{parseInt(m.slice(5, 7))}月</option>
+            ))}
+          </select>
+        </div>
+        <div className="m-field">
+          <label className="m-label">店舗</label>
+          <select className="m-input" value={store} onChange={(e) => setStore(e.target.value)}>
+            <option value="">全店合計</option>
+            {MS_STORES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* KPIカード */}
