@@ -6,6 +6,8 @@
 //  3. ワイシャツはgreenSeedの6品目固定（両ブランド共通）
 //  4. 分類はアコーディオン（初期閉じ・1つのみ開く）
 //  5. YSアイテムはコース展開しない（ys:true のみ定価＋会員価格）
+//  6. sqmアイテム（ジュータン等）は 円/m²＋縦×横計算器
+//  7. カテゴリ表示順はPC版 CLEAN_ORDER/SPECIAL_ORDER に準拠
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const MP_SHEETS = [
@@ -15,12 +17,22 @@ const MP_SHEETS = [
   { id: "function", label: "加工" },
   { id: "sales",    label: "物販" },
 ];
-const MP_COURSES = [
+const MP_COURSES_GREEN = [
   { key: "p4", label: "デリケート" },
   { key: "p5", label: "ブランド" },
   { key: "p6", label: "ハイブランド" },
 ];
+const MP_COURSES_BLUE = [
+  { key: "p4", label: "スタンダード" },
+  { key: "p5", label: "プレミアム" },
+];
+// 後方互換用エイリアス
+const MP_COURSES = MP_COURSES_GREEN;
 const MP_TAX = 1.10;
+
+// PC版と同じカテゴリ表示順（半角カナのまま保持 → mpNorm で照合）
+const MP_CLEAN_ORDER = ['ﾜｲｼｬﾂ','ｼｬﾂ・ﾌﾞﾗｳｽ','ﾍﾞｽﾄ','ｼﾞｬｹｯﾄ','ﾌﾞﾙｿﾞﾝ','ｺｰﾄ','ﾜﾝﾋﾟｰｽ','ﾌｫｰﾏﾙ','ｽﾗｯｸｽ','ｽｶｰﾄ','ﾆｯﾄ','ﾀﾞｳﾝ','ｽﾎﾟｰﾂ','ﾕﾆﾌｫｰﾑ','学生服','子供服','ﾈｸﾀｲ','ｽｶｰﾌ','付属品','外注・ﾄﾞﾚｽ','その他'];
+const MP_SPECIAL_ORDER = ['寝具','着物','和装品','革製品','ﾊﾞｯｸﾞ','靴','ｶｰﾃﾝ','ｼﾞｭｰﾀﾝ','ぬいぐるみ','帽子','外注・ﾄﾞﾚｽ'];
 
 const mpLS = (k, fb) => { try { const s = localStorage.getItem(k); if (s) return JSON.parse(s); } catch (e) {} return fb; };
 const mpEditsKey = (brand) => brand === "blue" ? "miwa.price.edits.blue.v1" : "miwa.price.edits.v1";
@@ -41,6 +53,14 @@ function mpSheetItems(sheet, brand, edits) {
         base = [...ysFixed, ...base];
       }
     }
+    // sqmアイテム（ジュータン等）はseedから常に固定
+    if (sheet === "special") {
+      const sqmFixed = ((window.PRICE_SEED || {}).special || []).filter(i => i.sqm);
+      if (sqmFixed.length) {
+        base = base.filter(i => !/^SQM/.test(i.code));
+        base = [...base, ...sqmFixed];
+      }
+    }
   } else if (sheet === "function") {
     const d = mpLS("miwa.price.func.v1", null) || window.FUNCTION_SEED || null;
     base = d ? (d.items || []).map(i => mpApplyEdits(i, edits)).filter(i => !i.deleted) : [];
@@ -52,13 +72,89 @@ function mpSheetItems(sheet, brand, edits) {
   return [...base, ...custom];
 }
 
+// カテゴリをPC版と同じ順に並べる
+function mpSortGroups(groups, sheet) {
+  const order = sheet === "cleaning" ? MP_CLEAN_ORDER
+              : sheet === "special"  ? MP_SPECIAL_ORDER
+              : null;
+  if (!order) return groups;
+  const normOrder = order.map(o => o.normalize("NFKC").toLowerCase());
+  return [...groups].sort((a, b) => {
+    const ai = normOrder.indexOf((a.cat || "").normalize("NFKC").toLowerCase());
+    const bi = normOrder.indexOf((b.cat || "").normalize("NFKC").toLowerCase());
+    const an = ai < 0 ? 999 : ai;
+    const bn = bi < 0 ? 999 : bi;
+    return an - bn;
+  });
+}
+
 const mpYen = (n) => "¥" + Math.round(n).toLocaleString("ja-JP");
 const mpDisp = (s) => (s || "").normalize("NFKC"); // 半角カナ→全角 表示用（変更しないこと）
-const mpHasCourses = (it) => !it.ys && ((it.p4 > 0) || (it.p5 > 0) || (it.p6 > 0)); // ys品目はコース展開しない
+const mpHasCourses = (it) => !it.ys && ((it.p4 > 0) || (it.p5 > 0) || (it.p6 > 0));
 const mpAllZero = (it) => !it.p1 && !it.p4 && !it.p5 && !it.p6 && !(it.sqm && it.sqmPrice > 0);
 const mpNorm = (s) => (s || "").normalize("NFKC").replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)).toLowerCase();
 
-const MPriceRow = ({ item, tax, q }) => {
+// sqmアイテム行（縦×横 計算器付き）
+const MPriceSqmRow = ({ item, tax, q }) => {
+  const [open, setOpen] = React.useState(false);
+  const [w, setW] = React.useState("");
+  const [h, setH] = React.useState("");
+  const name = mpDisp(item.name || "");
+  const unitP = tax ? Math.round(item.sqmPrice * MP_TAX) : item.sqmPrice;
+  const total = (parseFloat(w) > 0 && parseFloat(h) > 0)
+    ? Math.round(unitP * parseFloat(w) * parseFloat(h))
+    : null;
+
+  const renderName = () => {
+    if (!q) return name;
+    const idx = mpNorm(name).indexOf(mpNorm(q));
+    if (idx < 0) return name;
+    return (<>{name.slice(0, idx)}<mark className="m-pr-hl">{name.slice(idx, idx + q.length)}</mark>{name.slice(idx + q.length)}</>);
+  };
+
+  return (
+    <div className="m-pr-item tappable" onClick={() => setOpen(v => !v)}>
+      <div className="m-pr-item-top">
+        <div className="m-pr-item-name">{renderName()}</div>
+        <div className="m-pr-item-price">
+          <b>{mpYen(unitP)}</b>
+          <span className="m-pr-sqm-unit">/m²</span>
+          <svg className={`m-pr-chev ${open ? "open" : ""}`} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </div>
+      {open && (
+        <div className="m-pr-sqm-calc" onClick={e => e.stopPropagation()}>
+          <div className="m-pr-sqm-inputs">
+            <label>縦
+              <input type="number" min="0.1" step="0.1" placeholder="m" value={w}
+                onChange={e => setW(e.target.value)} className="m-pr-sqm-input" />
+            </label>
+            <span className="m-pr-sqm-x">×</span>
+            <label>横
+              <input type="number" min="0.1" step="0.1" placeholder="m" value={h}
+                onChange={e => setH(e.target.value)} className="m-pr-sqm-input" />
+            </label>
+          </div>
+          {total !== null ? (
+            <div className="m-pr-sqm-total">
+              合計 <b>{mpYen(total)}</b>
+              <span style={{ fontSize: 12, color: "var(--ink-mute)", marginLeft: 6 }}>
+                ({parseFloat(w)}m × {parseFloat(h)}m = {(parseFloat(w)*parseFloat(h)).toFixed(2)}m²)
+              </span>
+            </div>
+          ) : (
+            <div className="m-pr-sqm-hint">縦・横を入力すると合計金額が出ます</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const MPriceRow = ({ item, tax, q, brand }) => {
+  const courses_def = brand === 'blue' ? MP_COURSES_BLUE : MP_COURSES_GREEN;
   const [open, setOpen] = React.useState(false);
   const px = (v) => tax ? Math.round(v * MP_TAX) : v;
   const courses = mpHasCourses(item);
@@ -67,24 +163,14 @@ const MPriceRow = ({ item, tax, q }) => {
 
   const renderName = () => {
     if (!q) return name;
-    const normN = mpNorm(name);
-    const normQ = mpNorm(q);
-    const idx = normN.indexOf(normQ);
+    const idx = mpNorm(name).indexOf(mpNorm(q));
     if (idx < 0) return name;
     return (<>{name.slice(0, idx)}<mark className="m-pr-hl">{name.slice(idx, idx + q.length)}</mark>{name.slice(idx + q.length)}</>);
   };
 
-  // sqmアイテム（ジュータン系）: sqmPriceを 円/m² で表示
+  // sqmアイテムは専用コンポーネントに委譲
   if (item.sqm && item.sqmPrice > 0) {
-    const sqmP = tax ? Math.round(item.sqmPrice * MP_TAX) : item.sqmPrice;
-    return (
-      <div className="m-pr-item">
-        <div className="m-pr-item-top">
-          <div className="m-pr-item-name">{renderName()}</div>
-          <div className="m-pr-item-price"><b>{mpYen(sqmP)}</b><span className="m-pr-sqm-unit">/m²</span></div>
-        </div>
-      </div>
-    );
+    return <MPriceSqmRow item={item} tax={tax} q={q} />;
   }
 
   return (
@@ -107,7 +193,7 @@ const MPriceRow = ({ item, tax, q }) => {
       </div>
       {courses && open && (
         <div className="m-pr-courses">
-          {MP_COURSES.map(c => item[c.key] > 0 && (
+          {courses_def.map(c => item[c.key] > 0 && (
             <div key={c.key} className="m-pr-course">
               <span className="lbl">{c.label}</span>
               <span className="val">{mpYen(px(item[c.key]))}</span>
@@ -120,7 +206,7 @@ const MPriceRow = ({ item, tax, q }) => {
 };
 
 // アコーディオン カテゴリグループ
-const MPriceCatGroup = ({ cat, items, tax, q, isOpen, onToggle }) => (
+const MPriceCatGroup = ({ cat, items, tax, q, isOpen, onToggle, brand }) => (
   <div className="m-pr-group">
     <div className={`m-pr-cat m-pr-cat-toggle ${isOpen ? "open" : ""}`} onClick={onToggle}>
       <span>{mpDisp(cat)}</span>
@@ -135,7 +221,7 @@ const MPriceCatGroup = ({ cat, items, tax, q, isOpen, onToggle }) => (
     {isOpen && (
       <div className="m-pr-list">
         {items.map((it, i) => (
-          <MPriceRow key={(it.code || it.name) + "_" + i} item={it} tax={tax} q={q} />
+          <MPriceRow key={(it.code || it.name) + "_" + i} item={it} tax={tax} q={q} brand={brand || 'green'} />
         ))}
       </div>
     )}
@@ -149,19 +235,17 @@ const MPrice = ({ registerHeader, registerFab }) => {
   const [sheet, setSheet] = React.useState("cleaning");
   const [q, setQ] = React.useState("");
   const [tax, setTax] = React.useState(false);
-  const [openCat, setOpenCat] = React.useState(null); // アコーディオン：開いているカテゴリ（null=全閉）
+  const [openCat, setOpenCat] = React.useState(null);
 
   React.useEffect(() => {
     registerHeader && registerHeader({ title: "料金表", sub: "価格検索" });
     registerFab && registerFab(null);
   }, []);
 
-  // シート・ブランド切替でアコーディオンリセット
   React.useEffect(() => { setOpenCat(null); }, [sheet, brand]);
 
   const edits = React.useMemo(() => mpLS(mpEditsKey(brand), {}), [brand]);
   const hasBlue = !!(window.PRICE_SEED_BLUE && (window.PRICE_SEED_BLUE.cleaning || []).length);
-
   const nq = q.trim();
 
   const allForSearch = React.useMemo(() => {
@@ -189,41 +273,30 @@ const MPrice = ({ registerHeader, registerFab }) => {
       if (idx[key] == null) { idx[key] = groups.length; groups.push({ cat: key, items: [] }); }
       groups[idx[key]].items.push(it);
     });
-    return groups;
-  }, [nq, allForSearch, sheetItems]);
+    // 通常表示時のみカテゴリ順を適用
+    return nq ? groups : mpSortGroups(groups, sheet);
+  }, [nq, allForSearch, sheetItems, sheet]);
 
   const totalShown = grouped.reduce((a, g) => a + g.items.length, 0);
 
   return (
     <div>
-      {/* 検索ボックス */}
       <div className="m-pr-searchbar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
         </svg>
-        <input
-          className="m-pr-search"
-          placeholder="品名で検索（例：ワイシャツ、ダウン）"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-        />
+        <input className="m-pr-search" placeholder="品名で検索（例：ワイシャツ、ダウン）"
+          value={q} onChange={e => setQ(e.target.value)} />
         {q && <button className="m-pr-clear" onClick={() => setQ("")} aria-label="クリア">×</button>}
       </div>
 
-      {/* ブランド＋税込トグル */}
       <div className="m-pr-controls">
         {hasBlue && (
           <div className="m-pr-seg">
-            <button
-              className={brand === "green" ? "on" : ""}
-              onClick={() => { setBrand("green"); try { localStorage.setItem("miwa.price.brand", "green"); } catch (e) {} }}>
-              緑のみわ
-            </button>
-            <button
-              className={brand === "blue" ? "on blue" : ""}
-              onClick={() => { setBrand("blue"); try { localStorage.setItem("miwa.price.brand", "blue"); } catch (e) {} }}>
-              青のみわ
-            </button>
+            <button className={brand === "green" ? "on" : ""}
+              onClick={() => { setBrand("green"); try { localStorage.setItem("miwa.price.brand", "green"); } catch (e) {} }}>緑のみわ</button>
+            <button className={brand === "blue" ? "on blue" : ""}
+              onClick={() => { setBrand("blue"); try { localStorage.setItem("miwa.price.brand", "blue"); } catch (e) {} }}>青のみわ</button>
           </div>
         )}
         <button className={`m-pr-tax ${tax ? "on" : ""}`} onClick={() => setTax(v => !v)}>
@@ -231,7 +304,6 @@ const MPrice = ({ registerHeader, registerFab }) => {
         </button>
       </div>
 
-      {/* シートタブ（検索中は非表示） */}
       {!nq && (
         <div className="m-chips m-pr-tabs">
           {MP_SHEETS.map(s => {
@@ -247,23 +319,20 @@ const MPrice = ({ registerHeader, registerFab }) => {
 
       {nq && <div className="m-pr-resultcount">「{q}」の検索結果：{totalShown}件</div>}
 
-      {/* 一覧 */}
       {grouped.length === 0 ? (
         <div className="m-empty" style={{ marginTop: 28 }}>
           {nq ? "該当する品目がありません" : "品目がありません"}
         </div>
       ) : nq ? (
-        /* 検索中：全展開 */
         grouped.map((g, gi) => (
           <div key={g.cat + gi} className="m-pr-group">
             <div className="m-pr-cat">{mpDisp(g.cat)}<span className="m-pr-catn">{g.items.length}</span></div>
             <div className="m-pr-list">
-              {g.items.map((it, i) => <MPriceRow key={(it.code || it.name) + "_" + i} item={it} tax={tax} q={nq} />)}
+              {g.items.map((it, i) => <MPriceRow key={(it.code || it.name) + "_" + i} item={it} tax={tax} q={nq} brand={brand} />)}
             </div>
           </div>
         ))
       ) : (
-        /* 通常：アコーディオン（初期全閉・1つのみ開く） */
         grouped.map((g, gi) => (
           <MPriceCatGroup
             key={g.cat + gi}
@@ -273,6 +342,7 @@ const MPrice = ({ registerHeader, registerFab }) => {
             q={nq}
             isOpen={openCat === g.cat}
             onToggle={() => setOpenCat(prev => prev === g.cat ? null : g.cat)}
+            brand={brand}
           />
         ))
       )}

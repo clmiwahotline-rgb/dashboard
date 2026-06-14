@@ -154,7 +154,7 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 .pr-action-menu button.danger { color: #dc2626; }
 .pr-action-menu button.danger:hover { background: #fee2e2; }
 /* 編集モーダル */
-.pr-edit-modal { position: fixed; inset: 0; z-index: 1400; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
+.pr-edit-modal { position: fixed; inset: 0; z-index: 9999; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
 .pr-edit-modal.open { display: flex; }
 .pr-edit-sheet { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 520px; padding: 24px 20px 32px; }
 .pr-edit-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
@@ -302,12 +302,16 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
       <label id="pr-edit-p1-label">料金（円）</label>
       <input type="number" id="pr-edit-p1" placeholder="0">
     </div>
+    <div class="pr-edit-field" id="pr-edit-sqm-wrap" style="display:none">
+      <label>㎡単価（円）</label>
+      <input type="number" id="pr-edit-sqm" placeholder="0">
+    </div>
     <div class="pr-edit-field" id="pr-edit-p4-wrap" style="display:none">
-      <label>デリケートコース（円）</label>
+      <label id="pr-edit-p4-label">デリケートコース（円）</label>
       <input type="number" id="pr-edit-p4" placeholder="0">
     </div>
     <div class="pr-edit-field" id="pr-edit-p5-wrap" style="display:none">
-      <label>ブランドコース（円）</label>
+      <label id="pr-edit-p5-label">ブランドコース（円）</label>
       <input type="number" id="pr-edit-p5" placeholder="0">
     </div>
     <div class="pr-edit-field" id="pr-edit-p6-wrap" style="display:none">
@@ -668,19 +672,30 @@ let editTargetCode = null;
 function openEditModal(code, sheet) {
   editTargetCode = code;
   const allItems = getAllItemsBySheet(sheet);
-  const base = allItems.find(i => i.code === code);
-  if (!base) return;
+  const base = allItems.find(i => String(i.code) === String(code));
+  if (!base) { console.error('編集対象が見つかりません:', code, sheet, allItems.map(i=>i.code)); return; }
   const item = applyEdits(base);
-  document.getElementById('pr-edit-title').textContent = '編集：' + base.name;
+  document.getElementById('pr-edit-title').textContent = '編集：' + (item.name||base.name);
   document.getElementById('pr-edit-name').value = item.name || '';
-  document.getElementById('pr-edit-p1').value = item.p1 || '';
-  document.getElementById('pr-edit-p1-label').textContent = item.ys ? '定価（円）' : '料金（円）';
-  document.getElementById('pr-edit-p4-wrap').style.display = item.p4 !== undefined && !item.ys ? '' : 'none';
-  document.getElementById('pr-edit-p5-wrap').style.display = item.p5 !== undefined && !item.ys ? '' : 'none';
-  document.getElementById('pr-edit-p6-wrap').style.display = item.p6 !== undefined && !item.ys ? '' : 'none';
+  // sqmアイテム: 単価入力を表示、p1入力を非表示
+  const isSqm = !!(item.sqm);
+  document.getElementById('pr-edit-sqm-wrap').style.display = isSqm ? '' : 'none';
+  document.getElementById('pr-edit-p1-wrap').style.display = isSqm ? 'none' : '';
+  if (isSqm) { document.getElementById('pr-edit-sqm').value = item.sqmPrice || ''; }
+  else {
+    document.getElementById('pr-edit-p1').value = item.p1 || '';
+    document.getElementById('pr-edit-p1-label').textContent = item.ys ? '定価（円）' : '料金（円）';
+  }
+  document.getElementById('pr-edit-p4-wrap').style.display = item.p4 !== undefined && !item.ys && !isSqm ? '' : 'none';
+  document.getElementById('pr-edit-p5-wrap').style.display = item.p5 !== undefined && !item.ys && !isSqm ? '' : 'none';
+  document.getElementById('pr-edit-p6-wrap').style.display = item.p6 !== undefined && !item.ys && !isSqm ? '' : 'none';
   if (item.p4) document.getElementById('pr-edit-p4').value = item.p4 || '';
   if (item.p5) document.getElementById('pr-edit-p5').value = item.p5 || '';
   if (item.p6) document.getElementById('pr-edit-p6').value = item.p6 || '';
+  // コースラベルをブランド別に設定
+  const isBlueModal = currentBrand === 'blue';
+  const p4lbl = document.getElementById('pr-edit-p4-label'); if(p4lbl) p4lbl.textContent = (isBlueModal ? 'スタンダードコース' : 'デリケートコース') + '（円）';
+  const p5lbl = document.getElementById('pr-edit-p5-label'); if(p5lbl) p5lbl.textContent = (isBlueModal ? 'プレミアムコース' : 'ブランドコース') + '（円）';
   document.getElementById('pr-edit-modal').classList.add('open');
 }
 function closeEditModal() {
@@ -735,13 +750,16 @@ function saveAddItem() {
 }
 function saveEditItem() {
   if (!editTargetCode) return;
+  const base2 = getAllItemsBySheet(menuTargetSheet || 'cleaning').find(i => String(i.code) === String(editTargetCode));
+  const isSqm = !!(base2 && base2.sqm);
   const edit = {
     code: editTargetCode,
     name: document.getElementById('pr-edit-name').value.trim() || undefined,
-    p1: Number(document.getElementById('pr-edit-p1').value) || undefined,
-    p4: Number(document.getElementById('pr-edit-p4').value) || undefined,
-    p5: Number(document.getElementById('pr-edit-p5').value) || undefined,
-    p6: Number(document.getElementById('pr-edit-p6').value) || undefined,
+    p1: !isSqm ? (Number(document.getElementById('pr-edit-p1').value) || undefined) : undefined,
+    p4: !isSqm ? (Number(document.getElementById('pr-edit-p4').value) || undefined) : undefined,
+    p5: !isSqm ? (Number(document.getElementById('pr-edit-p5').value) || undefined) : undefined,
+    p6: !isSqm ? (Number(document.getElementById('pr-edit-p6').value) || undefined) : undefined,
+    sqmPrice: isSqm ? (Number(document.getElementById('pr-edit-sqm').value) || undefined) : undefined,
     deleted: false
   };
   Object.keys(edit).forEach(k => edit[k] === undefined && delete edit[k]);
@@ -758,15 +776,33 @@ function deleteEditItem() {
   renderAll();
 }
 function getAllItemsBySheet(sheet) {
+  if (!priceData && sheet !== 'function' && sheet !== 'sales') return []; // nullガード
   let base = [];
   if (sheet === 'cleaning') base = priceData.cleaning || [];
   else if (sheet === 'special') base = priceData.special || [];
   else if (sheet === 'reform') base = priceData.reform || [];
   else if (sheet === 'function') { const d = (() => { try { const s=localStorage.getItem(LS_FUNC); if(s) return JSON.parse(s); } catch(e){} return window.FUNCTION_SEED || null; })(); base = d ? d.items : []; }
   else if (sheet === 'sales') { const d = (() => { try { const s=localStorage.getItem(LS_SALES); if(s) return JSON.parse(s); } catch(e){} return window.SALES_SEED || null; })(); base = d ? d.items : []; }
-  // 追加商品（priceEditsのisNew=true）を末尾に追加
   const customItems = Object.values(priceEdits).filter(e => e.isNew && e.sheet === sheet && !e.deleted);
   return [...base, ...customItems];
+}
+// タブバッジを非表示・削除を反映して動的更新
+function updateBadges() {
+  const getCount = (sheet) => {
+    const items = getAllItemsBySheet(sheet);
+    return items.filter(i => !applyEdits(i).deleted && !hiddenCodes.has(i.code)).length;
+  };
+  ['cleaning','special','reform'].forEach(s => {
+    const el = document.getElementById('badge-'+s); if (el) el.textContent = getCount(s);
+  });
+  const getAlt = (sheet, seed, lsKey) => {
+    const d = (() => { try { const s=localStorage.getItem(lsKey); if(s) return JSON.parse(s); } catch(e){} return seed||null; })();
+    const items = d ? (d.items||[]) : [];
+    const custom = Object.values(priceEdits).filter(e => e.isNew && e.sheet === sheet && !e.deleted);
+    return items.filter(i => !hiddenCodes.has(i.code)).length + custom.length;
+  };
+  const fel = document.getElementById('badge-function'); if (fel) fel.textContent = getAlt('function', window.FUNCTION_SEED, LS_FUNC);
+  const sel = document.getElementById('badge-sales');    if (sel) sel.textContent = getAlt('sales', window.SALES_SEED, LS_SALES);
 }
 // クリック外にメニューを閉じる
 document.addEventListener('click', () => closeActionMenu());
@@ -829,13 +865,14 @@ function normSearch(s) {
   return r.toLowerCase();
 }
 function highlight(text, q) {
-  if (!q) return esc(text);
-  // 直接一致（半角入力など）のみハイライト。正規化一致はフィルタ側で担保
+  const disp = (text||'').normalize('NFKC'); // 半角カナ→全角表示
+  if (!q) return esc(disp);
   try {
-    const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
-    if (re.test(text)) return esc(text).replace(re, m => `<span class="pr-highlight">${m}</span>`);
+    const normQ = (q||'').normalize('NFKC');
+    const re = new RegExp(normQ.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+    if (re.test(disp)) return esc(disp).replace(re, m => `<span class="pr-highlight">${m}</span>`);
   } catch(e) {}
-  return esc(text);
+  return esc(disp);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -918,7 +955,7 @@ function renderCategorySection(catName, items, q) {
   return `
   <div class="pr-cat">
     <div class="pr-cat-head${isOpen?' open':''}" onclick="toggleCat('${id}', this)">
-      <span class="pr-cat-name">${esc(catName)}</span>
+      <span class="pr-cat-name">${esc(catName.normalize('NFKC'))}</span>
       <span class="pr-cat-count">${displayItems.length}件${hiddenNote}</span>
       <span class="pr-cat-arr">▾</span>
     </div>
@@ -1078,6 +1115,7 @@ function renderAll() {
   document.getElementById('pr-content').innerHTML = html;
   document.getElementById('pr-updated').textContent = priceData.updated ? `更新: ${priceData.updated}` : '';
   updateHiddenBar();
+  updateBadges(); // 非表示・削除を反映した件数
 }
 
 function groupBy(arr, fn) {
@@ -1121,7 +1159,7 @@ function loadFile(file) {
       const dec = new TextDecoder('shift-jis');
       const text = dec.decode(buf);
       if (importType === 'main') {
-        const result = parsePosCSV(text);
+        const result = currentBrand === 'blue' ? parseBlueCSV(text) : parsePosCSV(text);
         saveData(result);
         renderAll();
         showStatus(`✓ ${result.cleaning.length + result.special.length + result.reform.length}件を取り込みました（${result.updated}）`, true);
@@ -1203,6 +1241,58 @@ function parseFunctionCSV(text) {
   return items;
 }
 
+// 青のみわ用 POS CSVパーサ（ヘッダー自動検出・価格2=スタンダード/価格3=プレミアム）
+function parseBlueCSV(text) {
+  function splitRow(row){
+    const cols=[]; let cur='', inQ=false;
+    for(let i=0;i<row.length;i++){
+      const c=row[i];
+      if(inQ){ if(c=='"'){ if(row[i+1]=='"'){cur+='"';i++;}else inQ=false; }else cur+=c; }
+      else if(c=='"') inQ=true;
+      else if(c===','){cols.push(cur);cur='';}
+      else cur+=c;
+    }
+    cols.push(cur); return cols;
+  }
+  const allLines = text.split(/\r\n|\r|\n/);
+  const rows = allLines.filter(r => /^\s*\d+,/.test(r));
+  // ヘッダー行を自動検出
+  const headerLine = allLines.find(l => /価格1/.test(l) && /名称|商品名/.test(l));
+  let nameI=2, codeI=1, catCodeI=22, catNameI=23, p1I=4, p4I=-1, p5I=-1;
+  if (headerLine) {
+    const h = headerLine.split(',').map(s => s.replace(/^"|"$/g,'').trim());
+    const f = re => h.findIndex(x => re.test(x));
+    let i;
+    if((i=f(/^名称$|商品名/))>=0) nameI=i;
+    if((i=f(/^コード$|^ｺｰﾄﾞ$/))>=0) codeI=i;
+    if((i=f(/^価格1$/))>=0) p1I=i;
+    if((i=f(/^価格2$/))>=0) p4I=i;  // スタンダードコース
+    if((i=f(/^価格3$/))>=0) p5I=i;  // プレミアムコース
+    if((i=f(/商品分類名称|分類名$/))>=0) catNameI=i;
+    if((i=f(/商品分類[ココｺｰﾄ]ード|分類コード$/))>=0) catCodeI=i;
+  }
+  const cleaning=[], special=[], reform=[];
+  rows.forEach(row => {
+    const r = splitRow(row);
+    const no = parseInt(r[0]); if (!no) return;
+    const catCode = (r[catCodeI]||'').trim();
+    const catName = (r[catNameI]||'').trim();
+    const name = (r[nameI]||'').trim().replace(/\s+/g,' '); if (!name) return;
+    const item = {
+      no, code:(r[codeI]||'').trim(), name, cat:catName,
+      p1: Number(r[p1I])||0,
+      ...(p4I>=0 && Number(r[p4I]) ? {p4:Number(r[p4I])} : {}),
+      ...(p5I>=0 && Number(r[p5I]) ? {p5:Number(r[p5I])} : {}),
+    };
+    if (catCode===REFORM_CODE) reform.push(item);
+    else if (SPECIAL_CODES.has(catCode)) special.push(item);
+    else cleaning.push(item);
+  });
+  const today=new Date();
+  const updated=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  return { updated, brand:'blue', cleaning, special, reform };
+}
+
 // POSマスタCSVパーサ
 function parsePosCSV(text) {
   function parseRow(row){const cols=[];let cur='',q=false;for(let i=0;i<row.length;i++){const c=row[i];if(q){if(c==='"'){if(row[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else if(c==='"')q=true;else if(c===','){cols.push(cur);cur='';}else cur+=c;}cols.push(cur);return cols;}
@@ -1238,23 +1328,8 @@ function parsePosCSV(text) {
   if (!localStorage.getItem(LS_KEY) && window.PRICE_SEED) {
     try { localStorage.setItem(LS_KEY, JSON.stringify(window.PRICE_SEED)); } catch(e) {}
   }
-  if (priceData) {
-    document.getElementById('badge-cleaning').textContent = (priceData.cleaning||[]).length;
-    document.getElementById('badge-special').textContent  = (priceData.special||[]).length;
-    document.getElementById('badge-reform').textContent   = (priceData.reform||[]).length;
-  }
-  // 加工・物販バッジ（localStorage取込分 or seed）
-  (() => {
-    let fd=null,sd=null;
-    try { const s=localStorage.getItem(LS_FUNC); if(s) fd=JSON.parse(s); } catch(e){}
-    try { const s=localStorage.getItem(LS_SALES); if(s) sd=JSON.parse(s); } catch(e){}
-    if(!fd) fd = window.FUNCTION_SEED || null;
-    if(!sd) sd = window.SALES_SEED || null;
-    document.getElementById('badge-function').textContent = fd ? (fd.items||[]).length : 0;
-    document.getElementById('badge-sales').textContent = sd ? (sd.items||[]).length : 0;
-  })();
   updateHiddenBar();
-  renderAll();
+  renderAll(); // renderAll内でupdateBadges()も呼ばれる
 })();
 </script>
 
