@@ -99,7 +99,7 @@ const MShiftToday = ({ SHIFT }) => {
   );
 };
 
-// ── 月間ビュー ─────────────────────────────────────
+// ── 月間ビュー（横スクロール表）─────────────────────
 const MShiftMonthly = ({ SHIFT }) => {
   const storeNames = SHIFT.stores.map((s) => s.store);
   const [selStore, setSelStore] = React.useState(storeNames[0] || "");
@@ -111,71 +111,86 @@ const MShiftMonthly = ({ SHIFT }) => {
   const [y, mo] = ym.split("-").map(Number);
   const monthLabel = ym ? `${y}年${mo}月` : "";
 
+  // HELP 出勤者をまとめる（日付→名前→時刻）
+  const helpByPerson = {};
+  dates.forEach((d) => {
+    (store.help && store.help[d] || []).forEach((h) => {
+      if (!helpByPerson[h.name]) helpByPerson[h.name] = {};
+      helpByPerson[h.name][d] = h.time ? h.time.text : "終日";
+    });
+  });
+
   return (
     <div>
       {/* 拠点セレクト */}
-      <div className="m-field" style={{ marginBottom: 14 }}>
+      <div className="m-field" style={{ marginBottom: 12 }}>
         <select className="m-input" value={selStore} onChange={(e) => setSelStore(e.target.value)}>
           {storeNames.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
-      {/* 月ラベル + KPI */}
-      <div className="m-shift-hero" style={{ marginBottom: 14 }}>
+      {/* 月ラベル */}
+      <div className="m-shift-hero" style={{ marginBottom: 12 }}>
         <div className="m-shift-hero-date">{monthLabel}</div>
         <div className="m-shift-hero-main">
-          {store.staff ? store.staff.length : 0}<span className="n" style={{ fontSize: 15 }}>名 / {dates.length}日</span>
+          {(store.staff || []).length}<span className="n" style={{ fontSize: 15 }}>名 / {dates.length}日</span>
         </div>
       </div>
 
-      {/* 日別スケジュール */}
-      {dates.map((d) => {
-        const dateObj = new Date(d + "T00:00:00");
-        const dow = MS_DOW[dateObj.getDay()];
-        const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-        const isSun = dateObj.getDay() === 0;
-        const events = (store.events && store.events[d]) || [];
-        const helps = (store.help && store.help[d]) || [];
+      {/* 横スクロール表 */}
+      <div className="mshift-table-outer">
+        <div className="mshift-table">
+          {/* ヘッダー行（日付） */}
+          <div className="mshift-row">
+            <div className="mshift-cell-name mshift-head">名前</div>
+            {dates.map((d) => {
+              const dateObj = new Date(d + "T00:00:00");
+              const dow = MS_DOW[dateObj.getDay()];
+              const isSun = dateObj.getDay() === 0;
+              const isSat = dateObj.getDay() === 6;
+              const hasEvent = store.events && store.events[d] && store.events[d].length > 0;
+              return (
+                <div key={d} className="mshift-cell-date mshift-head" style={{ color: isSun ? "#c5221f" : isSat ? "#1a73e8" : "var(--ink)", background: hasEvent ? "#fef3cd" : undefined }}>
+                  <div>{parseInt(d.slice(8))}</div>
+                  <div className="mshift-dow">{dow}</div>
+                </div>
+              );
+            })}
+          </div>
 
-        const workers = (store.staff || [])
-          .map((st) => ({ name: st.name, cell: st.cells && st.cells[d] }))
-          .filter((x) => x.cell && x.cell.time)
-          .sort((a, b) => (a.cell.time.s || 0) - (b.cell.time.s || 0));
-
-        if (workers.length === 0 && helps.length === 0) return null;
-
-        return (
-          <div key={d} className="mshift-day-card">
-            <div className="mshift-day-head">
-              <span className="mshift-day-date" style={{ color: isSun ? "#c5221f" : isWeekend ? "#1a73e8" : "var(--ink)" }}>
-                {parseInt(d.slice(8))}日（{dow}）
-              </span>
-              <span className="mshift-day-count">{workers.length + helps.length}名</span>
-              {events.map((ev, i) => <span key={i} className="m-shift-sale" style={{ fontSize: 10 }}>🏷 {ev}</span>)}
-            </div>
-            <div className="mshift-day-rows">
-              {workers.map((w, i) => {
-                const label = msRawLabel(w.cell.raw);
-                const isRole = label && MS_ROLE_WORDS.some((r) => label.indexOf(r) >= 0);
+          {/* スタッフ行 */}
+          {(store.staff || []).map((st) => (
+            <div key={st.name} className="mshift-row">
+              <div className="mshift-cell-name">{st.name}</div>
+              {dates.map((d) => {
+                const cell = st.cells && st.cells[d];
+                const t = cell && cell.time;
+                const dateObj = new Date(d + "T00:00:00");
+                const isSun = dateObj.getDay() === 0;
+                const isSat = dateObj.getDay() === 6;
+                const wkBg = isSun ? "rgba(197,34,31,.06)" : isSat ? "rgba(26,115,232,.06)" : undefined;
                 return (
-                  <div key={i} className="mshift-staff-row">
-                    <span className="mshift-staff-name">{w.name}</span>
-                    {isRole && <span className="m-shift-tag m-shift-tag-role">{label}</span>}
-                    <span className="mshift-staff-time">{w.cell.time.text}</span>
+                  <div key={d} className={`mshift-cell${t ? " mshift-work" : ""}`} style={{ background: t ? undefined : wkBg }}>
+                    {t ? t.text : ""}
                   </div>
                 );
               })}
-              {helps.map((h, i) => (
-                <div key={"h" + i} className="mshift-staff-row">
-                  <span className="mshift-staff-name">{h.name}</span>
-                  <span className="m-shift-tag m-shift-tag-help">応援</span>
-                  <span className="mshift-staff-time">{h.time ? h.time.text : "終日"}</span>
+            </div>
+          ))}
+
+          {/* 応援行 */}
+          {Object.entries(helpByPerson).map(([name, days]) => (
+            <div key={"h-" + name} className="mshift-row mshift-help-row">
+              <div className="mshift-cell-name">{name}<span className="m-shift-tag m-shift-tag-help" style={{ fontSize: 9, marginLeft: 4 }}>応援</span></div>
+              {dates.map((d) => (
+                <div key={d} className={`mshift-cell${days[d] ? " mshift-help-cell" : ""}`}>
+                  {days[d] || ""}
                 </div>
               ))}
             </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      </div>
       <div style={{ height: 16 }}></div>
     </div>
   );
