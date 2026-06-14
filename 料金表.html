@@ -504,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => setTimeout(ptwInit, 300));
 //  設定
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const LS_KEY      = 'miwa.price.green.v3'; // v3: YS6件対応
-const LS_KEY_BLUE = 'miwa.price.blue.v2';
+const LS_KEY_BLUE = 'miwa.price.blue.v3'; // v3: 旧スパースデータ無効化・seed優先
 const LS_HIDDEN   = 'miwa.price.hidden.v1';
 const LS_HIDDEN_BLUE = 'miwa.price.hidden.blue.v1';
 const LS_FUNC   = 'miwa.price.func.v1';
@@ -542,10 +542,11 @@ function loadData() {
       priceData.special = (priceData.special || []).filter(i => !/^SQM/.test(i.code));
       priceData.special = [...priceData.special, ...sqmFromSeed];
     }
-    // seedのYSアイテム（ワイシャツ）を常に上書き（6品目固定）
+    // seedのYSアイテム（ワイシャツ）を常に上書き（6品目固定・同カテゴリの非YSも除去）
     const ysFromSeed = (seedSource.cleaning || []).filter(i => i.ys);
     if (ysFromSeed.length) {
-      priceData.cleaning = (priceData.cleaning || []).filter(i => !i.ys);
+      const ysCats = new Set(ysFromSeed.map(i => (i.cat||'').normalize('NFKC')));
+      priceData.cleaning = (priceData.cleaning || []).filter(i => !ysCats.has((i.cat||'').normalize('NFKC')));
       priceData.cleaning = [...ysFromSeed, ...priceData.cleaning];
     }
   }

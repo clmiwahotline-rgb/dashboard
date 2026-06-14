@@ -42,7 +42,7 @@ const mpApplyEdits = (item, edits) => { const e = edits[item.code]; return e ? {
 function mpSheetItems(sheet, brand, edits) {
   let base = [];
   if (sheet === "cleaning" || sheet === "special" || sheet === "reform") {
-    const mainKey = brand === "blue" ? "miwa.price.blue.v2" : "miwa.price.green.v3";
+    const mainKey = brand === "blue" ? "miwa.price.blue.v3" : "miwa.price.green.v3";
     const seedSource = brand === "blue" ? (window.PRICE_SEED_BLUE || {}) : (window.PRICE_SEED || {});
     const data = mpLS(mainKey, null) || seedSource;
     base = (data[sheet] || []).map(i => mpApplyEdits(i, edits)).filter(i => !i.deleted);
@@ -66,7 +66,9 @@ function mpSheetItems(sheet, brand, edits) {
             : ((window.PRICE_SEED || {}).cleaning || []).filter(i => i.ys) )
         : ((window.PRICE_SEED || {}).cleaning || []).filter(i => i.ys);
       if (ysFixed.length) {
-        base = base.filter(i => !i.ys);
+        // YSカテゴリ(ワイシャツ)の全品目を除去してから、指定YS品目のみ追加
+        const ysCats = new Set(ysFixed.map(i => mpNorm(i.cat || "")));
+        base = base.filter(i => !ysCats.has(mpNorm(i.cat || "")));
         base = [...ysFixed, ...base];
       }
     }
