@@ -25,9 +25,15 @@ const mfbTagFmt = (n) => {
   const s = String(n).replace(/\D/g, "").padStart(4, "0");
   return s.length >= 4 ? s.slice(0, 1) + "-" + s.slice(-3) : null;
 };
-// クラウド生データのフィールド名ゆれを吸収
-const mfbGetTag = (row) =>
-  row.tagNo || row["タグ番号"] || row["タグ"] || row["番号"] || row["管理番号"] || row["受付番号"] || "";
+// クラウド生データのフィールド名ゆれを吸収。短小名とフォーム識キーの両方に対応
+const mfbGetTag = (row) => {
+  // 正規フィールド名があればそちらを優先
+  const direct = row.tagNo || row["タグ番号"] || row["タグ"] || row["番号"] || row["管理番号"] || row["受付番号"];
+  if (direct) return direct;
+  // Googleフォームの長い列名に対応（部分一致）
+  const key = Object.keys(row).find(k => k.includes("商品のタグ") || k.includes("タグを教えて") || k.includes("タグNo") || k.includes("タグno"));
+  return key ? row[key] : "";
+};
 
 // ── データフック ────────────────────────────────────
 const useMFbData = () => {
