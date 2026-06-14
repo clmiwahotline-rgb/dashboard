@@ -40,6 +40,7 @@ function mpSheetItems(sheet, brand, edits) {
 }
 
 const mpYen = (n) => "¥" + Math.round(n).toLocaleString("ja-JP");
+const mpDisp = (s) => (s || "").normalize("NFKC"); // 半角カナ→全角カナ 表示用
 const mpHasCourses = (it) => (it.p4 > 0) || (it.p5 > 0) || (it.p6 > 0);
 const mpAllZero = (it) => !it.p1 && !it.p4 && !it.p5 && !it.p6;
 const mpNorm = (s) => (s || "").normalize("NFKC").replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)).toLowerCase(); // 半角/全角・カナ/かなを吸収
@@ -49,7 +50,7 @@ const MPriceRow = ({ item, tax, q }) => {
   const px = (v) => tax ? Math.round(v * MP_TAX) : v;
   const courses = mpHasCourses(item);
   const quote = mpAllZero(item);
-  const name = item.name || "";
+  const name = mpDisp(item.name || "");
   // 検索ハイライト
   const renderName = () => {
     if (!q) return name;
@@ -139,7 +140,7 @@ const MPrice = ({ registerHeader, registerFab }) => {
         {hasBlue && (
           <div className="m-pr-seg">
             <button className={brand === "green" ? "on" : ""} onClick={() => { setBrand("green"); try { localStorage.setItem("miwa.price.brand", "green"); } catch (e) {} }}>緑のみわ</button>
-            <button className={brand === "blue" ? "on" : ""} onClick={() => { setBrand("blue"); try { localStorage.setItem("miwa.price.brand", "blue"); } catch (e) {} }}>青いみわ</button>
+            <button className={brand === "blue" ? "on blue" : ""} onClick={() => { setBrand("blue"); try { localStorage.setItem("miwa.price.brand", "blue"); } catch (e) {} }}>青のみわ</button>
           </div>
         )}
         <button className={`m-pr-tax ${tax ? "on" : ""}`} onClick={() => setTax((v) => !v)}>
@@ -165,7 +166,7 @@ const MPrice = ({ registerHeader, registerFab }) => {
       ) : (
         grouped.map((g, gi) => (
           <div key={g.cat + gi} className="m-pr-group">
-            <div className="m-pr-cat">{g.cat}<span className="m-pr-catn">{g.items.length}</span></div>
+            <div className="m-pr-cat">{mpDisp(g.cat)}<span className="m-pr-catn">{g.items.length}</span></div>
             <div className="m-pr-list">
               {g.items.map((it, i) => <MPriceRow key={(it.code || it.name) + "_" + i} item={it} tax={tax} q={nq} />)}
             </div>
