@@ -14,10 +14,10 @@ const M_TABS = [
   { id: "news", label: "お知らせ", comp: "MNews" },
 ];
 // サブ画面（タブバーには出さず、業務メニュー等から遷移）
-const M_SUBVIEWS = { claims: "MClaims", thanks: "MThanks", about: "MAbout" };
-const M_TAB_TITLE = { home: "みわダッシュボード", menu: "業務メニュー", shift: "シフト", news: "お知らせ・ニュース", claims: "クレーム・事故品", thanks: "ありがとうカード", about: "アカウント・その他" };
+const M_SUBVIEWS = { claims: "MClaims", thanks: "MThanks", about: "MAbout", price: "MPrice" };
+const M_TAB_TITLE = { home: "みわダッシュボード", menu: "業務メニュー", shift: "シフト", news: "お知らせ・ニュース", claims: "クレーム・事故品", thanks: "ありがとうカード", about: "アカウント・その他", price: "料金表" };
 // サブ画面で押されたとき、下部タブのどれをハイライトするか
-const M_PARENT_TAB = { claims: "menu", thanks: "menu", about: "menu" };
+const M_PARENT_TAB = { claims: "menu", thanks: "menu", about: "menu", price: "menu" };
 
 const MApp = () => {
   const initial = (() => {
@@ -127,13 +127,6 @@ const MApp = () => {
           );
         })}
       </div>
-      {/* iOS セーフエリア（ホームインジケーター下）の背景を埋める */}
-      <div aria-hidden="true" style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: 520, margin: "0 auto",
-        height: "env(safe-area-inset-bottom, 0px)",
-        background: "var(--card, #fff)",
-        zIndex: 48, pointerEvents: "none",
-      }} />
     </div>
   );
 };

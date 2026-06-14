@@ -19,11 +19,15 @@ body {
 #m-root { min-height: 100%; }
 
 /* ── アプリシェル ───────────────────────────────────── */
+/* ※ position:fixed は使わない：font-zoom（bodyの zoom）が効いた状態で
+   fixed 要素は画面全体に広がらず縮むため、下に白い余白が出る。
+   relative + svh （スワイプ中も変化しない安定高さ）と flex 子タブバーで解決。 */
 .m-app {
   max-width: 520px;
   margin: 0 auto;
   height: 100vh;
   height: 100dvh;
+  height: 100lvh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -76,7 +80,7 @@ body {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 14px 14px calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 24px);
+  padding: 14px 14px 24px;
 }
 .m-section-gap { height: 14px; }
 
@@ -186,16 +190,22 @@ body {
 .m-spinner.sm { width: 15px; height: 15px; border-width: 2px; margin: 0; }
 
 /* ── 下部タブバー ───────────────────────────────────── */
+/* position:fixed をやめて .m-app の flex 子要素にする。
+   セーフエリアは 34px で上限キャップ：一部の iOS PWA で
+   env(safe-area-inset-bottom) が異常に大きな値（約97px）を返し、
+   タブバー下に大きな白余白が出るバグを防止。 */
 .m-tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-  max-width: 520px; margin: 0 auto;
-  height: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: color-mix(in oklch, var(--card) 92%, transparent);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  flex-shrink: 0;
+  z-index: 50;
+  height: calc(var(--m-tabbar-h) + min(env(safe-area-inset-bottom, 0px), 34px));
+  padding-bottom: min(env(safe-area-inset-bottom, 0px), 34px);
+  background: var(--card); /* solid fallback */
+  background: color-mix(in oklch, var(--card) 96%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid var(--line);
   display: flex;
+  touch-action: none; /* タブバー近辺のスワイプがスクロールに漏れるのを防止 */
 }
 .m-tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
@@ -241,14 +251,14 @@ body {
 .m-claim-edit { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
 
 /* ── FAB（新規追加）─────────────────────────────────── */
+/* タブバーが flex 子になったため FAB も absolute に変更 */
 .m-fab {
-  position: fixed; right: 18px; bottom: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px); z-index: 45;
+  position: absolute; right: 18px; bottom: calc(var(--m-tabbar-h) + min(env(safe-area-inset-bottom, 0px), 34px) + 16px); z-index: 45;
   width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
   background: var(--accent); color: #fff; box-shadow: 0 8px 22px var(--accent-glow);
   display: flex; align-items: center; justify-content: center;
 }
 .m-fab:active { transform: scale(0.92); }
-@media (min-width: 521px) { .m-fab { right: calc(50% - 260px + 18px); } }
 
 /* ── ボトムシート（モーダル）────────────────────────── */
 .m-sheet-backdrop {
@@ -408,8 +418,8 @@ body {
 
 /* ── ローディング/トースト ──────────────────────────── */
 .m-toast {
-  position: fixed; left: 50%; bottom: calc(var(--m-tabbar-h) + env(safe-area-inset-bottom, 0px) + 22px); transform: translateX(-50%);
-  z-index: 200; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700;
+  position: fixed; left: 50%; bottom: calc(var(--m-tabbar-h) + min(env(safe-area-inset-bottom, 0px), 34px) + 22px); transform: translateX(-50%);
+  z-index: 200; max-width: 520px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700;
   padding: 11px 18px; border-radius: 999px; box-shadow: var(--shadow-lift); max-width: 88%;
   animation: m-fade 0.2s ease;
 }
@@ -455,8 +465,50 @@ body {
 .m-import-btn:active { transform: scale(0.98); }
 .m-import-msg { font-size: 13px; font-weight: 700; padding: 9px 13px; border-radius: 10px; margin: 0 0 12px; }
 
+/* ── 料金表（モバイル価格検索）─────────────────────── */
+.m-pr-searchbar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 9px;
+  background: var(--card); border: 1px solid var(--line-strong); border-radius: 14px;
+  padding: 11px 13px; margin: 2px 0 12px; color: var(--ink-mute);
+  box-shadow: var(--shadow-card);
+}
+.m-pr-search { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-family: inherit; font-size: 16px; color: var(--ink); }
+.m-pr-clear { flex-shrink: 0; width: 24px; height: 24px; border: 0; border-radius: 50%; background: var(--card-2); color: var(--ink-soft); font-size: 16px; cursor: pointer; line-height: 1; }
+.m-pr-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.m-pr-seg { display: flex; background: var(--card-2); border-radius: 999px; padding: 3px; }
+.m-pr-seg button { border: 0; background: none; font-family: inherit; font-size: 12.5px; font-weight: 800; color: var(--ink-mute); padding: 7px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.m-pr-seg button.on { background: var(--card); color: var(--accent-ink); box-shadow: 0 1px 4px rgba(20,30,60,.12); }
+.m-pr-tax { margin-left: auto; border: 1.5px solid var(--line-strong); background: var(--card); color: var(--ink-soft); font-family: inherit; font-size: 12.5px; font-weight: 800; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.m-pr-tax.on { border-color: transparent; background: var(--accent-soft); color: var(--accent-ink); }
+.m-pr-tabs { margin-bottom: 6px; }
+.m-pr-tabn, .m-pr-catn { margin-left: 6px; font-size: 11px; font-weight: 800; opacity: 0.7; }
+.m-pr-resultcount { font-size: 12.5px; font-weight: 700; color: var(--ink-mute); margin: 4px 2px 10px; }
+.m-pr-group { margin-bottom: 14px; }
+.m-pr-cat { font-size: 12px; font-weight: 800; color: var(--ink-mute); letter-spacing: 0.02em; margin: 0 2px 7px; display: flex; align-items: center; }
+.m-pr-cat .m-pr-catn { margin-left: auto; }
+.m-pr-list { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-card); }
+.m-pr-item { padding: 12px 14px; border-top: 1px solid var(--line); }
+.m-pr-item:first-child { border-top: 0; }
+.m-pr-item.tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.m-pr-item.tappable:active { background: var(--card-2); }
+.m-pr-item-top { display: flex; align-items: center; gap: 12px; }
+.m-pr-item-name { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.4; }
+.m-pr-mp { display: inline-block; font-size: 11px; font-weight: 800; color: #1e8e3e; background: #e6f4ea; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.m-pr-item-price { flex-shrink: 0; display: flex; align-items: center; gap: 5px; }
+.m-pr-item-price b { font-size: 16px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.m-pr-quote { font-size: 12px; font-weight: 700; color: var(--ink-mute); }
+.m-pr-chev { color: var(--ink-mute); transition: transform 0.2s ease; }
+.m-pr-chev.open { transform: rotate(180deg); }
+.m-pr-courses { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 7px; }
+.m-pr-course { display: flex; align-items: center; }
+.m-pr-course .lbl { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+.m-pr-course .val { margin-left: auto; font-size: 14px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.m-pr-hl { background: #fef3cd; color: inherit; border-radius: 3px; padding: 0 1px; }
+.m-pr-note { font-size: 11.5px; color: var(--ink-mute); line-height: 1.6; margin: 14px 4px 0; padding: 12px 14px; background: var(--card-2); border-radius: 12px; }
+
 /* PC幅でのプレビュー時に端末風の枠を付ける（任意） */
 @media (min-width: 521px) {
   body { background: #2a2840; }
-  .m-app { box-shadow: 0 20px 60px rgba(0,0,0,0.4); min-height: 100vh; }
+  .m-app { box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
 }
