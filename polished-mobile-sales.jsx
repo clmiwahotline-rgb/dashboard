@@ -84,6 +84,11 @@ const MSales = ({ registerHeader, registerFab }) => {
   return (
     <div>
       {/* 月・店舗フィルタ */}
+      {months.length <= 1 && (
+        <div style={{ fontSize: "11.5px", color: "var(--ink-mute)", marginBottom: 10, padding: "8px 12px", background: "var(--card-2)", borderRadius: 10, lineHeight: 1.6 }}>
+          💡 他の月のデータはPC版の売上レポートでCSV取込み後に自動反映されます
+        </div>
+      )}
       <div className="m-sales-filters">
         <div className="m-field">
           <label className="m-label">対象月</label>

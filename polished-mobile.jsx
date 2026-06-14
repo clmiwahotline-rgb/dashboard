@@ -34,7 +34,10 @@ const MApp = () => {
   const [fsLevel, setFsLevel] = React.useState(() => { try { const v = localStorage.getItem(FS_KEY); return FS_LEVELS.some((l) => l.id === v) ? v : "s"; } catch (e) { return "s"; } });
   React.useEffect(() => {
     const z = (FS_LEVELS.find((l) => l.id === fsLevel) || {}).z || 1;
-    try { document.body.style.zoom = z === 1 ? "" : String(z); } catch (e) {}
+    // body zoom は position:fixed の modal/lightbox がズレる原因になるため、
+    // スクロール領域（.m-scroll）だけに zoom を適用する
+    try { document.body.style.zoom = ""; } catch (e) {}
+    try { if (scrollRef.current) scrollRef.current.style.zoom = z === 1 ? "" : String(z); } catch (e) {}
     try { localStorage.setItem(FS_KEY, fsLevel); } catch (e) {}
   }, [fsLevel]);
   const scrollRef = React.useRef(null);
