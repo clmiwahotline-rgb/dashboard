@@ -8,6 +8,7 @@
 //  5. YSアイテムはコース展開しない（ys:true のみ定価＋会員価格）
 //  6. sqmアイテム（ジュータン等）は 円/m²＋縦×横計算器
 //  7. カテゴリ表示順はPC版 CLEAN_ORDER/SPECIAL_ORDER に準拠
+//  8. 青のみわコース体系：エコノミー(p1)/スタンダード(p4)/プレミアム(p5)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const MP_SHEETS = [
@@ -45,9 +46,14 @@ function mpSheetItems(sheet, brand, edits) {
     const seedSource = brand === "blue" ? (window.PRICE_SEED_BLUE || {}) : (window.PRICE_SEED || {});
     const data = mpLS(mainKey, null) || seedSource;
     base = (data[sheet] || []).map(i => mpApplyEdits(i, edits)).filter(i => !i.deleted);
-    // ワイシャツ(YS)は両ブランド共通でgreenSeedの6品目を固定
+    // YS: 両ブランド共通ーseedから固定
+    // 青のみわは青seedのYSを優先、なければ緑seedにフォールバック
     if (sheet === "cleaning") {
-      const ysFixed = ((window.PRICE_SEED || {}).cleaning || []).filter(i => i.ys);
+      const ysFixed = brand === "blue"
+        ? ( ((window.PRICE_SEED_BLUE || {}).cleaning || []).filter(i => i.ys).length
+            ? ((window.PRICE_SEED_BLUE || {}).cleaning || []).filter(i => i.ys)
+            : ((window.PRICE_SEED || {}).cleaning || []).filter(i => i.ys) )
+        : ((window.PRICE_SEED || {}).cleaning || []).filter(i => i.ys);
       if (ysFixed.length) {
         base = base.filter(i => !i.ys);
         base = [...ysFixed, ...base];
@@ -193,6 +199,13 @@ const MPriceRow = ({ item, tax, q, brand }) => {
       </div>
       {courses && open && (
         <div className="m-pr-courses">
+          {/* 青のみわは展開時にエコノミー(p1)も表示 */}
+          {brand === 'blue' && item.p1 > 0 && (
+            <div className="m-pr-course">
+              <span className="lbl">エコノミー</span>
+              <span className="val">{mpYen(px(item.p1))}</span>
+            </div>
+          )}
           {courses_def.map(c => item[c.key] > 0 && (
             <div key={c.key} className="m-pr-course">
               <span className="lbl">{c.label}</span>

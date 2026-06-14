@@ -903,10 +903,14 @@ function renderCategorySection(catName, items, q) {
   const isYS = displayItems[0]?.ys;
 
   let thead = '';
+  const isBlue = currentBrand === 'blue';
   if (isYS) {
     thead = '<tr><th class="action-col"></th><th>商品名</th><th class="price-col">定価</th><th class="price-col">会員価格</th></tr>';
   } else {
-    thead = `<tr><th class="action-col"></th><th>商品名</th><th class="price-col">${(hasD||hasB||hasHB)?'レギュラー':'料金'}</th>${hasD?'<th class="price-col">デリケート</th>':''}${hasB?'<th class="price-col">ブランド</th>':''}${hasHB?'<th class="price-col">ハイブランド</th>':''}</tr>`;
+    const p1lbl = isBlue ? (hasD||hasB ? 'エコノミー' : '料金') : (hasD||hasB||hasHB ? 'レギュラー' : '料金');
+    const p4lbl = isBlue ? 'スタンダード' : 'デリケート';
+    const p5lbl = isBlue ? 'プレミアム' : 'ブランド';
+    thead = `<tr><th class="action-col"></th><th>商品名</th><th class="price-col">${p1lbl}</th>${hasD?`<th class="price-col">${p4lbl}</th>`:''}${hasB?`<th class="price-col">${p5lbl}</th>`:''}${(!isBlue&&hasHB)?'<th class="price-col">ハイブランド</th>':''}</tr>`;
   }
 
   const hideIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -1281,6 +1285,7 @@ function parseBlueCSV(text) {
     const item = {
       no, code:(r[codeI]||'').trim(), name, cat:catName,
       p1: Number(r[p1I])||0,
+      ...(catCode==='01' ? {ys:true} : {}),
       ...(p4I>=0 && Number(r[p4I]) ? {p4:Number(r[p4I])} : {}),
       ...(p5I>=0 && Number(r[p5I]) ? {p5:Number(r[p5I])} : {}),
     };
