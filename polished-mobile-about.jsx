@@ -1,4 +1,33 @@
-// モバイル版 ─ アカウント・その他（アカウント情報／バージョン／報告フォーム／機能説明書）
+// キャッシュクリアコンポーネント
+const MAboutCacheRow = () => {
+  const [done, setDone] = React.useState(false);
+  const handleClear = () => {
+    if (!window.confirm('キャッシュを強制クリアします。\nページが再読み込みされます。よろしいですか？')) return;
+    // Service Worker のキャッシュをクリア
+    if ('caches' in window) {
+      caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+    }
+    // ページをハードリロード（キャッシュバイパス）
+    setDone(true);
+    setTimeout(() => {
+      location.href = location.href.split('?')[0] + '?nocache=' + Date.now();
+    }, 300);
+  };
+  return (
+    <button className="m-about-row" style={{ width: '100%', textAlign: 'left', border: 0, background: 'none', cursor: 'pointer' }} onClick={handleClear}>
+      <span className="m-about-ic" style={{ background: '#fff3e0', color: '#e65100' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="1 4 1 10 7 10" /><polyline points="23 20 23 14 17 14" />
+          <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" />
+        </svg>
+      </span>
+      <div className="m-about-main">
+        <div className="m-about-label">{done ? '再読み込み中…' : 'キャッシュをクリア'}</div>
+        <div className="m-about-sub">表示がおかしい時・最新版に強制更新</div>
+      </div>
+    </button>
+  );
+};
 
 const M_APP_VERSION = (typeof window !== "undefined" && window.APP_VERSION) || "2.14";
 const M_REPORT_FORM_URL = "https://clmiwahotline-rgb.github.io/formsite/";
@@ -69,6 +98,9 @@ const MAbout = ({ registerHeader, registerFab }) => {
             <div className="m-about-main"><div className="m-about-label">バージョン</div><div className="m-about-sub">更新レポート（変更履歴）を見る</div></div>
             <span className="m-about-ver">v{M_APP_VERSION}</span>
           </a>
+
+          {/* キャッシュクリアボタン */}
+          <MAboutCacheRow />
         </div>
       </div>
 
