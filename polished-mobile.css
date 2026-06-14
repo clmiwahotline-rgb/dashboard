@@ -408,7 +408,25 @@ body {
 .m-thx-cmtform input { flex: 1; min-width: 0; box-sizing: border-box; font-size: 14px; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--card); color: var(--ink); }
 .m-thx-cmtform button { flex-shrink: 0; background: var(--accent-soft); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 0 14px; font-weight: 800; font-size: 13px; cursor: pointer; }
 
-/* ── ニュース項目 ───────────────────────────────────── */
+/* ── シミ抜き報告 ───────────────────────────────────── */
+.m-stain-card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-card); padding: 13px 14px; margin-bottom: 11px; }
+.m-stain-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.m-stain-staff { font-size: 14px; font-weight: 800; color: var(--ink); }
+.m-stain-rate { font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.m-stain-date { margin-left: auto; font-size: 11.5px; color: var(--ink-mute); font-weight: 600; }
+.m-stain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.m-stain-cell { background: var(--card-2); border-radius: 12px; padding: 10px 12px; }
+.m-stain-cell-label { font-size: 11px; font-weight: 700; color: var(--ink-mute); margin-bottom: 4px; }
+.m-stain-cell-val { font-size: 18px; font-weight: 800; color: var(--ink); line-height: 1.1; }
+.m-stain-cell-val .u { font-size: 12px; font-weight: 700; color: var(--ink-mute); margin-left: 2px; }
+.m-stain-cell-sub { font-size: 11px; color: var(--ink-mute); margin-top: 3px; font-weight: 600; }
+.m-stain-hist-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+.m-stain-hist-row:first-child { border-top: 0; }
+.m-stain-hist-month { font-size: 12px; font-weight: 700; color: var(--ink-soft); width: 60px; flex-shrink: 0; }
+.m-stain-hist-bar-wrap { flex: 1; height: 8px; background: var(--card-2); border-radius: 999px; overflow: hidden; }
+.m-stain-hist-bar { height: 100%; background: var(--accent); border-radius: 999px; min-width: 4px; transition: width 0.4s ease; }
+.m-stain-hist-vals { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--ink); white-space: nowrap; width: 100px; justify-content: flex-end; }
+.m-stain-hist-rate { font-size: 11px; font-weight: 800; color: #1e8e3e; background: #e6f4ea; padding: 1px 6px; border-radius: 999px; }
 .m-news { display: flex; gap: 11px; padding: 13px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-card); margin-bottom: 10px; text-decoration: none; }
 .m-news-date { flex-shrink: 0; font-size: 11px; font-weight: 800; color: var(--accent-ink); background: var(--accent-soft); border-radius: 9px; padding: 5px 8px; height: fit-content; text-align: center; min-width: 46px; }
 .m-news-body { flex: 1; min-width: 0; }

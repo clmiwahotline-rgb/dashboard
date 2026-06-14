@@ -190,7 +190,7 @@ const MBoardComposer = ({ onClose, onPost }) => {
     onClose();
   };
 
-  return (
+  return ReactDOM.createPortal(
     <div className="m-sheet-backdrop" onClick={onClose}>
       <div className="m-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="m-sheet-grab"></div>
@@ -231,7 +231,8 @@ const MBoardComposer = ({ onClose, onPost }) => {
           <button className="m-btn m-btn-primary" onClick={submit} disabled={busy || (!text.trim() && pending.length === 0)}>{busy ? "投稿中…" : "投稿する"}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.getElementById("m-root") || document.body
   );
 };
 
