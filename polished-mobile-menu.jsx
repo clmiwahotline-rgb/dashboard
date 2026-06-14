@@ -7,13 +7,13 @@ const M_MENU_ITEMS = [
   // external … PC版ページへ
   { key: "board", icon: "📌", label: "共有ボード", sub: "投稿・添付", kind: "view", target: "board", accent: "#2a6fdb", bg: "#e7f0fd" },
   { key: "price", icon: "🏷️", label: "料金表", sub: "クリーニング・加工・物販", kind: "view", target: "price", accent: "#1e8e3e", bg: "#e6f4ea" },
-  { key: "faq", icon: "📝", label: "FAQ管理", sub: "知識・回答編集", kind: "page", target: "FAQ管理.html", accent: "#0b8043", bg: "#d9f3ef" },
+  { key: "faq", icon: "📝", label: "FAQ管理", sub: "知識・回答編集", kind: "view", target: "faq", accent: "#0b8043", bg: "#d9f3ef" },
   { key: "sales", icon: "💰", label: "売上レポート", sub: "店舗別・昨対比", kind: "view", target: "sales", accent: "#9a6700", bg: "#fef3cd" },
   { key: "stain", icon: "🧴", label: "シミ抜き報告", sub: "処理・除去率", kind: "view", target: "stain", accent: "#1a73e8", bg: "#e3f0fd" },
   { key: "factory", icon: "🏭", label: "工場報告", sub: "生産性・工数", kind: "page", target: "工場報告.html", accent: "#8430ce", bg: "#f3e8fd" },
   { key: "feedback", icon: "💬", label: "フィードバック", sub: "改善・原因", kind: "page", target: "フィードバック.html", accent: "#be3a82", bg: "#fde2ef" },
   { key: "vehicle", icon: "🚚", label: "車両管理", sub: "期限・給油・整備", kind: "page", target: "車両管理.html", accent: "#d9730a", bg: "#fdebcf" },
-  { key: "invoice", icon: "🧾", label: "請求書管理", sub: "入金待ち・PDF", kind: "page", target: "請求書管理.html", accent: "#0b8043", bg: "#e6f4ea" },
+  { key: "invoice", icon: "🧾", label: "請求書管理", sub: "入金待ち・PDF", kind: "view", target: "invoice", accent: "#0b8043", bg: "#e6f4ea" },
   { key: "report", icon: "📑", label: "AIレポート", sub: "自動分析・出力", kind: "page", target: "AIレポート.html", accent: "#0f9d8f", bg: "#d9f3ef" },
   { key: "about", icon: "👤", label: "アカウント・その他", sub: "情報・報告・説明書", kind: "view", target: "about", accent: "#5f6368", bg: "#eef0f2" },
 ];
