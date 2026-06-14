@@ -140,15 +140,16 @@
 
       /* body に上下パディング（ヘッダー＋フッター分） */
       "body{",
-        "padding-top:calc(var(--mf-topbar-h) + var(--mf-sat)) !important;",
-        "padding-bottom:calc(var(--mf-h) + var(--mf-sab) + 4px) !important;",
+        "padding-top:calc(var(--mf-topbar-h) + env(safe-area-inset-top,0px)) !important;",
+        "padding-bottom:calc(var(--mf-h) + min(env(safe-area-inset-bottom,0px),34px) + 4px) !important;",
+        "overscroll-behavior-y:none;",
       "}",
 
       /* ② グリーンヘッダー（SPA の .m-header と同一デザイン） */
       "#mf-topbar{",
         "position:fixed;left:0;right:0;top:0;z-index:1200;",
-        "padding:calc(var(--mf-sat) + 10px) 16px 10px;",
-        "height:calc(var(--mf-topbar-h) + var(--mf-sat));",
+        "padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;",
+        "height:calc(var(--mf-topbar-h) + env(safe-area-inset-top,0px));",
         "background:linear-gradient(115deg,#0a7d4a 0%,#15a05a 50%,#34b36c 100%);",
         "box-shadow:0 2px 14px rgba(11,90,60,.28);",
         "display:flex;align-items:center;gap:10px;",
@@ -173,7 +174,7 @@
 
       /* 文字サイズ ポップアップ */
       "#mf-fs-pop{",
-        "position:fixed;top:calc(var(--mf-sat) + 60px);right:52px;z-index:1300;",
+        "position:fixed;top:calc(env(safe-area-inset-top,0px) + 60px);right:52px;z-index:1300;",
         "width:168px;background:#fff;border:1px solid #eceaf5;border-radius:16px;",
         "box-shadow:0 16px 44px rgba(20,19,46,.22);padding:6px;",
         "font-family:'Plus Jakarta Sans','Zen Kaku Gothic New',-apple-system,BlinkMacSystemFont,sans-serif;",
@@ -198,7 +199,7 @@
       /* ③ 下部タブバー */
       "#mf-tabbar{",
         "position:fixed;left:0;right:0;bottom:0;z-index:1200;",
-        "height:calc(var(--mf-h) + var(--mf-sab));padding-bottom:var(--mf-sab);",
+        "height:calc(var(--mf-h) + min(env(safe-area-inset-bottom,0px),34px));padding-bottom:min(env(safe-area-inset-bottom,0px),34px);",
         "display:flex;",
         "background:color-mix(in oklch,#fff 92%,transparent);",
         "backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);",
@@ -228,6 +229,8 @@
     var topbar = document.createElement("div");
     topbar.id = "mf-topbar";
     topbar.innerHTML =
+      /* ロゴ画像 */
+      '<img src="favicon.png" alt="みわ" style="width:32px;height:32px;border-radius:9px;object-fit:contain;background:#fff;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.18);margin-right:-2px">' +
       /* 戻るボタン → モバイル.html#menu（SPA 業務メニューへ） */
       '<button id="mf-back-btn" class="mf-icon-btn" aria-label="戻る" style="margin-right:-2px">' +
         ICO.back +
