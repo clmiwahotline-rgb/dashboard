@@ -78,7 +78,7 @@ const MApp = () => {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M15 18l-6-6 6-6" /></svg>
           </button>
         ) : (
-          <img src="favicon.png" alt="みわ" style={{ width: 32, height: 32, borderRadius: 9, objectFit: "contain", background: "#fff", flexShrink: 0, boxShadow: "0 1px 4px rgba(0,0,0,0.18)" }} />
+          <img src="logo.png" alt="みわ" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
         )}
         <div style={{ minWidth: 0 }}>
           <div className="m-header-title">{view === "home" ? "みわ" : title}</div>
