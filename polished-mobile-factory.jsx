@@ -402,12 +402,29 @@ const MFEditModal = ({open, record, onSave, onClose}) => {
       />
     </div>
   );
+  // ラベル付きinputヘルパー（再定義）
+  const field = (label, key, type="number", step) => (
+    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+      <div style={{fontSize:11,fontWeight:700,color:"var(--ink-mute)",letterSpacing:".02em"}}>{label}</div>
+      <input
+        type={type} step={step}
+        value={form[key]??0}
+        onChange={e=>setForm({...form,[key]:type==="number"?(parseFloat(e.target.value)||0):e.target.value})}
+        style={{
+          padding:"11px 12px",border:"1.5px solid var(--line)",borderRadius:12,
+          fontSize:16,fontFamily:"inherit",background:"var(--bg)",color:"var(--ink)",
+          boxSizing:"border-box",width:"100%",fontWeight:600
+        }}
+      />
+    </div>
+  );
+
   return (
     <div
       onClick={onClose}
       style={{
         position:"fixed",inset:0,zIndex:200,
-        background:"rgba(0,0,0,.5)",display:"flex",alignItems:"flex-end",
+        background:"rgba(0,0,0,.5)",display:"flex",flexDirection:"column",justifyContent:"flex-end",
         backdropFilter:"blur(2px)"
       }}
     >
@@ -416,50 +433,107 @@ const MFEditModal = ({open, record, onSave, onClose}) => {
         style={{
           width:"100%",maxWidth:520,margin:"0 auto",
           background:"var(--card)",borderRadius:"20px 20px 0 0",
-          padding:"20px 18px calc(env(safe-area-inset-bottom,0px)+20px)",
-          maxHeight:"90dvh",overflowY:"auto"
+          maxHeight:"92dvh",display:"flex",flexDirection:"column"
         }}
       >
-        {/* ハンドル */}
-        <div style={{width:40,height:4,borderRadius:2,background:"var(--line)",margin:"0 auto 16px"}}></div>
-        <div style={{fontSize:16,fontWeight:800,color:"var(--ink)",marginBottom:4}}>📝 報告内容を修正</div>
-        <div style={{fontSize:12,color:"var(--ink-mute)",marginBottom:18}}>{record.date}（{mfDayName(record.date)}）· {mfShort(record.factory)}</div>
+        {/* ── 固定ヘッダー ── */}
+        <div style={{flexShrink:0,padding:"12px 20px 14px",borderBottom:"1px solid var(--line)"}}>
+          {/* ハンドルバー */}
+          <div style={{width:36,height:4,borderRadius:2,background:"#c8ccd4",margin:"0 auto 14px"}}></div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{
+              width:38,height:38,borderRadius:11,flexShrink:0,
+              background:"var(--accent-soft)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18
+            }}>📝</div>
+            <div>
+              <div style={{fontSize:16,fontWeight:800,color:"var(--ink)",lineHeight:1.2}}>報告内容を修正</div>
+              <div style={{fontSize:12,color:"var(--ink-mute)",marginTop:2,display:"flex",alignItems:"center",gap:6}}>
+                <span style={{
+                  fontSize:10.5,fontWeight:700,padding:"2px 7px",borderRadius:6,
+                  background:isY?"var(--accent-soft)":"rgba(52,168,83,.14)",
+                  color:isY?"var(--accent-ink)":"#1e8e3e"
+                }}>{mfShort(record.factory)}</span>
+                {record.date}（{mfDayName(record.date)}）
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
-          {inp("前日通常ロット点数","normalLot")}
-          {inp("当日通常ロット点数","normalLotToday")}
-          {inp("ロット外点数","extraLot")}
-          {inp("先付け処理点数","advance")}
-          {isY&&inp("保管処理点数","storage")}
-          {inp("合計稼働時間","hours","number","0.25")}
+        {/* ── スクロール本体 ── */}
+        <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"18px 20px 8px"}}>
+
+          {/* 点数グループ */}
+          <div style={{fontSize:10.5,fontWeight:800,color:"var(--ink-mute)",letterSpacing:".08em",marginBottom:10}}>
+            点数（点）
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
+            {field("前日通常ロット","normalLot")}
+            {field("当日通常ロット","normalLotToday")}
+            {field("ロット外","extraLot")}
+            {field("先付け処理","advance")}
+            {isY&&field("保管処理","storage")}
+          </div>
+
+          {/* 稼働グループ */}
+          <div style={{fontSize:10.5,fontWeight:800,color:"var(--ink-mute)",letterSpacing:".08em",marginBottom:10}}>
+            稼働
+          </div>
+          <div style={{marginBottom:18}}>
+            {field("合計稼働時間（h）","hours","number","0.25")}
+          </div>
+
+          {/* メンバー */}
+          <div style={{fontSize:10.5,fontWeight:800,color:"var(--ink-mute)",letterSpacing:".08em",marginBottom:10}}>
+            出勤メンバー
+          </div>
+          <div style={{marginBottom:18}}>
+            <input
+              type="text"
+              value={form.members||""}
+              onChange={e=>setForm({...form,members:e.target.value})}
+              placeholder="名前, 名前, …"
+              style={{
+                width:"100%",padding:"11px 12px",border:"1.5px solid var(--line)",borderRadius:12,
+                fontSize:14,fontFamily:"inherit",background:"var(--bg)",color:"var(--ink)",
+                boxSizing:"border-box"
+              }}
+            />
+          </div>
+
+          {/* 自由報告 */}
+          <div style={{fontSize:10.5,fontWeight:800,color:"var(--ink-mute)",letterSpacing:".08em",marginBottom:10}}>
+            自由報告
+          </div>
+          <div style={{marginBottom:14}}>
+            <textarea
+              rows={3}
+              value={form.note||""}
+              onChange={e=>setForm({...form,note:e.target.value})}
+              style={{
+                width:"100%",padding:"11px 12px",border:"1.5px solid var(--line)",
+                borderRadius:12,fontSize:13,fontFamily:"inherit",resize:"none",
+                background:"var(--bg)",color:"var(--ink)",boxSizing:"border-box",lineHeight:1.6
+              }}
+            />
+          </div>
+
+          <div style={{fontSize:11,color:"var(--ink-mute)",background:"var(--bg-2,#eef0f3)",borderRadius:10,padding:"9px 12px",marginBottom:4,lineHeight:1.5}}>
+            ⚠️ 修正はローカル保存です。次回同期で最新データに上書きされます。
+          </div>
         </div>
-        {inp("出勤メンバー","members","text")}
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:11.5,fontWeight:700,color:"var(--ink-mute)",marginBottom:4}}>自由報告</div>
-          <textarea
-            rows={3}
-            value={form.note||""}
-            onChange={e=>setForm({...form,note:e.target.value})}
-            style={{
-              width:"100%",padding:"10px 12px",border:"1.5px solid var(--line)",
-              borderRadius:10,fontSize:13,fontFamily:"inherit",resize:"vertical",
-              background:"var(--bg)",color:"var(--ink)",boxSizing:"border-box"
-            }}
-          />
-        </div>
-        <div style={{fontSize:11,color:"var(--ink-mute)",background:"var(--bg-2,#eef0f3)",borderRadius:10,padding:"8px 12px",marginBottom:16}}>
-          ※ 修正内容はローカルに保存されます。同期時に最新データが上書きされます。
-        </div>
-        <div style={{display:"flex",gap:10}}>
-          <button
-            onClick={onClose}
-            style={{flex:1,padding:"12px",border:"1.5px solid var(--line)",borderRadius:12,
-              background:"var(--bg)",fontSize:13,fontWeight:700,color:"var(--ink-mute)",cursor:"pointer"}}
+
+        {/* ── 固定フッター ── */}
+        <div style={{
+          flexShrink:0,padding:"12px 20px calc(env(safe-area-inset-bottom,0px) + 16px)",
+          borderTop:"1px solid var(--line)",display:"flex",gap:10
+        }}>
+          <button onClick={onClose}
+            style={{flex:1,padding:"13px",border:"1.5px solid var(--line)",borderRadius:14,
+              background:"var(--bg)",fontSize:14,fontWeight:700,color:"var(--ink-mute)",cursor:"pointer"}}
           >キャンセル</button>
-          <button
-            onClick={()=>{onSave(form);onClose();}}
-            style={{flex:2,padding:"12px",border:"none",borderRadius:12,
-              background:"var(--accent)",fontSize:13,fontWeight:800,color:"#fff",cursor:"pointer"}}
+          <button onClick={()=>{onSave(form);onClose();}}
+            style={{flex:2,padding:"13px",border:"none",borderRadius:14,
+              background:"var(--accent)",fontSize:14,fontWeight:800,color:"#fff",cursor:"pointer"}}
           >保存する</button>
         </div>
       </div>
