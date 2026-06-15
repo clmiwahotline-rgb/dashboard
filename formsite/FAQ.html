@@ -671,6 +671,17 @@
     .splash-logo { animation: splashPop .6s cubic-bezier(.2,.8,.3,1.2); }
     .splash-bar span { animation: splashLoad 1.8s ease-out; }
   }
+  /* ブランド選択 */
+  .ss-brand-row { display:flex; gap:8px; margin-bottom:16px; width:100%; max-width:460px; }
+  .ss-brand-btn {
+    flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+    padding:10px 16px; border:2px solid #d4e8d0; border-radius:12px;
+    background:#fff; font-size:13.5px; font-weight:700; color:#1c5c2e;
+    cursor:pointer; transition:all .15s; font-family:inherit;
+  }
+  .ss-brand-btn.active { background:#e8f7f0; border-color:#1a8f5c; color:#1a8f5c; }
+  .ss-brand-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
   @keyframes splashPop { 0% { transform: scale(.86); } 100% { transform: scale(1); } }
   @keyframes splashLoad { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
 
@@ -715,6 +726,9 @@
   .ss-btn:active { transform: scale(.96); background: #d8f0d2; }
   .ss-note { font-size: 11px; color: #8aab8e; margin-top: 18px; text-align: center; line-height: 1.6; }
 </style>
+<!-- 料金表シード（価格データ） -->
+<script src="../price_seed.js"></script>
+<script src="../price_seed_blue.js"></script>
 </head>
 <body>
 
@@ -734,6 +748,35 @@
   <div class="ss-title">店舗を選んでください</div>
   <div class="ss-sub">選択した店舗はこの端末に記憶されます</div>
   <div class="ss-grid">
+    <button class="ss-btn" onclick="selectStore('本店')">本店</button>
+    <button class="ss-btn" onclick="selectStore('新田')">新田</button>
+    <button class="ss-btn" onclick="selectStore('草加西口')">草加西口</button>
+    <button class="ss-btn" onclick="selectStore('モール草加')">モール草加</button>
+    <button class="ss-btn" onclick="selectStore('蒲生')">蒲生</button>
+    <button class="ss-btn" onclick="selectStore('西友伊原')">西友伊原</button>
+    <button class="ss-btn" onclick="selectStore('東川口')">東川口</button>
+    <button class="ss-btn" onclick="selectStore('東川口2号')">東川口2号</button>
+    <button class="ss-btn" onclick="selectStore('マミー安行')">マミー安行</button>
+    <button class="ss-btn" onclick="selectStore('八潮工場')">八潮工場</button>
+    <button class="ss-btn" onclick="selectStore('東川口工場')">東川口工場</button>
+    <button class="ss-btn" onclick="selectStore('ルート')">ルート</button>
+    <button class="ss-btn" onclick="selectStore('本部')" style="grid-column:span 3;background:#f1f5f9;color:#374151">🏢 本部</button>
+  </div>
+  <!-- 本部用ブランド選択パネル -->
+  <div id="ss-honbu-panel" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:460px;margin-top:4px">
+    <div style="font-size:13.5px;font-weight:700;color:#374151">本部のブランドを選んでください</div>
+    <div class="ss-brand-row">
+      <button class="ss-brand-btn" onclick="selectHonbuBrand('green')">
+        <span class="ss-brand-dot" style="background:#1a8f5c"></span>緑のみわ
+      </button>
+      <button class="ss-brand-btn" onclick="selectHonbuBrand('blue')">
+        <span class="ss-brand-dot" style="background:#1a6dbd"></span>青のみわ
+      </button>
+    </div>
+    <button onclick="document.getElementById('ss-honbu-panel').style.display='none'" style="font-size:12px;color:#999;background:none;border:none;cursor:pointer">← 戻る</button>
+  </div>
+  <div class="ss-note">あとからヘッダーの店舗名をタップして変更できます</div>
+</div>
     <button class="ss-btn" onclick="selectStore('本店')">本店</button>
     <button class="ss-btn" onclick="selectStore('新田')">新田</button>
     <button class="ss-btn" onclick="selectStore('草加西口')">草加西口</button>
@@ -805,6 +848,86 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8Dssk
 
 // ── クラウド知識ベース（FAQ管理と共有）──────────────────────────
 const FAQ_CHAT_CLOUD_KEY = 'miwa.faq.cloud.v1';
+
+// ── 料金表連携 ─────────────────────────────────────────────
+const FAQ_TAX = 1.10;
+function normStr(s){ return (s||'').normalize('NFKC').toLowerCase(); }
+
+function loadFaqPriceData() {
+  const brand = faqBrand();
+  const lsKey  = brand==='blue' ? 'miwa.price.blue.v3'       : 'miwa.price.green.v3';
+  const editKey = brand==='blue' ? 'miwa.price.edits.blue.v1' : 'miwa.price.edits.v1';
+  let data=null;
+  try{ const s=localStorage.getItem(lsKey); if(s) data=JSON.parse(s); }catch(e){}
+  if(!data) data = brand==='blue'?(window.PRICE_SEED_BLUE||null):(window.PRICE_SEED||null);
+  let edits={};
+  try{ const e=localStorage.getItem(editKey); if(e) edits=JSON.parse(e); }catch(e){}
+  return {data,edits};
+}
+function _applyPEdit(item,edits){
+  const e=edits[item.code];
+  if(!e) return item;
+  if(e.deleted) return null;
+  return {...item,...e};
+}
+function findPriceItems(query,max=10){
+  const {data,edits}=loadFaqPriceData();
+  if(!data) return [];
+  const words=normStr(query).split(/[\s\u3001\u3002\u300c\u300d\uff01\uff1f]+/).filter(w=>w.length>=1);
+  const all=[...(data.cleaning||[]),...(data.special||[]),...(data.reform||[])];
+  try{
+    const fd=JSON.parse(localStorage.getItem('miwa.price.func.v1')||'null');
+    const sd=JSON.parse(localStorage.getItem('miwa.price.sales.v1')||'null');
+    if(fd) all.push(...(fd.items||[]));
+    if(sd) all.push(...(sd.items||[]));
+  }catch(e){}
+  return all.map(item=>{
+    const a=_applyPEdit(item,edits);
+    if(!a) return null;
+    const hay=normStr((a.name||'')+(a.cat||''));
+    let sc=0; for(const w of words){if(hay.includes(w))sc+=w.length;}
+    return sc>0?{...a,_sc:sc}:null;
+  }).filter(Boolean).sort((a,b)=>b._sc-a._sc).slice(0,max);
+}
+function formatPriceForAI(items){
+  if(!items.length) return '';
+  const isBlue=faqBrand()==='blue';
+  const brandName=isBlue?'青のみわ':'緑のみわ';
+  const fmt=p=>p?Math.round(p*FAQ_TAX).toLocaleString('ja-JP')+'円（税込）':'';
+  const lines=items.map(item=>{
+    const name=item.name||'',cat=item.cat?`[${item.cat}]`:'';
+    if(item.sqm&&item.sqmPrice) return `${cat}${name}: ${Math.round(item.sqmPrice*FAQ_TAX)}円/㎡（税込）`;
+    if(item.ys){const p=[];if(item.p1)p.push('定価'+fmt(item.p1));if(item.mp)p.push('会員'+fmt(item.mp));return `${cat}${name}: ${p.join('、')}`;}
+    const c=[],lbl1=(item.p4||item.p5||item.p6)?(isBlue?'エコノミー':'レギュラー'):'';
+    if(item.p1)c.push((lbl1?lbl1+' ':'')+fmt(item.p1));
+    if(item.p4)c.push((isBlue?'スタンダード':'デリケート')+' '+fmt(item.p4));
+    if(item.p5)c.push((isBlue?'プレミアム':'ブランド')+' '+fmt(item.p5));
+    if(!isBlue&&item.p6)c.push('ハイブランド '+fmt(item.p6));
+    return `${cat}${name}: ${c.join('、')}`;
+  });
+  return '\n\n[料金表（'+brandName+'・税込）]\n'+lines.join('\n')+'\n※知識ベースに料金記載があればこの料金表を優先すること。';
+}
+function detectSqm(q){
+  const m=q.match(/(\d+(?:[.,]\d+)?)\s*[m]?\s*[x×X*]\s*(\d+(?:[.,]\d+)?)\s*[m]?/i);
+  if(!m) return null;
+  const w=parseFloat(m[1].replace(',','.')),h=parseFloat(m[2].replace(',','.'));
+  if(isNaN(w)||isNaN(h)||w<=0||h<=0) return null;
+  return {w,h,area:Math.round(w*h*100)/100};
+}
+function calcSqmSupplement(question){
+  const sqm=detectSqm(question);
+  if(!sqm) return '';
+  const {data,edits}=loadFaqPriceData();
+  if(!data) return '';
+  const sqmItems=[...(data.special||[]),...(data.cleaning||[])].map(i=>_applyPEdit(i,edits)).filter(i=>i&&i.sqm&&i.sqmPrice);
+  const normQ=normStr(question);
+  const matched=sqmItems.map(i=>({...i,_sc:normStr((i.name||'')+(i.cat||'')).split('').filter(c=>normQ.includes(c)).length})).filter(i=>i._sc>0).sort((a,b)=>b._sc-a._sc);
+  if(!matched.length) return '';
+  const item=matched[0];
+  const unitTax=Math.round(item.sqmPrice*FAQ_TAX);
+  const total=Math.round(item.sqmPrice*sqm.area*FAQ_TAX);
+  return '\n\n[㎡計算結果] '+item.name+'（'+item.cat+'）: '+sqm.w+'m × '+sqm.h+'m = '+sqm.area+'㎡ → 約'+total.toLocaleString('ja-JP')+'円（税込）。単価'+unitTax+'円/㎡。この計算結果を回答に含めること。';
+}
 
 async function loadKBFromCloud() {
   try {
@@ -1020,10 +1143,11 @@ function searchKnowledge(question) {
 // ═══════════════════════════════════════════════
 
 async function getAIAnswer(question) {
-  // 知識ベースをテキスト化
   const kbText = knowledgeBase.map((item, i) =>
     `[${i+1}] Q: ${item.q}\nA: ${item.a}${item.category ? `\nカテゴリ: ${item.category}` : ''}`
   ).join('\n\n');
+
+
 
   const systemPrompt = `あなたはクリーニング店「クリーニングみわ」の社内FAQ AIです。受付・工場スタッフからの質問に、知識ベースの内容だけを根拠に答えます。
 
@@ -2029,16 +2153,48 @@ initChatFontSize();
 
 // ── 店舗選択 ──────────────────────────────────────────────
 const STORE_KEY = 'miwa.faq.store';
+const BRAND_KEY = 'miwa.faq.brand';
+let _ssBrand = (()=>{ try{return localStorage.getItem(BRAND_KEY)||'green';}catch(e){return 'green';} })();
+
+// 青のみわ店舗マッピング
+const BLUE_STORES = new Set(['モール草加','マミー安行','西友伊原']);
+function brandForStore(name) {
+  return BLUE_STORES.has(name) ? 'blue' : 'green';
+}
+
+function setSsBrand(b) {
+  _ssBrand = b;
+  ['green','blue'].forEach(k => {
+    const el = document.getElementById('ss-brand-'+k);
+    if (el) el.classList.toggle('active', k===b);
+  });
+}
+function faqBrand() {
+  try { return localStorage.getItem(BRAND_KEY) || 'green'; } catch(e) { return 'green'; }
+}
 
 function selectStore(name) {
-  try { localStorage.setItem(STORE_KEY, name); } catch(e) {}
+  if (name === '本部') { showHonbuBrandPanel(); return; }
+  const brand = brandForStore(name);
+  _ssBrand = brand;
+  try { localStorage.setItem(STORE_KEY, name); localStorage.setItem(BRAND_KEY, brand); } catch(e) {}
   updateStoreStatus(name);
+  const el = document.getElementById('store-select');
+  if (el) { el.classList.remove('visible'); el.classList.add('hide'); setTimeout(() => el.remove(), 500); }
+}
+function showHonbuBrandPanel() {
+  const p = document.getElementById('ss-honbu-panel');
+  if (p) p.style.display = 'flex';
+}
+function selectHonbuBrand(brand) {
+  _ssBrand = brand;
+  try { localStorage.setItem(STORE_KEY, '本部'); localStorage.setItem(BRAND_KEY, brand); } catch(e) {}
+  updateStoreStatus('本部');
   const el = document.getElementById('store-select');
   if (el) { el.classList.remove('visible'); el.classList.add('hide'); setTimeout(() => el.remove(), 500); }
 }
 function changeStore() {
   const el = document.getElementById('store-select') || (() => {
-    // 削除済みの場合は再生成
     const d = document.createElement('div');
     d.id = 'store-select';
     d.innerHTML = document.querySelector('#store-select')?.innerHTML || '';
@@ -2046,17 +2202,25 @@ function changeStore() {
   })();
   if (el) { el.classList.remove('hide'); el.classList.add('visible'); }
   else {
-    // 再生成
     const d = document.createElement('div');
     d.id = 'store-select';
     d.setAttribute('aria-hidden','true');
+    const stores = ['本店','新田','草加西口','モール草加','蒲生','西友伊原','東川口','東川口2号','マミー安行','八潮工場','東川口工場','ルート'];
     d.innerHTML = `
       <div class="ss-logo"></div>
       <div class="ss-title">店舗を変更する</div>
       <div class="ss-sub">この端末の店舗設定を変更します</div>
       <div class="ss-grid">
-        ${['本店','新田','草加西口','モール草加','蒲生','西友伊原','東川口','東川口2号','マミー安行','八潮工場','東川口工場','ルート']
-          .map(s=>`<button class="ss-btn" onclick="selectStore('${s}')">${s}</button>`).join('')}
+        ${stores.map(s=>`<button class="ss-btn" onclick="selectStore('${s}')">${s}</button>`).join('')}
+        <button class="ss-btn" onclick="selectStore('本部')" style="grid-column:span 3;background:#f1f5f9;color:#374151">🏢 本部</button>
+      </div>
+      <div id="ss-honbu-panel" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:460px;margin-top:4px">
+        <div style="font-size:13.5px;font-weight:700;color:#374151">本部のブランドを選んでください</div>
+        <div class="ss-brand-row">
+          <button class="ss-brand-btn" onclick="selectHonbuBrand('green')"><span class="ss-brand-dot" style="background:#1a8f5c"></span>緑のみわ</button>
+          <button class="ss-brand-btn" onclick="selectHonbuBrand('blue')"><span class="ss-brand-dot" style="background:#1a6dbd"></span>青のみわ</button>
+        </div>
+        <button onclick="document.getElementById('ss-honbu-panel').style.display='none'" style="font-size:12px;color:#999;background:none;border:none;cursor:pointer">← 戻る</button>
       </div>
       <div class="ss-note">あとからヘッダーの店舗名をタップして変更できます</div>`;
     document.body.appendChild(d);
