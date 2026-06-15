@@ -5,7 +5,7 @@
 //   UA: { id, question, askedAt, answered, status }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const MFAQ_CHAT_URL  = "formsite/FAQ.html";
+const MFAQ_CHAT_URL  = "../formsite/FAQ.html";
 const MFAQ_DEFAULT_GAS = "https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec";
 const MFAQ_LS_KEY    = "miwa.faq.kb.v1";
 const MFAQ_CFG_KEY   = "miwa.faq.cloud.v1";

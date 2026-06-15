@@ -5,7 +5,7 @@
 // ▼ スタッフ用FAQチャット（鍵なし・別入口）のURL
 //   本番では GitHub Pages の公開URLに差し替える。
 //   未設定/差し替え前は、プロジェクト内のFAQデモを開く。
-const FAQ_CHAT_URL = "formsite/FAQ.html";
+const FAQ_CHAT_URL = "../formsite/FAQ.html";
 
 const FaqAdminPage = () => {
   const mountRef = React.useRef(null);
