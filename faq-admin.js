@@ -316,9 +316,48 @@ function addUnansweredManual() {
   _cldPost('add_ua', { q });
 }
 
-// ═══════════════════════════════════════════════
-//  資料から一括取り込み
-// ═══════════════════════════════════════════════
+// ── 長文チャンク分割 ──────────────────────────────────────────
+function splitIntoChunks(text, maxLen = 1400) {
+  // 段落・見出し・改行で区切ってから結合してチャンク化
+  const lines = text.split(/\n/);
+  const chunks = [];
+  let cur = '';
+  for (const line of lines) {
+    // 見出し行（第1条 / 第○章 / ●● など）でも区切る
+    const isHeading = /^(第\d|\d+\.|第[一二三四五六七八九十百]+|[●◆■▶【]|={3,})/.test(line.trim());
+    if ((cur.length + line.length > maxLen && cur.length > 100) || (isHeading && cur.length > 300)) {
+      chunks.push(cur.trim());
+      cur = '';
+    }
+    cur += line + '\n';
+  }
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks.filter(c => c.length > 20);
+}
+
+// ── 堅牢なJSONパーサー ────────────────────────────────────────
+function robustParseJsonArray(raw) {
+  // 1. コードフェンス除去
+  let text = raw.trim()
+    .replace(/^```[a-z]*\n?/i, '')
+    .replace(/\n?```$/i, '')
+    .trim();
+  // 2. [ 〜 ] 抽出
+  const s = text.indexOf('['), e = text.lastIndexOf(']');
+  if (s !== -1 && e !== -1) text = text.slice(s, e + 1);
+  // 3. 末尾が不完全な場合（途中切れ）は最後の完全なオブジェクトまで切り詰め
+  try {
+    return JSON.parse(text);
+  } catch(e1) {
+    const last = text.lastIndexOf('},');
+    if (last > 0) {
+      try { return JSON.parse(text.slice(0, last + 1) + ']'); } catch(e2) {}
+    }
+    throw new Error('JSONパース失敗: ' + (e1.message || e1));
+  }
+}
+
+// ── 資料一括取り込み ────────────────────────────────────────────
 let importCandidates = [];
 
 function existingCategories() {
@@ -352,8 +391,6 @@ async function bulkSort() {
   const btn = document.getElementById('import-btn');
   const result = document.getElementById('import-result');
   btn.disabled = true;
-  btn.textContent = '⏳ 仕分け中...';
-  result.innerHTML = '<div style="font-size:13px;color:var(--text-sub)">AIが資料を読んで知識候補に分けています...</div>';
 
   const cats = existingCategories();
   const systemPrompt = `あなたはクリーニング店「クリーニングみわ」の知識ベース編集アシスタントです。
@@ -372,39 +409,73 @@ async function bulkSort() {
 - 既存カテゴリ一覧：${cats.join('、') || '（まだ無し）'}
 
 【出力形式】
-JSON配列だけを出力する。前置き・説明・コードフェンス(\`\`\`)は一切付けない。
+JSONの配列だけを返す。前置き・説明・コードフェンス(\`\`\`)は絶対に付けない。
 [{"question":"...","knowledge":"...","procedure":"...","proposal":"...","category":"..."}]`;
 
-  try {
-    const raw = await callAIRaw(systemPrompt, src, 2500);
-    let jsonText = raw.trim();
-    const s = jsonText.indexOf('['), e = jsonText.lastIndexOf(']');
-    if (s !== -1 && e !== -1) jsonText = jsonText.slice(s, e + 1);
-    const arr = JSON.parse(jsonText);
+  const chunks = splitIntoChunks(src);
+  const total = chunks.length;
+  let allCandidates = [];
+  let errors = [];
 
-    importCandidates = arr.map((c, i) => {
-      const q = c.question || '';
-      const dup = findSimilarKnowledge(q);
-      return {
-        id: 'imp' + i,
-        q,
-        knowledge: c.knowledge || '',
-        procedure: c.procedure || '',
-        proposal: c.proposal || '',
-        category: c.category || '未分類',
-        image: '',
-        catMode: cats.includes(c.category) ? 'existing' : (c.category ? 'new' : 'existing'),
-        dup,
-        decision: dup ? 'overwrite' : 'new'
-      };
-    });
+  const setProgress = (done, msg) => {
+    result.innerHTML = `
+      <div style="font-size:13px;color:var(--text-sub);margin-bottom:10px">${msg}</div>
+      <div style="background:#e2e8f0;border-radius:6px;height:8px;overflow:hidden">
+        <div style="height:100%;background:var(--primary);border-radius:6px;transition:width .3s;width:${Math.round(done/total*100)}%"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px">チャンク ${done}/${total}</div>`;
+  };
 
-    renderImport();
-  } catch (err) {
-    result.innerHTML = `<div class="dup-warn"><div class="dup-warn-title">⚠️ 仕分けに失敗しました</div>
-      <div>${escHtml(err.message)}</div>
-      <div style="margin-top:6px;color:var(--text-muted)">AIの応答がJSON形式にならなかった可能性があります。テキストを短くするか、もう一度お試しください。</div></div>`;
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    btn.textContent = `⏳ 処理中 ${i+1}/${total}`;
+    setProgress(i, `AIが資料を読んでいます…（${i+1}/${total} チャンク）`);
+    try {
+      const raw = await callAIRaw(systemPrompt, chunk, 3500);
+      const arr = robustParseJsonArray(raw);
+      allCandidates = allCandidates.concat(arr);
+    } catch(err) {
+      errors.push(`チャンク${i+1}: ${err.message}`);
+    }
   }
+
+  btn.disabled = false;
+  btn.textContent = '🪄 AIで仕分け';
+
+  if (allCandidates.length === 0) {
+    result.innerHTML = `<div class="dup-warn">
+      <div class="dup-warn-title">⚠️ 仕分けに失敗しました</div>
+      <div>${errors.map(escHtml).join('<br>')}</div>
+      <div style="margin-top:6px;color:var(--text-muted)">資料が短すぎるか、形式が想定外の可能性があります。</div>
+    </div>`;
+    return;
+  }
+
+  importCandidates = allCandidates.map((c, i) => {
+    const q = c.question || '';
+    const dup = findSimilarKnowledge(q);
+    return {
+      id: 'imp' + i,
+      q,
+      knowledge: c.knowledge || '',
+      procedure: c.procedure || '',
+      proposal: c.proposal || '',
+      category: c.category || '未分類',
+      image: '',
+      catMode: cats.includes(c.category) ? 'existing' : (c.category ? 'new' : 'existing'),
+      dup,
+      decision: dup ? 'overwrite' : 'new'
+    };
+  });
+
+  if (errors.length) {
+    result.innerHTML = `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:10px">
+      ⚠️ ${errors.length}チャンクで取込エラーが発生しましたが、残り${allCandidates.length}件は取込成功しました。<br>${errors.map(escHtml).join('<br>')}
+    </div>`;
+  }
+
+  renderImport();
+}
 
   btn.disabled = false;
   btn.textContent = '🪄 AIで仕分け';
@@ -696,6 +767,69 @@ function addKB() {
 }
 
 // ═══════════════════════════════════════════════
+//  知識資料ストック（長文資料をそのまま保存して検索参照）
+// ═══════════════════════════════════════════════
+const FAQ_DOCS_KEY = 'miwa.faq.docs.v1';
+let faqDocs = [];
+
+function loadFaqDocs() {
+  try { const s=localStorage.getItem(FAQ_DOCS_KEY); if(s) faqDocs=JSON.parse(s); } catch(e){ faqDocs=[]; }
+  return faqDocs;
+}
+function saveFaqDocs() {
+  try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
+}
+function addDoc() {
+  const title   = (document.getElementById('doc-title')?.value||'').trim();
+  const category= (document.getElementById('doc-cat')?.value||'').trim();
+  const content = (document.getElementById('doc-content')?.value||'').trim();
+  if (!title)   { alert('タイトルを入力してください'); return; }
+  if (!content) { alert('内容を入力してください'); return; }
+  faqDocs.push({ id:Date.now(), title, category:category||'未分類', content, addedAt:new Date().toISOString().slice(0,10) });
+  saveFaqDocs();
+  document.getElementById('doc-title').value='';
+  document.getElementById('doc-cat').value='';
+  document.getElementById('doc-content').value='';
+  document.getElementById('doc-form').style.display='none';
+  renderDocs();
+}
+function deleteDoc(id) {
+  if (!confirm('この資料を削除しますか？')) return;
+  faqDocs = faqDocs.filter(d=>d.id!==id);
+  saveFaqDocs();
+  renderDocs();
+}
+function toggleDocForm() {
+  const f=document.getElementById('doc-form');
+  if(f) f.style.display = f.style.display==='none'?'':'none';
+}
+function renderDocs() {
+  const list=document.getElementById('doc-list');
+  if(!list) return;
+  const cnt=document.getElementById('doc-count');
+  if(cnt) cnt.textContent=`${faqDocs.length}件`;
+  if(!faqDocs.length){
+    list.innerHTML=`<div class="kb-empty">資料がありません。<br><span style="font-size:12px">就業規則・研修資料・マニュアルなどを追加してください。<br>スタッフFAQで質問すると、登録した資料からキーワード検索してAIに参考として渡します。</span></div>`;
+    return;
+  }
+  list.innerHTML=faqDocs.map(doc=>`
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:3px">${escHtml(doc.title)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted);display:flex;gap:10px;flex-wrap:wrap">
+            <span>📁 ${escHtml(doc.category)}</span>
+            <span>📅 ${escHtml(doc.addedAt)}</span>
+            <span>📝 ${doc.content.length.toLocaleString()}文字</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-sub);margin-top:5px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escHtml(doc.content.slice(0,150))}${doc.content.length>150?'…':''}</div>
+        </div>
+        <button onclick="deleteDoc(${doc.id})" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0;margin-top:2px">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════
 //  質問ログ（全端末の質問・回答の記録）
 //  ・全端末共有は GAS+スプレッドシート（第3段階）が必要。
 //    GASに getFaqLog アクションを実装すると「全端末から取得」で一覧表示される。
@@ -971,6 +1105,32 @@ const FAQ_ADMIN_MARKUP = `
     </div>
   </div>
 
+  <!-- 資料ストック -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head">
+      <span>📚</span>
+      <h2>知識資料ストック</h2>
+      <span id="doc-count" class="log-count">0件</span>
+      <button class="btn btn-primary btn-sm" onclick="toggleDocForm()" style="margin-left:auto">＋ 資料を追加</button>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px">就業規則・研修資料・マニュアルなどをそのまま登録。質問時にキーワードで該当箇所を抽出し、AIの回答参考に渡します。</p>
+      <!-- 追加フォーム -->
+      <div id="doc-form" style="display:none;background:var(--surface-1,#f7f9fd);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+        <div class="form-row" style="margin-bottom:10px">
+          <input class="form-input" id="doc-title" placeholder="資料名（例：就業規則 2026年版）" style="flex:1">
+          <input class="form-input" id="doc-cat" placeholder="カテゴリ（例：規則・制度）" style="flex:1">
+        </div>
+        <textarea class="form-textarea" id="doc-content" placeholder="内容を貧り付け（長文OK）" style="min-height:120px"></textarea>
+        <div class="form-row" style="margin-top:10px">
+          <button class="btn btn-primary btn-sm" onclick="addDoc()">💾 保存</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleDocForm()">キャンセル</button>
+        </div>
+      </div>
+      <div id="doc-list"><div class="kb-empty">資料がありません</div></div>
+    </div>
+  </div>
+
   <!-- 質問ログ -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-head">
@@ -1027,7 +1187,7 @@ const FAQ_ADMIN_MARKUP = `
       <span style="font-size:12px;color:var(--text-muted)">AIが仕分け→確認して追加</span>
     </div>
     <div class="card-body">
-      <p style="font-size:13px;color:var(--text-sub);margin-bottom:10px">マニュアルやメモを貼り付けて「AIで仕分け」を押すと、知識候補に分解します。確認・修正してから知識ベースに追加してください。</p>
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:10px">就業規則・研修資料・マニュアルなどを貼り付けて「AIで仕分け」を押すと、自動で知識候補に分解します。<strong>長文も自動でチャンク分割して処理します。</strong>確認・修正してから知識ベースに追加してください。</p>
       <textarea class="form-textarea" id="import-src" placeholder="例：毛100%のセーターはネットに入れて洗う。タンブル乾燥不可。裏返して洗うのがおすすめ。乾燥機は避けてスチームでうかしながらアイロン。毛玉は引っぱらず毛玉取り器で…" style="min-height:90px"></textarea>
       <div class="form-row" style="margin-top:10px">
         <button class="btn btn-primary btn-sm" id="import-btn" onclick="bulkSort()">🪄 AIで仕分け</button>
@@ -1156,6 +1316,8 @@ const FAQ_ADMIN_MARKUP = `
 // ═══════════════════════════════════════════════
 function initFaqAdmin() {
   loadFaq();
+  loadFaqDocs();
+  renderDocs();
   faqLog = loadLocalLog();
   faqLogSource = 'local';
   updateStats();
