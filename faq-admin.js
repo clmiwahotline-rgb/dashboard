@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════
 //  ★設定：GASプロキシのURL（APIキーはGAS側で秘匿）
 // ═══════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
 
 // ═══════════════════════════════════════════════
 //  データストア（暫定：localStorage。後日スプレッドシート化）
@@ -19,7 +19,7 @@ const FAQ_CLOUD_KEY = 'miwa.faq.cloud.v1'; // { gasUrl, token, enabled }
 // ── クラウド設定の読み書き ──
 function loadCloudCfg() {
   try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) return JSON.parse(s); } catch(e) {}
-  return { gasUrl: '', token: '', enabled: false };
+  return { gasUrl: 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec', token: '', enabled: true };
 }
 function saveCloudCfg(cfg) {
   try { localStorage.setItem(FAQ_CLOUD_KEY, JSON.stringify(cfg)); } catch(e) {}
