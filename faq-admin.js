@@ -477,10 +477,6 @@ JSONの配列だけを返す。前置き・説明・コードフェンス(\`\`\`
   renderImport();
 }
 
-  btn.disabled = false;
-  btn.textContent = '🪄 AIで仕分け';
-}
-
 // 編集中のDOM値を状態へ反映（再描画前に呼ぶ）
 function syncImportFromDom() {
   for (const c of importCandidates) {
