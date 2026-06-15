@@ -673,6 +673,47 @@
   }
   @keyframes splashPop { 0% { transform: scale(.86); } 100% { transform: scale(1); } }
   @keyframes splashLoad { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+
+  /* ─── 店舗選択画面 ─── */
+  #store-select {
+    position: fixed; inset: 0; z-index: 9998;
+    background: linear-gradient(165deg, #f1f6ee 0%, #e8f5e3 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px 16px calc(env(safe-area-inset-bottom,0px) + 24px);
+    opacity: 0; transition: opacity .4s ease;
+  }
+  #store-select.visible { opacity: 1; }
+  #store-select.hide    { opacity: 0; pointer-events: none; }
+  .ss-logo {
+    width: 64px; height: 64px;
+    background: #fff url('../favicon.png') center/contain no-repeat;
+    border-radius: 16px; box-shadow: 0 4px 16px rgba(28,138,58,.18);
+    margin-bottom: 18px; flex-shrink: 0;
+  }
+  .ss-title  { font-size: 19px; font-weight: 800; color: #1c5c2e; margin-bottom: 4px; text-align: center; }
+  .ss-sub    { font-size: 13px; color: #5a8a64; font-weight: 600; margin-bottom: 24px; text-align: center; }
+  .ss-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%; max-width: 460px;
+  }
+  .ss-btn {
+    background: #fff;
+    border: 2px solid #d4e8d0;
+    border-radius: 14px;
+    padding: 14px 8px;
+    font-size: 13.5px; font-weight: 700;
+    color: #1c5c2e;
+    cursor: pointer;
+    text-align: center;
+    transition: background .15s, border-color .15s, transform .1s;
+    font-family: inherit;
+    line-height: 1.3;
+  }
+  .ss-btn:hover  { background: #eaf6e4; border-color: #8dc63f; }
+  .ss-btn:active { transform: scale(.96); background: #d8f0d2; }
+  .ss-note { font-size: 11px; color: #8aab8e; margin-top: 18px; text-align: center; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -688,6 +729,27 @@
   </svg>
 </template>
 
+<div id="store-select" aria-hidden="true">
+  <div class="ss-logo"></div>
+  <div class="ss-title">店舗を選んでください</div>
+  <div class="ss-sub">選択した店舗はこの端末に記憶されます</div>
+  <div class="ss-grid">
+    <button class="ss-btn" onclick="selectStore('本店')">本店</button>
+    <button class="ss-btn" onclick="selectStore('新田')">新田</button>
+    <button class="ss-btn" onclick="selectStore('草加西口')">草加西口</button>
+    <button class="ss-btn" onclick="selectStore('モール草加')">モール草加</button>
+    <button class="ss-btn" onclick="selectStore('蒲生')">蒲生</button>
+    <button class="ss-btn" onclick="selectStore('西友伊原')">西友伊原</button>
+    <button class="ss-btn" onclick="selectStore('東川口')">東川口</button>
+    <button class="ss-btn" onclick="selectStore('東川口2号')">東川口2号</button>
+    <button class="ss-btn" onclick="selectStore('マミー安行')">マミー安行</button>
+    <button class="ss-btn" onclick="selectStore('八潮工場')">八潮工場</button>
+    <button class="ss-btn" onclick="selectStore('東川口工場')">東川口工場</button>
+    <button class="ss-btn" onclick="selectStore('ルート')">ルート</button>
+  </div>
+  <div class="ss-note">あとからヘッダーの店舗名をタップして変更できます</div>
+</div>
+
 <div id="splash" aria-hidden="true">
   <div class="splash-inner">
     <div class="splash-logo"></div>
@@ -702,7 +764,7 @@
     <div class="dot"></div>
     <div class="brand-info">
       <span class="brand-name">クリーニングみわ 社内FAQ</span>
-      <span class="brand-status">オンライン</span>
+      <span class="brand-status" id="store-status" onclick="changeStore()" style="cursor:pointer" title="タップして店舗を変更">オンライン</span>
     </div>
   </div>
 </header>
@@ -1965,8 +2027,62 @@ initChatFontSize();
   }, { passive: false });
 })();
 
+// ── 店舗選択 ──────────────────────────────────────────────
+const STORE_KEY = 'miwa.faq.store';
+
+function selectStore(name) {
+  try { localStorage.setItem(STORE_KEY, name); } catch(e) {}
+  updateStoreStatus(name);
+  const el = document.getElementById('store-select');
+  if (el) { el.classList.remove('visible'); el.classList.add('hide'); setTimeout(() => el.remove(), 500); }
+}
+function changeStore() {
+  const el = document.getElementById('store-select') || (() => {
+    // 削除済みの場合は再生成
+    const d = document.createElement('div');
+    d.id = 'store-select';
+    d.innerHTML = document.querySelector('#store-select')?.innerHTML || '';
+    return null;
+  })();
+  if (el) { el.classList.remove('hide'); el.classList.add('visible'); }
+  else {
+    // 再生成
+    const d = document.createElement('div');
+    d.id = 'store-select';
+    d.setAttribute('aria-hidden','true');
+    d.innerHTML = `
+      <div class="ss-logo"></div>
+      <div class="ss-title">店舗を変更する</div>
+      <div class="ss-sub">この端末の店舗設定を変更します</div>
+      <div class="ss-grid">
+        ${['本店','新田','草加西口','モール草加','蒲生','西友伊原','東川口','東川口2号','マミー安行','八潮工場','東川口工場','ルート']
+          .map(s=>`<button class="ss-btn" onclick="selectStore('${s}')">${s}</button>`).join('')}
+      </div>
+      <div class="ss-note">あとからヘッダーの店舗名をタップして変更できます</div>`;
+    document.body.appendChild(d);
+    requestAnimationFrame(() => d.classList.add('visible'));
+  }
+}
+function updateStoreStatus(name) {
+  const el = document.getElementById('store-status');
+  if (!el) return;
+  if (name) {
+    el.textContent = name;
+    el.style.color = 'var(--success)';
+  } else {
+    el.textContent = 'オンライン';
+    el.style.color = '';
+  }
+}
+
 // クラウド知識ベース読み込み（設定済みの場合）→ 完了後にスプラッシュを消す
 (async function(){
+  // URLパラメータに ?store=XXX があれば自動保存
+  try {
+    const p = new URLSearchParams(location.search).get('store');
+    if (p) { localStorage.setItem(STORE_KEY, decodeURIComponent(p)); }
+  } catch(e) {}
+
   await loadKBFromCloud();
 
   document.body.classList.add('chat-mode');
@@ -1976,6 +2092,22 @@ initChatFontSize();
 
   const sp = document.getElementById('splash');
   if (sp) { setTimeout(() => { sp.classList.add('hide'); setTimeout(() => sp.remove(), 600); }, 400); }
+
+  // 店舗名の確認（スプラッシュが消えた後に表示）
+  const storedStore = (() => { try { return localStorage.getItem(STORE_KEY) || ''; } catch(e) { return ''; } })();
+  updateStoreStatus(storedStore);
+
+  if (!storedStore) {
+    // 未設定 → スプラッシュ消滅後に店舗選択画面を表示
+    setTimeout(() => {
+      const el = document.getElementById('store-select');
+      if (el) { el.style.display = 'flex'; requestAnimationFrame(() => el.classList.add('visible')); }
+    }, 800);
+  } else {
+    // 設定済み → 店舗選択を消す
+    const el = document.getElementById('store-select');
+    if (el) el.remove();
+  }
 })();
 </script>
 </body>
