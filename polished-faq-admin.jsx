@@ -9,6 +9,18 @@ const FAQ_CHAT_URL = "../formsite/FAQ.html";
 
 const FaqAdminPage = () => {
   const mountRef = React.useRef(null);
+  const cloudOn = typeof cloudEnabled === "function" && cloudEnabled();
+
+  // GAS URL をクラウドの "FAQ設定" シートに共有（全端末で設定不要に）
+  React.useEffect(() => {
+    if (!cloudOn) return;
+    try {
+      const cfg = JSON.parse(localStorage.getItem("miwa.faq.cloud.v1") || "{}");
+      if (cfg && cfg.gasUrl && cfg.enabled) {
+        cloudReplaceAll("FAQ設定", [{ id: "faq_gas", gasUrl: cfg.gasUrl, token: cfg.token || "" }]);
+      }
+    } catch (e) {}
+  }, [cloudOn]);
 
   React.useEffect(() => {
     // dangerouslySetInnerHTML で挿入したマークアップに対し、

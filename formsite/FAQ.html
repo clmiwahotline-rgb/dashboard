@@ -2,6 +2,9 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>クリーニングみわ 社内FAQ（体験版）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -72,7 +75,15 @@
     white-space: nowrap;
   }
   .header-brand .brand-info { display: flex; flex-direction: column; line-height: 1.25; }
-  .header-brand .brand-name { font-weight: 700; font-size: 14.5px; color: var(--text); }
+  .header-brand .brand-name { font-weight: 700; font-size: 14.5px; color: var(--text); display:flex; align-items:center; gap:7px; }
+  #brand-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:10.5px; font-weight:800; letter-spacing:.02em;
+    padding:2px 8px; border-radius:999px;
+    border:1.5px solid rgba(255,255,255,.7); background:rgba(255,255,255,.18);
+    color:#fff; white-space:nowrap; flex-shrink:0;
+  }
+  #brand-badge .bd { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
   .header-brand .brand-status { font-size: 11px; color: var(--success); font-weight: 600; display: flex; align-items: center; gap: 5px; }
   .header-brand .brand-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(5,150,105,.16); }
   .header-brand .dot {
@@ -635,6 +646,12 @@
     #tab-faq.line-chat { box-shadow: none; }
     .msg-group { max-width: 82%; }
   }
+
+  /* ─── PC幅：チャットをアプリのように浮かせる ─── */
+  @media (min-width: 601px) {
+    .header { border-radius: 16px 16px 0 0; }
+    #tab-faq.line-chat { border-radius: 0 0 16px 16px; overflow: hidden; }
+  }
   /* ─── スプラッシュ ─── */
   #splash {
     position: fixed; inset: 0; z-index: 9999;
@@ -687,14 +704,16 @@
 
   /* ─── 店舗選択画面 ─── */
   #store-select {
+    display: none;
     position: fixed; inset: 0; z-index: 9998;
     background: linear-gradient(165deg, #f1f6ee 0%, #e8f5e3 100%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex-direction: column; align-items: center; justify-content: center;
     padding: 24px 16px calc(env(safe-area-inset-bottom,0px) + 24px);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
     opacity: 0; transition: opacity .4s ease;
   }
   #store-select.visible { opacity: 1; }
-  #store-select.hide    { opacity: 0; pointer-events: none; }
+  #store-select.hide    { opacity: 0; }
   .ss-logo {
     width: 64px; height: 64px;
     background: transparent url('logo.png') center/contain no-repeat;
@@ -743,55 +762,6 @@
   </svg>
 </template>
 
-<div id="store-select" aria-hidden="true">
-  <div class="ss-logo"></div>
-  <div class="ss-title">店舗を選んでください</div>
-  <div class="ss-sub">選択した店舗はこの端末に記憶されます</div>
-  <div class="ss-grid">
-    <button class="ss-btn" onclick="selectStore('本店')">本店</button>
-    <button class="ss-btn" onclick="selectStore('新田')">新田</button>
-    <button class="ss-btn" onclick="selectStore('草加西口')">草加西口</button>
-    <button class="ss-btn" onclick="selectStore('モール草加')">モール草加</button>
-    <button class="ss-btn" onclick="selectStore('蒲生')">蒲生</button>
-    <button class="ss-btn" onclick="selectStore('西友伊原')">西友伊原</button>
-    <button class="ss-btn" onclick="selectStore('東川口')">東川口</button>
-    <button class="ss-btn" onclick="selectStore('東川口2号')">東川口2号</button>
-    <button class="ss-btn" onclick="selectStore('マミー安行')">マミー安行</button>
-    <button class="ss-btn" onclick="selectStore('八潮工場')">八潮工場</button>
-    <button class="ss-btn" onclick="selectStore('東川口工場')">東川口工場</button>
-    <button class="ss-btn" onclick="selectStore('ルート')">ルート</button>
-    <button class="ss-btn" onclick="selectStore('本部')" style="grid-column:span 3;background:#f1f5f9;color:#374151">🏢 本部</button>
-  </div>
-  <!-- 本部用ブランド選択パネル -->
-  <div id="ss-honbu-panel" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:460px;margin-top:4px">
-    <div style="font-size:13.5px;font-weight:700;color:#374151">本部のブランドを選んでください</div>
-    <div class="ss-brand-row">
-      <button class="ss-brand-btn" onclick="selectHonbuBrand('green')">
-        <span class="ss-brand-dot" style="background:#1a8f5c"></span>緑のみわ
-      </button>
-      <button class="ss-brand-btn" onclick="selectHonbuBrand('blue')">
-        <span class="ss-brand-dot" style="background:#1a6dbd"></span>青のみわ
-      </button>
-    </div>
-    <button onclick="document.getElementById('ss-honbu-panel').style.display='none'" style="font-size:12px;color:#999;background:none;border:none;cursor:pointer">← 戻る</button>
-  </div>
-  <div class="ss-note">あとからヘッダーの店舗名をタップして変更できます</div>
-</div>
-    <button class="ss-btn" onclick="selectStore('本店')">本店</button>
-    <button class="ss-btn" onclick="selectStore('新田')">新田</button>
-    <button class="ss-btn" onclick="selectStore('草加西口')">草加西口</button>
-    <button class="ss-btn" onclick="selectStore('モール草加')">モール草加</button>
-    <button class="ss-btn" onclick="selectStore('蒲生')">蒲生</button>
-    <button class="ss-btn" onclick="selectStore('西友伊原')">西友伊原</button>
-    <button class="ss-btn" onclick="selectStore('東川口')">東川口</button>
-    <button class="ss-btn" onclick="selectStore('東川口2号')">東川口2号</button>
-    <button class="ss-btn" onclick="selectStore('マミー安行')">マミー安行</button>
-    <button class="ss-btn" onclick="selectStore('八潮工場')">八潮工場</button>
-    <button class="ss-btn" onclick="selectStore('東川口工場')">東川口工場</button>
-    <button class="ss-btn" onclick="selectStore('ルート')">ルート</button>
-  </div>
-  <div class="ss-note">あとからヘッダーの店舗名をタップして変更できます</div>
-</div>
 
 <div id="splash" aria-hidden="true">
   <div class="splash-inner">
@@ -806,10 +776,23 @@
   <div class="header-brand">
     <div class="dot"></div>
     <div class="brand-info">
-      <span class="brand-name">クリーニングみわ 社内FAQ</span>
+      <span class="brand-name">クリーニングみわ 社内FAQ <span id="brand-badge" style="display:none"></span></span>
       <span class="brand-status" id="store-status" onclick="changeStore()" style="cursor:pointer" title="タップして店舗を変更">オンライン</span>
     </div>
   </div>
+  <button onclick="location.reload(true)" title="最新版に更新" style="
+    flex-shrink:0;width:34px;height:34px;border-radius:50%;
+    border:1.5px solid #d1fae5;background:#f0fdf4;
+    color:#059669;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    margin-left:6px;transition:background .15s,transform .2s;
+    box-shadow:0 1px 3px rgba(0,0,0,.08);
+  " onmouseenter="this.style.background='#d1fae5'" onmouseleave="this.style.background='#f0fdf4'"
+     ontouchstart="this.style.transform='scale(.9)'" ontouchend="this.style.transform=''">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 4 23 10 17 10"/>
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    </svg>
+  </button>
 </header>
 
 <!-- ─── FAQ タブ（LINE風チャット） ─── -->
@@ -873,7 +856,15 @@ function _applyPEdit(item,edits){
 function findPriceItems(query,max=10){
   const {data,edits}=loadFaqPriceData();
   if(!data) return [];
-  const words=normStr(query).split(/[\s\u3001\u3002\u300c\u300d\uff01\uff1f]+/).filter(w=>w.length>=1);
+  // 助詞・助動詞で分割して日本語キーワードを抽出
+  const _qn = normStr(query);
+  const _rawWords = _qn.split(/[\s\u3001\u3002\u300c\u300d\uff01\uff1f\u306e\u3092\u304c\u306f\u306b\u3067\u3082\u3084\u304b\u3089\u307e\u3067\u3066\u305f\u3067\u3059\u307e\u3059]+/).filter(w=>w.length>=2);
+  // 単語が少ない場合は文字2グラムも加える
+  const searchWords = [..._rawWords];
+  for (let _i=0; _i<_qn.length-1; _i++){
+    const _bi=_qn.slice(_i,_i+2);
+    if(!searchWords.includes(_bi)) searchWords.push(_bi);
+  }
   const all=[...(data.cleaning||[]),...(data.special||[]),...(data.reform||[])];
   try{
     const fd=JSON.parse(localStorage.getItem('miwa.price.func.v1')||'null');
@@ -885,7 +876,7 @@ function findPriceItems(query,max=10){
     const a=_applyPEdit(item,edits);
     if(!a) return null;
     const hay=normStr((a.name||'')+(a.cat||''));
-    let sc=0; for(const w of words){if(hay.includes(w))sc+=w.length;}
+    let sc=0; for(const w of searchWords){if(hay.includes(w))sc+=w.length;}
     return sc>0?{...a,_sc:sc}:null;
   }).filter(Boolean).sort((a,b)=>b._sc-a._sc).slice(0,max);
 }
@@ -927,6 +918,38 @@ function calcSqmSupplement(question){
   const unitTax=Math.round(item.sqmPrice*FAQ_TAX);
   const total=Math.round(item.sqmPrice*sqm.area*FAQ_TAX);
   return '\n\n[㎡計算結果] '+item.name+'（'+item.cat+'）: '+sqm.w+'m × '+sqm.h+'m = '+sqm.area+'㎡ → 約'+total.toLocaleString('ja-JP')+'円（税込）。単価'+unitTax+'円/㎡。この計算結果を回答に含めること。';
+}
+
+// ── 知識資料ストック検索 ─────────────────────────────────────
+const FAQ_DOCS_LS_KEY = 'miwa.faq.docs.v1';
+function loadFaqDocsForSearch() {
+  try { const s=localStorage.getItem(FAQ_DOCS_LS_KEY); return s?JSON.parse(s):[]; } catch(e){ return []; }
+}
+function searchDocuments(question, maxPassages=4, maxChars=1000) {
+  const docs = loadFaqDocsForSearch();
+  if (!docs.length) return '';
+  const words = normStr(question).split(/[\s\u3001\u3002\uff01\uff1f\u300c\u300d\u3010\u3011\n]+/).filter(w=>w.length>=2);
+  if (!words.length) return '';
+  const results = [];
+  for (const doc of docs) {
+    const paragraphs = doc.content.split(/\n/).filter(p=>p.trim().length>5);
+    for (const para of paragraphs) {
+      const trimmed = para.trim();
+      const score = words.filter(w=>normStr(trimmed).includes(w)).length;
+      if (score>0) results.push({text:trimmed, score, title:doc.title});
+    }
+  }
+  if (!results.length) return '';
+  results.sort((a,b)=>b.score-a.score);
+  const top=[]; let chars=0;
+  for (const r of results) {
+    if (top.length>=maxPassages||chars>=maxChars) break;
+    top.push(r); chars+=r.text.length;
+  }
+  const grouped={};
+  for (const r of top) { if(!grouped[r.title]) grouped[r.title]=[]; grouped[r.title].push(r.text); }
+  const sections=Object.entries(grouped).map(([t,txts])=>'【'+t+'】\n'+txts.join('\n'));
+  return '\n\n[参考資料（キーワード検索）]\n'+sections.join('\n\n')+'\n※上記の資料内容も参考にして回答してください。';
 }
 
 async function loadKBFromCloud() {
@@ -1147,6 +1170,13 @@ async function getAIAnswer(question) {
     `[${i+1}] Q: ${item.q}\nA: ${item.a}${item.category ? `\nカテゴリ: ${item.category}` : ''}`
   ).join('\n\n');
 
+  // 料金表から関連品目を検索してプロンプトに注入
+  const priceItems = findPriceItems(question);
+  const priceSupplement = priceItems.length ? formatPriceForAI(priceItems) : '';
+  const sqmSupplement = calcSqmSupplement(question);
+  const priceRule = priceItems.length ? '\n- 料金に関する質問の場合：知識ベースの料金記載は無視し、[料金表]の数値を優先して回答すること' : '';
+  const docSupplement = searchDocuments(question);
+
 
 
   const systemPrompt = `あなたはクリーニング店「クリーニングみわ」の社内FAQ AIです。受付・工場スタッフからの質問に、知識ベースの内容だけを根拠に答えます。
@@ -1154,7 +1184,8 @@ async function getAIAnswer(question) {
 【絶対ルール】
 - 回答の根拠は知識ベースの内容に限る。知識ベースに書かれていない事実・数値・手順・提案を創作してはいけない
 - 関連する複数の知識を組み合わせてよい（例：事実の知識＋受付手順の知識＋提案の知識）
-- 質問の意図に合致する知識がない場合は回答しない。テーマが似ていても角度が違う知識で代用しない
+- 質問の意図に合致する知識がない場合は回答しない。テーマが似ていても角度が違う知識で代用しない${priceRule}
+- [料金表]または[参考資料]のセクションに該当データがある場合は、それを根拠にSTATUS:FOUNDで回答してよい
 
 【回答の構成】
 知識ベースに根拠がある観点だけ、次の見出しを付けて書く。根拠が無い観点は省略する（無理に埋めない）。
@@ -1170,7 +1201,7 @@ async function getAIAnswer(question) {
 3行目以降: 上記の構成で回答本文。回答できない場合は本文不要
 
 【知識ベース】
-${kbText || '（まだ知識が登録されていません）'}`;
+${kbText || '（まだ知識が登録されていません）'}${priceSupplement}${sqmSupplement}${docSupplement}`;
 
   // GAS_URLが設定されていればGAS経由（本番）、空ならapi.anthropic.com直叩き（claude.ai上の確認用）
   const useGas = GAS_URL && GAS_URL.trim() !== '';
@@ -1514,12 +1545,20 @@ function askLocal() {
 function addToUnanswered(question) {
   // 重複チェック
   if (unansweredList.find(u => u.q === question)) return;
-  unansweredList.unshift({
-    id: nextId++,
-    q: question,
-    addedAt: nowStr(),
-    answered: false
-  });
+  const entry = { id: nextId++, q: question, addedAt: nowStr(), answered: false };
+  unansweredList.unshift(entry);
+  // FAQ管理と共有するためlocalStorageに保存
+  try {
+    const s = localStorage.getItem('miwa.faq.kb.v1');
+    const data = s ? JSON.parse(s) : {};
+    const ua = Array.isArray(data.unansweredList) ? data.unansweredList : [];
+    if (!ua.find(u => u.q === question)) {
+      ua.unshift(entry);
+      data.unansweredList = ua;
+      if (!data.nextId || data.nextId <= entry.id) data.nextId = entry.id + 1;
+      localStorage.setItem('miwa.faq.kb.v1', JSON.stringify(data));
+    }
+  } catch(e) {}
   renderUnanswered();
 }
 
@@ -2180,7 +2219,7 @@ function selectStore(name) {
   try { localStorage.setItem(STORE_KEY, name); localStorage.setItem(BRAND_KEY, brand); } catch(e) {}
   updateStoreStatus(name);
   const el = document.getElementById('store-select');
-  if (el) { el.classList.remove('visible'); el.classList.add('hide'); setTimeout(() => el.remove(), 500); }
+  if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }
 }
 function showHonbuBrandPanel() {
   const p = document.getElementById('ss-honbu-panel');
@@ -2191,41 +2230,47 @@ function selectHonbuBrand(brand) {
   try { localStorage.setItem(STORE_KEY, '本部'); localStorage.setItem(BRAND_KEY, brand); } catch(e) {}
   updateStoreStatus('本部');
   const el = document.getElementById('store-select');
-  if (el) { el.classList.remove('visible'); el.classList.add('hide'); setTimeout(() => el.remove(), 500); }
+  if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }
+}
+
+// ── 店舗選択オーバーレイを動的生成 ──────────────────────────────
+function showStoreSelect(titleText, subText) {
+  const old = document.getElementById('store-select');
+  if (old) old.remove();
+  const stores = ['本店','新田','草加西口','モール草加','蒲生','西友伊原','東川口','東川口2号','マミー安行','八潮工場','東川口工場','ルート'];
+  const d = document.createElement('div');
+  d.id = 'store-select';
+  const inner =
+    '<div class="ss-logo"></div>' +
+    '<div class="ss-title">'+(titleText||'店舗を選んでください')+'</div>' +
+    '<div class="ss-sub">'+(subText||'選択した店舗はこの端末に記憶されます')+'</div>' +
+    '<div class="ss-grid">' +
+      stores.map(function(s){ return '<button class="ss-btn" onclick="selectStore(\''+s+'\')">'+s+'</button>'; }).join('') +
+      '<button class="ss-btn" onclick="selectStore(\'本部\')" style="grid-column:span 3;background:#f1f5f9;color:#374151">🏢 本部</button>' +
+    '</div>' +
+    '<div id="ss-honbu-panel" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:460px;margin-top:4px">' +
+      '<div style="font-size:13.5px;font-weight:700;color:#374151">本部のブランドを選んでください</div>' +
+      '<div class="ss-brand-row">' +
+        '<button class="ss-brand-btn" onclick="selectHonbuBrand(\'green\')"><span class="ss-brand-dot" style="background:#1a8f5c"></span>緑のみわ</button>' +
+        '<button class="ss-brand-btn" onclick="selectHonbuBrand(\'blue\')"><span class="ss-brand-dot" style="background:#1a6dbd"></span>青のみわ</button>' +
+      '</div>' +
+      '<button onclick="document.getElementById(\'ss-honbu-panel\').style.display=\'none\'" style="font-size:12px;color:#999;background:none;border:none;cursor:pointer">← 戻る</button>' +
+    '</div>' +
+    '<div class="ss-note">あとからヘッダーの店舗名をタップして変更できます</div>';
+  if (window.innerWidth >= 601) {
+    // PC: モーダルカード表示（半透明バックドロップ＋角丸カード）
+    d.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(100,130,160,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .4s ease;';
+    d.innerHTML = '<div style="background:linear-gradient(165deg,#f1f6ee 0%,#e8f5e3 100%);border-radius:20px;padding:28px 20px;width:100%;max-width:460px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;align-items:center;">' + inner + '</div>';
+  } else {
+    // モバイル: 従来の全画面表示
+    d.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;z-index:9998;background:linear-gradient(165deg,#f1f6ee 0%,#e8f5e3 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transition:opacity .4s ease;';
+    d.innerHTML = inner;
+  }
+  document.body.appendChild(d);
+  requestAnimationFrame(function(){ d.style.opacity = '1'; });
 }
 function changeStore() {
-  const el = document.getElementById('store-select') || (() => {
-    const d = document.createElement('div');
-    d.id = 'store-select';
-    d.innerHTML = document.querySelector('#store-select')?.innerHTML || '';
-    return null;
-  })();
-  if (el) { el.classList.remove('hide'); el.classList.add('visible'); }
-  else {
-    const d = document.createElement('div');
-    d.id = 'store-select';
-    d.setAttribute('aria-hidden','true');
-    const stores = ['本店','新田','草加西口','モール草加','蒲生','西友伊原','東川口','東川口2号','マミー安行','八潮工場','東川口工場','ルート'];
-    d.innerHTML = `
-      <div class="ss-logo"></div>
-      <div class="ss-title">店舗を変更する</div>
-      <div class="ss-sub">この端末の店舗設定を変更します</div>
-      <div class="ss-grid">
-        ${stores.map(s=>`<button class="ss-btn" onclick="selectStore('${s}')">${s}</button>`).join('')}
-        <button class="ss-btn" onclick="selectStore('本部')" style="grid-column:span 3;background:#f1f5f9;color:#374151">🏢 本部</button>
-      </div>
-      <div id="ss-honbu-panel" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:460px;margin-top:4px">
-        <div style="font-size:13.5px;font-weight:700;color:#374151">本部のブランドを選んでください</div>
-        <div class="ss-brand-row">
-          <button class="ss-brand-btn" onclick="selectHonbuBrand('green')"><span class="ss-brand-dot" style="background:#1a8f5c"></span>緑のみわ</button>
-          <button class="ss-brand-btn" onclick="selectHonbuBrand('blue')"><span class="ss-brand-dot" style="background:#1a6dbd"></span>青のみわ</button>
-        </div>
-        <button onclick="document.getElementById('ss-honbu-panel').style.display='none'" style="font-size:12px;color:#999;background:none;border:none;cursor:pointer">← 戻る</button>
-      </div>
-      <div class="ss-note">あとからヘッダーの店舗名をタップして変更できます</div>`;
-    document.body.appendChild(d);
-    requestAnimationFrame(() => d.classList.add('visible'));
-  }
+  showStoreSelect('店舗を変更する', 'この端末の店舗設定を変更します');
 }
 function updateStoreStatus(name) {
   const el = document.getElementById('store-status');
@@ -2237,6 +2282,15 @@ function updateStoreStatus(name) {
     el.textContent = 'オンライン';
     el.style.color = '';
   }
+  // ブランドバッジ更新
+  const badge = document.getElementById('brand-badge');
+  if (!badge) return;
+  const brand = faqBrand();
+  const isBlue = brand === 'blue';
+  const label = isBlue ? '青のみわ' : '緑のみわ';
+  const color = isBlue ? '#1a6dbd' : '#1a8f5c';
+  badge.innerHTML = `<span class="bd" style="background:${color};box-shadow:0 0 0 1.5px rgba(255,255,255,.6)"></span>${label}`;
+  badge.style.display = name ? 'inline-flex' : 'none';
 }
 
 // クラウド知識ベース読み込み（設定済みの場合）→ 完了後にスプラッシュを消す
@@ -2262,16 +2316,10 @@ function updateStoreStatus(name) {
   updateStoreStatus(storedStore);
 
   if (!storedStore) {
-    // 未設定 → スプラッシュ消滅後に店舗選択画面を表示
-    setTimeout(() => {
-      const el = document.getElementById('store-select');
-      if (el) { el.style.display = 'flex'; requestAnimationFrame(() => el.classList.add('visible')); }
-    }, 800);
-  } else {
-    // 設定済み → 店舗選択を消す
-    const el = document.getElementById('store-select');
-    if (el) el.remove();
+    // 未設定 → スプラッシュ消滅後に店舗選択画面を動的生成して表示
+    setTimeout(() => showStoreSelect(), 800);
   }
+  // 設定済みの場合は何もしない（store-select は静的HTMLに存在しない）
 })();
 </script>
 </body>
