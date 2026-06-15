@@ -382,42 +382,171 @@ const MFTable = ({rows, showCount, onShowMore, onEdit}) => {
 
 // ── 編集モーダル ─────────────────────────────────────
 const MFEditModal = ({open, record, onSave, onClose}) => {
-  const [form, setForm] = React.useState(record||{});
-  React.useEffect(()=>setForm(record||{}),[record]);
+  // 数値フィールドを文字列として管理（入力中に0リセットされないよう）
+  const [form, setForm] = React.useState({});
+  React.useEffect(()=>{
+    if(!record)return;
+    setForm({
+      normalLot:     String(record.normalLot??0),
+      normalLotToday:String(record.normalLotToday??0),
+      extraLot:      String(record.extraLot??0),
+      advance:       String(record.advance??0),
+      storage:       String(record.storage??0),
+      hours:         String(record.hours??0),
+      members:       record.members||"",
+      note:          record.note||"",
+    });
+  },[record]);
+
   if(!open||!record)return null;
   const isY=(record.factory||"").includes("八潮");
-  const inp=(label,key,type="number",step)=>(
-    <div style={{marginBottom:12}}>
-      <div style={{fontSize:11.5,fontWeight:700,color:"var(--ink-mute)",marginBottom:4}}>{label}</div>
-      <input
-        type={type}
-        step={step}
-        value={form[key]??0}
-        onChange={e=>setForm({...form,[key]:type==="number"?(parseFloat(e.target.value)||0):e.target.value})}
-        style={{
-          width:"100%",padding:"10px 12px",border:"1.5px solid var(--line)",
-          borderRadius:10,fontSize:14,fontFamily:"inherit",background:"var(--bg)",
-          color:"var(--ink)",boxSizing:"border-box"
-        }}
-      />
-    </div>
-  );
-  // ラベル付きinputヘルパー（再定義）
-  const field = (label, key, type="number", step) => (
+
+  const numField = (label, key, isDecimal=false) => (
     <div style={{display:"flex",flexDirection:"column",gap:5}}>
       <div style={{fontSize:11,fontWeight:700,color:"var(--ink-mute)",letterSpacing:".02em"}}>{label}</div>
       <input
-        type={type} step={step}
-        value={form[key]??0}
-        onChange={e=>setForm({...form,[key]:type==="number"?(parseFloat(e.target.value)||0):e.target.value})}
+        type="text"
+        inputMode={isDecimal?"decimal":"numeric"}
+        value={form[key]??""}
+        onChange={e=>{
+          const v=e.target.value;
+          if(/^-?\d*\.?\d*$/.test(v))setForm({...form,[key]:v});
+        }}
+        onBlur={e=>{
+          const v=parseFloat(e.target.value);
+          setForm({...form,[key]:String(isNaN(v)?0:v)});
+        }}
         style={{
           padding:"11px 12px",border:"1.5px solid var(--line)",borderRadius:12,
-          fontSize:16,fontFamily:"inherit",background:"var(--bg)",color:"var(--ink)",
+          fontSize:17,fontFamily:"inherit",background:"var(--bg)",color:"var(--ink)",
           boxSizing:"border-box",width:"100%",fontWeight:600
         }}
       />
     </div>
   );
+
+  const handleSave = () => {
+    onSave({
+      ...record,
+      normalLot:      parseFloat(form.normalLot)||0,
+      normalLotToday: parseFloat(form.normalLotToday)||0,
+      extraLot:       parseFloat(form.extraLot)||0,
+      advance:        parseFloat(form.advance)||0,
+      storage:        isY?(parseFloat(form.storage)||0):record.storage,
+      hours:          parseFloat(form.hours)||0,
+      members:        form.members,
+      note:           form.note,
+    });
+    onClose();
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position:"fixed",inset:0,zIndex:200,
+        background:"rgba(0,0,0,.5)",display:"flex",flexDirection:"column",justifyContent:"flex-end",
+        backdropFilter:"blur(2px)"
+      }}
+    >
+      <div
+        onClick={e=>e.stopPropagation()}
+        style={{
+          width:"100%",maxWidth:520,margin:"0 auto",
+          background:"var(--card)",borderRadius:"20px 20px 0 0",
+          maxHeight:"92dvh",display:"flex",flexDirection:"column"
+        }}
+      >
+        {/* ── 固定ヘッダー ── */}
+        <div style={{flexShrink:0,padding:"12px 20px 14px",borderBottom:"1px solid var(--line)"}}>
+          <div style={{width:36,height:4,borderRadius:2,background:"#c8ccd4",margin:"0 auto 14px"}}></div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{
+              width:38,height:38,borderRadius:11,flexShrink:0,
+              background:"var(--accent-soft)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18
+            }}>📝</div>
+            <div>
+              <div style={{fontSize:16,fontWeight:800,color:"var(--ink)",lineHeight:1.2}}>報告内容を修正</div>
+              <div style={{fontSize:12,color:"var(--ink-mute)",marginTop:2,display:"flex",alignItems:"center",gap:6}}>
+                <span style={{
+                  fontSize:10.5,fontWeight:700,padding:"2px 7px",borderRadius:6,
+                  background:isY?"var(--accent-soft)":"rgba(52,168,83,.14)",
+                  color:isY?"var(--accent-ink)":"#1e8e3e"
+                }}>{mfShort(record.factory)}</span>
+                {record.date}（{mfDayName(record.date)}）
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── スクロール本体 ── */}
+        <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"18px 20px 8px"}}>
+          <div style={{fontSize:10.5,fontWeight:800,color:"var(--ink-mute)",letterSpacing:".08em",marginBottom:10}}>点数（点）</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
+            {numField("前日通常ロット","normalLot")}
+            {numField("当日通常ロット","normalLotToday")}
+            {numField("ロット外","extraLot")}
+            {numField("先付け処理","advance")}
+            {isY&&numField("保管処理","storage")}
+          </div>
+
+          <div style={{fontSize:10.5,fontWeight:800,color:"var(--ink-mute)",letterSpacing:".08em",marginBottom:10}}>稼働</div>
+          <div style={{marginBottom:18}}>
+            {numField("合計稼働時間（h）","hours",true)}
+          </div>
+
+          <div style={{fontSize:10.5,fontWeight:800,color:"var(--ink-mute)",letterSpacing:".08em",marginBottom:10}}>出勤メンバー</div>
+          <div style={{marginBottom:18}}>
+            <input
+              type="text"
+              value={form.members||""}
+              onChange={e=>setForm({...form,members:e.target.value})}
+              placeholder="名前, 名前, …"
+              style={{
+                width:"100%",padding:"11px 12px",border:"1.5px solid var(--line)",borderRadius:12,
+                fontSize:14,fontFamily:"inherit",background:"var(--bg)",color:"var(--ink)",
+                boxSizing:"border-box"
+              }}
+            />
+          </div>
+
+          <div style={{fontSize:10.5,fontWeight:800,color:"var(--ink-mute)",letterSpacing:".08em",marginBottom:10}}>自由報告</div>
+          <div style={{marginBottom:14}}>
+            <textarea
+              rows={3}
+              value={form.note||""}
+              onChange={e=>setForm({...form,note:e.target.value})}
+              style={{
+                width:"100%",padding:"11px 12px",border:"1.5px solid var(--line)",
+                borderRadius:12,fontSize:13,fontFamily:"inherit",resize:"none",
+                background:"var(--bg)",color:"var(--ink)",boxSizing:"border-box",lineHeight:1.6
+              }}
+            />
+          </div>
+
+          <div style={{fontSize:11,color:"var(--ink-mute)",background:"var(--bg-2,#eef0f3)",borderRadius:10,padding:"9px 12px",marginBottom:4,lineHeight:1.5}}>
+            ⚠️ 修正はローカル保存です。次回同期で最新データに上書きされます。
+          </div>
+        </div>
+
+        {/* ── 固定フッター ── */}
+        <div style={{
+          flexShrink:0,padding:"12px 20px calc(env(safe-area-inset-bottom,0px) + 16px)",
+          borderTop:"1px solid var(--line)",display:"flex",gap:10
+        }}>
+          <button onClick={onClose}
+            style={{flex:1,padding:"13px",border:"1.5px solid var(--line)",borderRadius:14,
+              background:"var(--bg)",fontSize:14,fontWeight:700,color:"var(--ink-mute)",cursor:"pointer"}}
+          >キャンセル</button>
+          <button onClick={handleSave}
+            style={{flex:2,padding:"13px",border:"none",borderRadius:14,
+              background:"var(--accent)",fontSize:14,fontWeight:800,color:"#fff",cursor:"pointer"}}
+          >保存する</button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
   return (
     <div
