@@ -84,6 +84,10 @@ function doPost(e) {
     if (action === 'importVehicleForm') { return reply_(importVehicleForm(), null); }
     if (action === 'importFeedbackForm') { return reply_(importFeedbackForm(), null); }
 
+    // ─ FAQログ（第3段階：全端末ログ共有）─
+    if (action === 'logFaq')    { return reply_(logFaq_(body.entry), null); }
+    if (action === 'getFaqLog') { return reply_(getFaqLog_(), null); }
+
     var sheetName = body.sheet || body.tab;
     if (!sheetName) throw new Error('sheet が必要です');
 
@@ -667,6 +671,53 @@ function removeUser_(idToken, email) {
     if (String(values[r][emailCol]).toLowerCase() === lc) { sh.deleteRow(r + 1); return { ok: true }; }
   }
   return { ok: false, message: '対象が見つかりません。' };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FAQログ（第3段階：全端末ログ共有）
+//  スタッフFAQで質問のたびに logFaq_ でシート「FAQログ」へ追記。
+//  管理画面の「🔄 全端末から取得」は getFaqLog_ で新しい順に返す。
+//  認証なし：スタッフFAQは非ログインのため idToken 不要。
+// ═══════════════════════════════════════════════════════════════════
+var FAQ_LOG_SHEET = 'FAQログ';
+
+function logFaq_(entry) {
+  if (!entry) return { error: true, message: 'entry が必要です' };
+  var row = {
+    ts:       String(entry.ts  || new Date().toISOString()),
+    q:        String(entry.q   || ''),
+    a:        String(entry.a   || '').slice(0, 2000),
+    answered: (entry.answered === true || entry.answered === 'true') ? 'true' : 'false',
+    store:    String(entry.store  || ''),
+    device:   String(entry.device || ''),
+  };
+  try {
+    return addRow_(FAQ_LOG_SHEET, row);
+  } catch(e) {
+    return { error: true, message: String(e && e.message || e) };
+  }
+}
+
+function getFaqLog_() {
+  try {
+    var rows = readSheet_(FAQ_LOG_SHEET);
+    rows.sort(function(a, b) {
+      return String(b.ts || '').localeCompare(String(a.ts || ''));
+    });
+    var logs = rows.map(function(r) {
+      return {
+        q:        String(r.q  || ''),
+        a:        String(r.a  || ''),
+        answered: r.answered === 'true' || r.answered === true,
+        store:    String(r.store  || ''),
+        device:   String(r.device || ''),
+        ts:       String(r.ts || ''),
+      };
+    });
+    return { ok: true, logs: logs };
+  } catch(e) {
+    return { error: true, message: String(e && e.message || e) };
+  }
 }
 
 // ─── 応答ヘルパ（JSON / JSONP） ──────────────────────────────────────

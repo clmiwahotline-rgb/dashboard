@@ -1202,6 +1202,51 @@ function autoGrow(el) {
 }
 
 // ═══════════════════════════════════════════════
+//  FAQログ送信（第3段階：全端末共有）
+//  質問のたびに共有データGAS（みわ共有API）へ fire-and-forget 送信。
+//  GAS URLは localStorage miwa.faq.cloud.v1 の gasUrl を流用。
+// ═══════════════════════════════════════════════
+function faqDeviceId() {
+  const key = 'miwa.faq.device.v1';
+  try {
+    let id = localStorage.getItem(key);
+    if (!id) { id = 'D' + Date.now() + Math.random().toString(36).slice(2, 7); localStorage.setItem(key, id); }
+    return id;
+  } catch(e) { return 'unknown'; }
+}
+function faqStoreName() {
+  // URLパラメータ ?store=XXX を優先。なければ localStorage miwa.faq.store
+  try {
+    const p = new URLSearchParams(location.search).get('store');
+    if (p) return decodeURIComponent(p);
+    return localStorage.getItem('miwa.faq.store') || '';
+  } catch(e) { return ''; }
+}
+function sendFaqLogToCloud(q, a, answered) {
+  try {
+    const s = localStorage.getItem(FAQ_CHAT_CLOUD_KEY);
+    if (!s) return;
+    const cfg = JSON.parse(s);
+    if (!cfg.enabled || !cfg.gasUrl) return;
+    fetch(cfg.gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'logFaq',
+        entry: {
+          q:        q  || '',
+          a:        a  || '',
+          answered: !!answered,
+          store:    faqStoreName(),
+          device:   faqDeviceId(),
+          ts:       new Date().toISOString(),
+        }
+      })
+    }).catch(() => {}); // fire-and-forget（失敗しても続行）
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
 //  質問送信
 // ═══════════════════════════════════════════════
 
@@ -1239,6 +1284,7 @@ async function askQuestion() {
     }
 
     historyLog.unshift({ q: question, answered, time: nowStr() });
+    sendFaqLogToCloud(question, answered ? (result && result.text) || '' : '', answered);
     updateStats();
 
   } catch (err) {

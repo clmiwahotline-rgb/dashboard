@@ -787,7 +787,9 @@ async function refreshFaqLogRemote() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 取得中...'; }
   let okRemote = false;
   try {
-    const res = await fetch(GAS_URL, {
+    const sharedGasUrl = loadCloudCfg().gasUrl;
+    if (!sharedGasUrl) throw new Error('共有データGAS URLが未設定です（FAQ設定→クラウドKB設定）');
+    const res = await fetch(sharedGasUrl, {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -809,7 +811,7 @@ async function refreshFaqLogRemote() {
     faqLogSource = 'local';
     const note = document.getElementById('faqlog-note');
     if (note) {
-      note.textContent = 'まだ全端末ログを取得できません（GAS側のログ保存／getFaqLog が未実装です。第3段階で対応）。現在はこの端末の記録のみ表示しています。';
+      note.textContent = '全端末ログを取得できませんでした。クラウドKB設定のGAS URLを確認するか、GASを再デプロイしてください。現在はこの端末の記録のみ表示しています。';
       note.style.display = 'block';
     }
   } else {
