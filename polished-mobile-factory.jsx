@@ -444,9 +444,11 @@ const MFEditModal = ({open, record, onSave, onClose}) => {
     <div
       onClick={onClose}
       style={{
-        position:"fixed",inset:0,zIndex:200,
+        position:"fixed",inset:0,zIndex:500,
         background:"rgba(0,0,0,.5)",display:"flex",flexDirection:"column",justifyContent:"flex-end",
-        backdropFilter:"blur(2px)"
+        backdropFilter:"blur(2px)",
+        paddingTop:"calc(var(--m-header-h, 56px) + var(--sat, 0px))",
+        paddingBottom:"calc(var(--m-tabbar-h, 64px) + min(env(safe-area-inset-bottom, 0px), 34px))"
       }}
     >
       <div
@@ -454,7 +456,7 @@ const MFEditModal = ({open, record, onSave, onClose}) => {
         style={{
           width:"100%",maxWidth:520,margin:"0 auto",
           background:"var(--card)",borderRadius:"20px 20px 0 0",
-          maxHeight:"92dvh",display:"flex",flexDirection:"column"
+          maxHeight:"100%",display:"flex",flexDirection:"column"
         }}
       >
         {/* ── 固定ヘッダー ── */}
@@ -531,7 +533,7 @@ const MFEditModal = ({open, record, onSave, onClose}) => {
 
         {/* ── 固定フッター ── */}
         <div style={{
-          flexShrink:0,padding:"12px 20px calc(env(safe-area-inset-bottom,0px) + 16px)",
+          flexShrink:0,padding:"12px 20px 16px",
           borderTop:"1px solid var(--line)",display:"flex",gap:10
         }}>
           <button onClick={onClose}
@@ -557,15 +559,15 @@ const MFSettingsModal = ({open, settings, onSave, onClose, onSyncNow, lastSync, 
   return (
     <div
       onClick={onClose}
-      style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"flex-end",backdropFilter:"blur(2px)"}}
+      style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"flex-end",backdropFilter:"blur(2px)",paddingTop:"calc(var(--m-header-h, 56px) + var(--sat, 0px))",paddingBottom:"calc(var(--m-tabbar-h, 64px) + min(env(safe-area-inset-bottom, 0px), 34px))"}}
     >
       <div
         onClick={e=>e.stopPropagation()}
         style={{
           width:"100%",maxWidth:520,margin:"0 auto",
           background:"var(--card)",borderRadius:"20px 20px 0 0",
-          padding:"20px 18px calc(env(safe-area-inset-bottom,0px)+20px)",
-          maxHeight:"90dvh",overflowY:"auto"
+          padding:"20px 18px 20px",
+          maxHeight:"100%",overflowY:"auto"
         }}
       >
         <div style={{width:40,height:4,borderRadius:2,background:"var(--line)",margin:"0 auto 16px"}}></div>
