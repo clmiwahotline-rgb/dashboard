@@ -17,9 +17,15 @@ const FAQ_LS_KEY = 'miwa.faq.kb.v1';
 const FAQ_CLOUD_KEY = 'miwa.faq.cloud.v1'; // { gasUrl, token, enabled }
 
 // ── クラウド設定の読み書き ──
+const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
 function loadCloudCfg() {
-  try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) return JSON.parse(s); } catch(e) {}
-  return { gasUrl: 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec', token: '', enabled: true };
+  try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) {
+    const cfg = JSON.parse(s);
+    if (!cfg.gasUrl) cfg.gasUrl = DEFAULT_KB_GAS;
+    if (!cfg.hasOwnProperty('enabled')) cfg.enabled = true;
+    return cfg;
+  }} catch(e) {}
+  return { gasUrl: DEFAULT_KB_GAS, token: '', enabled: true };
 }
 function saveCloudCfg(cfg) {
   try { localStorage.setItem(FAQ_CLOUD_KEY, JSON.stringify(cfg)); } catch(e) {}
