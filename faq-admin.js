@@ -1101,31 +1101,6 @@ const FAQ_ADMIN_MARKUP = `
     </div>
   </div>
 
-  <!-- 資料ストック -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-head">
-      <span>📚</span>
-      <h2>知識資料ストック</h2>
-      <span id="doc-count" class="log-count">0件</span>
-      <button class="btn btn-primary btn-sm" onclick="toggleDocForm()" style="margin-left:auto">＋ 資料を追加</button>
-    </div>
-    <div class="card-body">
-      <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px">就業規則・研修資料・マニュアルなどをそのまま登録。質問時にキーワードで該当箇所を抽出し、AIの回答参考に渡します。</p>
-      <!-- 追加フォーム -->
-      <div id="doc-form" style="display:none;background:var(--surface-1,#f7f9fd);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
-        <div class="form-row" style="margin-bottom:10px">
-          <input class="form-input" id="doc-title" placeholder="資料名（例：就業規則 2026年版）" style="flex:1">
-          <input class="form-input" id="doc-cat" placeholder="カテゴリ（例：規則・制度）" style="flex:1">
-        </div>
-        <textarea class="form-textarea" id="doc-content" placeholder="内容を貧り付け（長文OK）" style="min-height:120px"></textarea>
-        <div class="form-row" style="margin-top:10px">
-          <button class="btn btn-primary btn-sm" onclick="addDoc()">💾 保存</button>
-          <button class="btn btn-outline btn-sm" onclick="toggleDocForm()">キャンセル</button>
-        </div>
-      </div>
-      <div id="doc-list"><div class="kb-empty">資料がありません</div></div>
-    </div>
-  </div>
 
   <!-- 質問ログ -->
   <div class="card" style="margin-bottom:16px">
@@ -1190,6 +1165,31 @@ const FAQ_ADMIN_MARKUP = `
         <button class="btn btn-outline btn-sm" onclick="clearImport()">クリア</button>
       </div>
       <div id="import-result" style="margin-top:16px"></div>
+    </div>
+  </div>
+  <!-- 資料ストック -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head">
+      <span>📚</span>
+      <h2>知識資料ストック</h2>
+      <span id="doc-count" class="log-count">0件</span>
+      <button class="btn btn-primary btn-sm" onclick="toggleDocForm()" style="margin-left:auto">＋ 資料を追加</button>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px">就業規則・研修資料・マニュアルなどをそのまま登録。質問時にキーワードで該当箇所を抽出し、AIの回答参考に渡します。</p>
+      <!-- 追加フォーム -->
+      <div id="doc-form" style="display:none;background:var(--surface-1,#f7f9fd);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+        <div class="form-row" style="margin-bottom:10px">
+          <input class="form-input" id="doc-title" placeholder="資料名（例：就業規則 2026年版）" style="flex:1">
+          <input class="form-input" id="doc-cat" placeholder="カテゴリ（例：規則・制度）" style="flex:1">
+        </div>
+        <textarea class="form-textarea" id="doc-content" placeholder="内容を貼り付け（長文OK）" style="min-height:120px"></textarea>
+        <div class="form-row" style="margin-top:10px">
+          <button class="btn btn-primary btn-sm" onclick="addDoc()">💾 保存</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleDocForm()">キャンセル</button>
+        </div>
+      </div>
+      <div id="doc-list"><div class="kb-empty">資料がありません</div></div>
     </div>
   </div>
 
