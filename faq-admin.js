@@ -739,6 +739,79 @@ let addFormOpen = false;
 function toggleAddForm() {
   addFormOpen = !addFormOpen;
   document.getElementById('add-form-wrap').style.display = addFormOpen ? 'block' : 'none';
+  if (addFormOpen) renderNewImgPreview();
+}
+
+// ── ファイル添付（画像・PDF を GAS 経由で Drive へアップロード）──────────
+async function uploadFaqFile(inputEl) {
+  const file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  const cfg = loadCloudCfg();
+  if (!cfg.gasUrl) { alert('クラウド設定のGAS URLが未設定です（FAQ設定→クラウドKB設定）'); inputEl.value=''; return; }
+  if (!cfg.token) { alert('アップロードにはトークン設定が必要です（FAQ設定→クラウドKB設定のトークン）'); inputEl.value=''; return; }
+  const MAXMB = 15;
+  if (file.size > MAXMB*1024*1024) { alert('ファイルが大きすぎます（最大'+MAXMB+'MB）'); inputEl.value=''; return; }
+  const statusEl = document.getElementById('upload-status');
+  const setStatus = (t) => { if(statusEl){ statusEl.style.display='inline'; statusEl.textContent=t; } };
+  setStatus('⏳ アップロード中… ' + file.name);
+  try {
+    const dataUrl = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result); fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+    const base64 = String(dataUrl).split(',')[1];
+    const res = await fetch(cfg.gasUrl, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'uploadFile', name:file.name, mimeType:file.type, data:base64, token:cfg.token })
+    });
+    const data = await res.json();
+    if (!data || !data.ok) throw new Error((data && (data.error||data.message)) || '失敗');
+    const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name);
+    const tagged = data.viewUrl + (isPdf ? '#pdf' : '#img');
+    const ta = document.getElementById('new-img');
+    ta.value = (ta.value.trim() ? ta.value.trim()+'\n' : '') + tagged;
+    renderNewImgPreview();
+    setStatus('✅ 追加しました: ' + file.name);
+  } catch(e) {
+    setStatus('⚠️ ' + e.message);
+    alert('アップロード失敗: ' + e.message);
+  } finally {
+    inputEl.value = '';
+    setTimeout(()=>{ if(statusEl) statusEl.style.display='none'; }, 4000);
+  }
+}
+
+// Driveリンクから fileId / PDF判定を抽出（未該当は null）
+function faqDriveInfo(url) {
+  const u = String(url||'');
+  const m = u.match(/\/file\/d\/([-\w]{20,})/) || u.match(/[?&]id=([-\w]{20,})/);
+  if (!m) return null;
+  return { fileId: m[1], isPdf: /#pdf/i.test(u) || /\.pdf/i.test(u) };
+}
+
+// 追加フォームの画像・PDFプレビュー（サムネイル＋削除）
+function renderNewImgPreview() {
+  const wrap = document.getElementById('new-img-preview');
+  if (!wrap) return;
+  const urls = parseImageUrls(document.getElementById('new-img').value);
+  if (!urls.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = urls.slice(0,5).map((u, i) => {
+    const d = faqDriveInfo(u);
+    const thumb = d ? ('https://drive.google.com/thumbnail?id='+d.fileId+'&sz=w400') : u;
+    const badge = (d && d.isPdf) ? '<span style="position:absolute;top:2px;left:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">PDF</span>' : '';
+    return '<div style="position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f3f4f6">'
+      + '<img src="'+thumb.replace(/"/g,'&quot;')+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.opacity=.3">'
+      + badge
+      + '<button onclick="removeNewImg('+i+')" title="削除" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;line-height:1;cursor:pointer;padding:0">×</button>'
+      + '</div>';
+  }).join('');
+}
+function removeNewImg(i) {
+  const urls = parseImageUrls(document.getElementById('new-img').value);
+  urls.splice(i, 1);
+  document.getElementById('new-img').value = urls.join('\n');
+  renderNewImgPreview();
 }
 
 function addKB() {
@@ -761,6 +834,7 @@ function addKB() {
   document.getElementById('new-cat').value = '';
   document.getElementById('new-src').value = '';
   document.getElementById('new-img').value = '';
+  const _pv = document.getElementById('new-img-preview'); if (_pv) _pv.innerHTML = '';
   toggleAddForm();
   persistFaq();
   renderKB();
@@ -1033,9 +1107,15 @@ function imagesHtml(items) {
   }
   if (urls.length === 0) return '';
   return `<div class="answer-images">${
-    urls.slice(0, 5).map(u =>
-      `<img src="${escHtml(u)}" alt="参考画像" onclick="window.open('${escHtml(u)}','_blank')" onerror="this.style.display='none'">`
-    ).join('')
+    urls.slice(0, 5).map(u => {
+      const d = faqDriveInfo(u);
+      const thumb = d ? ('https://drive.google.com/thumbnail?id='+d.fileId+'&sz=w1000') : u;
+      const open = d ? ('https://drive.google.com/file/d/'+d.fileId+'/view') : u;
+      const badge = (d && d.isPdf) ? '<span style="position:absolute;top:3px;left:3px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">PDF</span>' : '';
+      return `<span style="position:relative;display:inline-block">`
+        + `<img src="${escHtml(thumb)}" alt="参考資料" onclick="window.open('${escHtml(open)}','_blank')" onerror="this.style.opacity=.3">`
+        + badge + `</span>`;
+    }).join('')
   }</div>`;
 }
 
@@ -1218,8 +1298,16 @@ const FAQ_ADMIN_MARKUP = `
           <input class="form-input" id="new-cat" placeholder="例：受付・素材確認・シミ抜き・料金">
           <label>出典メモ（任意）</label>
           <input class="form-input" id="new-src" placeholder="例：社内マニュアルVer.3">
-          <label>参考画像URL（任意・最大5枚・改行かカンマ区切り）</label>
-          <textarea class="form-textarea" id="new-img" placeholder="https://... （Googleドライブ共有リンク等）" style="min-height:48px"></textarea>
+          <label>参考画像・PDF（任意・最大5件）</label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+            <label class="btn btn-sm btn-outline" style="cursor:pointer;margin:0">
+              📎 ファイルを選んでアップロード
+              <input type="file" accept="image/*,application/pdf" style="display:none" onchange="uploadFaqFile(this)">
+            </label>
+            <span id="upload-status" style="display:none;font-size:12px;color:var(--text-sub)"></span>
+          </div>
+          <div id="new-img-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px"></div>
+          <textarea class="form-textarea" id="new-img" placeholder="https://... （直接URLや既存のGoogleドライブ共有リンクを貼ってもOK・改行かカンマ区切り）" style="min-height:48px" oninput="renderNewImgPreview()"></textarea>
           <div class="form-row">
             <button class="btn btn-primary btn-sm" onclick="addKB()">登録する</button>
             <button class="btn btn-outline btn-sm" onclick="toggleAddForm()">キャンセル</button>
