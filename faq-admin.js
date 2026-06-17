@@ -55,6 +55,7 @@ let unansweredList = [];
 let historyLog = [];
 let nextId = 100;
 let statsAnswered = 0;
+let editingKBId = null;
 
 // ─── 永続化 ───
 function persistFaq() {
@@ -144,6 +145,7 @@ async function syncKBFromCloud() {
           ? item.images.split(',').filter(Boolean)
           : (Array.isArray(item.images) ? item.images : []),
         enabled: item.enabled !== false,
+        approved: item.approved === true || item.approved === 'true',
       }));
     }
     if (Array.isArray(uaData)) {
@@ -700,25 +702,59 @@ function renderKB() {
     return;
   }
 
-  list.innerHTML = items.map(item => `
-    <div class="kb-item">
-      <div class="kb-item-head" onclick="toggleKB(${item.id})">
-        <div class="kb-item-q">
-          <span class="kb-tag">${escHtml(item.category || '未分類')}</span>
-          ${escHtml(item.q)}
-        </div>
-        <span style="color:var(--text-muted);font-size:12px">▼</span>
-      </div>
-      <div class="kb-item-body" id="kb-body-${item.id}">
-        ${mdToHtml(item.a)}
-        ${imagesHtml([item])}
-        <div class="kb-item-source">出典: ${escHtml(item.source || '—')} | 追加日: ${escHtml(item.addedAt || '—')}${(item.images||[]).length ? ` | 🖼 画像${item.images.length}枚` : ''}</div>
-        <div style="margin-top:10px">
-          <button class="btn btn-sm btn-outline" onclick="deleteKB(${item.id})">🗑 削除</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
+  list.innerHTML = items.map(item => {
+    const approvedBadge = item.approved
+      ? '<span style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px">✅ 承認済み</span>'
+      : '';
+    const isEditing = editingKBId === item.id;
+
+    const viewHtml =
+      mdToHtml(item.a) +
+      imagesHtml([item]) +
+      '<div class="kb-item-source">出典: ' + escHtml(item.source || '—') + ' | 追加日: ' + escHtml(item.addedAt || '—') +
+      ((item.images||[]).length ? ' | 🖼 画像' + item.images.length + '枚' : '') +
+      (item.approved ? ' | 承認: ' + escHtml(item.approvedAt||'') : '') + '</div>' +
+      '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<button class="btn btn-sm btn-outline" onclick="editKB(' + item.id + ')">✏️ 編集</button>' +
+        '<button class="btn btn-sm btn-outline" onclick="deleteKB(' + item.id + ')">🗑 削除</button>' +
+        '<button class="btn btn-sm" onclick="approveKB(' + item.id + ')" style="' +
+          (item.approved ? 'background:#dcfce7;color:#166534;border:1px solid #a7f3d0' : 'background:#f3f4f6;color:var(--text-sub);border:1px solid var(--border)') + '">' +
+          (item.approved ? '✅ 承認済み（取消）' : '　承認する　') +
+        '</button>' +
+      '</div>';
+
+    const editHtml =
+      '<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">' +
+        '<div><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">質問・キーワード</label>' +
+        '<input class="form-input" id="edit-q-' + item.id + '" value="' + escHtml(item.q) + '" style="width:100%"></div>' +
+        '<div><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">回答内容</label>' +
+        '<textarea class="form-textarea" id="edit-a-' + item.id + '" style="min-height:80px">' + escHtml(item.a) + '</textarea></div>' +
+        '<div style="display:flex;gap:10px">' +
+          '<div style="flex:1"><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">カテゴリ</label>' +
+          '<input class="form-input" id="edit-cat-' + item.id + '" value="' + escHtml(item.category||'') + '"></div>' +
+          '<div style="flex:1"><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">出典メモ</label>' +
+          '<input class="form-input" id="edit-src-' + item.id + '" value="' + escHtml(item.source||'') + '"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button class="btn btn-sm btn-primary" onclick="saveEditKB(' + item.id + ')">💾 保存</button>' +
+          '<button class="btn btn-sm btn-outline" onclick="cancelEditKB()">キャンセル</button>' +
+        '</div>' +
+      '</div>';
+
+    return '<div class="kb-item">' +
+      '<div class="kb-item-head" onclick="' + (isEditing ? '' : 'toggleKB(' + item.id + ')') + '" style="' + (isEditing ? 'cursor:default' : '') + '">' +
+        '<div class="kb-item-q">' +
+          '<span class="kb-tag">' + escHtml(item.category || '未分類') + '</span>' +
+          approvedBadge +
+          escHtml(item.q) +
+        '</div>' +
+        '<span style="color:var(--text-muted);font-size:12px">' + (isEditing ? '✏️' : '▼') + '</span>' +
+      '</div>' +
+      '<div class="kb-item-body ' + (isEditing ? 'open' : '') + '" id="kb-body-' + item.id + '">' +
+        (isEditing ? editHtml : viewHtml) +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function toggleKB(id) {
@@ -729,10 +765,55 @@ function toggleKB(id) {
 function deleteKB(id) {
   if (!confirm('この知識を削除しますか？')) return;
   knowledgeBase = knowledgeBase.filter(k => k.id !== id);
+  if (editingKBId === id) editingKBId = null;
   persistFaq();
   renderKB();
   updateStats();
   _cldPost('delete_kb', { id });
+}
+
+function editKB(id) {
+  editingKBId = id;
+  // 開いていなければ開く
+  const body = document.getElementById('kb-body-' + id);
+  if (body && !body.classList.contains('open')) body.classList.add('open');
+  renderKB();
+  setTimeout(() => { const el = document.getElementById('edit-q-' + id); if (el) el.focus(); }, 50);
+}
+
+function cancelEditKB() {
+  editingKBId = null;
+  renderKB();
+}
+
+function saveEditKB(id) {
+  const item = knowledgeBase.find(k => k.id === id);
+  if (!item) return;
+  const q   = (document.getElementById('edit-q-'   + id)?.value || '').trim();
+  const a   = (document.getElementById('edit-a-'   + id)?.value || '').trim();
+  const cat = (document.getElementById('edit-cat-' + id)?.value || '').trim();
+  const src = (document.getElementById('edit-src-' + id)?.value || '').trim();
+  if (!q || !a) { alert('質問と回答は必須です'); return; }
+  item.q = q;
+  item.a = a;
+  item.category = cat || '未分類';
+  if (src) item.source = src;
+  editingKBId = null;
+  persistFaq();
+  renderKB();
+  updateStats();
+  _cldPost('update_kb', { item });
+}
+
+function approveKB(id) {
+  const item = knowledgeBase.find(k => k.id === id);
+  if (!item) return;
+  item.approved = !item.approved;
+  if (item.approved) item.approvedAt = nowStr();
+  else delete item.approvedAt;
+  persistFaq();
+  renderKB();
+  _cldPost('update_kb', { item });
 }
 
 let addFormOpen = false;

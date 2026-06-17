@@ -173,9 +173,12 @@ const MFaqKbCard = ({ item }) => {
   return (
     <div style={{ background: "var(--card)", borderRadius: 14, marginBottom: 8, border: "1px solid var(--line)", overflow: "hidden" }}>
       <div style={{ padding: "11px 14px", cursor: "pointer" }} onClick={() => setOpen(o => !o)}>
-        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 5 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 5, flexWrap: "wrap" }}>
           {item.category && (
             <span style={{ background: "#e8f5e9", color: "#1a7a47", fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 20 }}>{item.category}</span>
+          )}
+          {item.approved && (
+            <span style={{ background: "#dcfce7", color: "#166534", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 20 }}>✅ 承認済み</span>
           )}
           <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--brand)" }}>{open ? "▲" : "▼"}</span>
         </div>
