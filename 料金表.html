@@ -595,6 +595,19 @@ const LS_EDITS = () => currentBrand==='blue' ? 'miwa.price.edits.blue.v1' : 'miw
 const CLOUD_EDITS_SHEET = () => currentBrand==='blue' ? '料金設定_青' : '料金設定';
 let priceEdits = {};  // { [code]: { name?, p1?, p4?, p5?, p6?, mp?, deleted:bool } }
 
+// クラウドからの文字列化されたデータを正規化（boolean/numberを復元）
+function normEdit(r) {
+  if (!r) return r;
+  const n = { ...r };
+  n.isNew    = r.isNew    === true || r.isNew    === 'true';
+  n.deleted  = r.deleted  === true || r.deleted  === 'true';
+  if (r.p1 !== undefined && r.p1 !== '') n.p1 = Number(r.p1) || undefined;
+  if (r.p4 !== undefined && r.p4 !== '') n.p4 = Number(r.p4) || undefined;
+  if (r.p5 !== undefined && r.p5 !== '') n.p5 = Number(r.p5) || undefined;
+  if (r.p6 !== undefined && r.p6 !== '') n.p6 = Number(r.p6) || undefined;
+  return n;
+}
+
 function loadEdits() {
   try { priceEdits = JSON.parse(localStorage.getItem(LS_EDITS())||'{}'); } catch(e){ priceEdits = {}; }
   // クラウドから取得
@@ -603,7 +616,7 @@ function loadEdits() {
       cloudGet(CLOUD_EDITS_SHEET()).then(rows => {
         if (!Array.isArray(rows)) return;
         const merged = {};
-        rows.forEach(r => { if (r.code) merged[r.code] = r; });
+        rows.forEach(r => { if (r.code) merged[r.code] = normEdit(r); });
         priceEdits = merged;
         try { localStorage.setItem(LS_EDITS(), JSON.stringify(merged)); } catch(e){}
         renderAll();
@@ -625,7 +638,9 @@ function saveEdits() {
 function applyEdits(item) {
   const e = priceEdits[item.code];
   if (!e) return item;
-  return { ...item, ...e, deleted: !!e.deleted };
+  // クラウド経由で文字列化された 'true'/'false' にも対応
+  const deleted = e.deleted === true || e.deleted === 'true';
+  return { ...item, ...e, deleted };
 }
 
 let menuTargetCode = null;
@@ -784,7 +799,11 @@ function getAllItemsBySheet(sheet) {
   else if (sheet === 'reform') base = priceData.reform || [];
   else if (sheet === 'function') { const d = (() => { try { const s=localStorage.getItem(LS_FUNC); if(s) return JSON.parse(s); } catch(e){} return window.FUNCTION_SEED || null; })(); base = d ? d.items : []; }
   else if (sheet === 'sales') { const d = (() => { try { const s=localStorage.getItem(LS_SALES); if(s) return JSON.parse(s); } catch(e){} return window.SALES_SEED || null; })(); base = d ? d.items : []; }
-  const customItems = Object.values(priceEdits).filter(e => e.isNew && e.sheet === sheet && !e.deleted);
+  const customItems = Object.values(priceEdits).filter(e =>
+    (e.isNew === true || e.isNew === 'true') &&
+    e.sheet === sheet &&
+    e.deleted !== true && e.deleted !== 'true'
+  );
   return [...base, ...customItems];
 }
 // タブバッジを非表示・削除を反映して動的更新
