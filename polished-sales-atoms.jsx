@@ -111,7 +111,7 @@ const MULTI_HEADER_MAP = {
   "ワイシャツ点数": "shirts", "ﾜｲｼｬﾂ点数(昨年)": "shirtsLastYear", "ワイシャツ点数(昨年)": "shirtsLastYear",
   "ロット外・外注点数": "rotto", "ﾛｯﾄ外点数(昨年)": "rottoLastYear", "ロット外点数(昨年)": "rottoLastYear",
   "レギュラーコース": "regular", "スタンダードコース": "standard", "プレミアムコース": "premium",
-  "デリケートコース": "delicate", "ブランドコース": "brand",
+  "デリケートコース": "delicate", "ブランドコース": "brand", "ハイブランドコース": "highBrand",
   "1点単価": "itemPrice",
   "客数": "customers", "客数前年比": "customersLastYear", "客数前年": "customersLastYear", "客数前年実績": "customersLastYear",
   "新規数": "newCustomers", "新規": "newCustomers", "新規前年比": "newCustomersLastYear", "新規前年": "newCustomersLastYear", "新規前年実績": "newCustomersLastYear",
