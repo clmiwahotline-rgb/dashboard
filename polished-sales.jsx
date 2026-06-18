@@ -150,7 +150,7 @@ const FilterBar = ({ filter, setFilter, months, onAdd, onImport, onExport, onHis
         <label className="field-label">対象月</label>
         <select className="select" style={{ width: 180 }}
       value={filter.month} onChange={(e) => { const v = e.target.value; setFilter((f) => ({ ...f, month: v })); }}>
-          {months.length === 0 && <option value="">データなし</option>}
+          <option value="">全期間</option>
           {months.map((m) => {
           const [y, mo] = m.split("-");
           return <option key={m} value={m}>{y}年{parseInt(mo)}月</option>;
@@ -285,10 +285,15 @@ const SalesReport = () => {
   // ── 共有クラウド：手動入力（マミー川口安行店のみ）を全端末同期 ──
   // 他店は将来 API 自動取得予定のためクラウドには上げない。
   const MANUAL_STORE = "マミー川口安行店";
-  const SALES_SHEET = "売上_マミー安行";  // 既存シートに「マミー手動＋CSV取込（全店）」を集約（新シート不要）
+  const SALES_SHEET   = "売上_マミー安行";
+  const IMPORTS_SHEET = "売上取込履歴";
+  // 日付の表記ゆれ（2026/04/02 ↔ 2026-04-02）を正規化
+  const normDate = (d) => String(d || "").replace(/\//g, "-").slice(0, 10);
+
   const NUM_SKIP = React.useRef(new Set(["date", "store", "ts"])).current;
   const coerceSalesRow = React.useCallback((r) => {
     const o = { ...r };
+    if (o.date) o.date = normDate(o.date); // 日付形式を統一
     for (const k in o) {
       if (NUM_SKIP.has(k)) continue;
       const v = o[k];
@@ -303,6 +308,11 @@ const SalesReport = () => {
     if (!cloudOn) return;
     const cloudRows = allRows.filter((r) => r.store === MANUAL_STORE || r.importId);
     cloudReplaceAll(SALES_SHEET, cloudRows);
+  }, [cloudOn]);
+
+  const syncImportsToCloud = React.useCallback((allImports) => {
+    if (!cloudOn) return;
+    cloudReplaceAll(IMPORTS_SHEET, allImports);
   }, [cloudOn]);
 
   React.useEffect(() => {
@@ -339,24 +349,42 @@ const SalesReport = () => {
     return () => {cancelled = true;};
   }, [cloudOn]); // eslint-disable-line
 
-  // Available months (descending) — derived from data
-  const months = React.useMemo(() => {
-    const set = new Set(rows.map((r) => (r.date || "").slice(0, 7)).filter(Boolean));
-    return [...set].sort((a, b) => b.localeCompare(a));
+  // 取込履歴をクラウドから読み込んでローカルとマージ
+  React.useEffect(() => {
+    if (!cloudOn) return;
+    let cancelled = false;
+    (async () => {
+      const remote = await cloudGet(IMPORTS_SHEET);
+      if (cancelled || !remote || !remote.length) return;
+      setImports((prev) => {
+        const localIds = new Set(prev.map((r) => r.id));
+        const remoteOnly = remote.filter((r) => !localIds.has(r.id));
+        if (!remoteOnly.length) return prev;
+        return [...remote.filter((r) => localIds.has(r.id) || true)].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [cloudOn]); // eslint-disable-line
+  // months: stable string key → only changes when month VALUES actually change
+  const monthsKey = React.useMemo(() => {
+    const set = new Set(rows.map((r) => normDate(r.date).slice(0, 7)).filter(Boolean));
+    return [...set].sort((a, b) => b.localeCompare(a)).join(",");
   }, [rows]);
+  const months = React.useMemo(() => monthsKey ? monthsKey.split(",") : [], [monthsKey]);
 
-  // Default month → most recent; also reset if selected month no longer in data
+  // Default month → most recent; only fires when available months truly change (not on every rows update)
   React.useEffect(() => {
     if (!months.length) return;
-    if (!filter.month || !months.includes(filter.month)) {
-      setFilter((f) => ({ ...f, month: months[0] }));
-    }
-  }, [months]);
+    setFilter((f) => {
+      if (!f.month || !months.includes(f.month)) return { ...f, month: months[0] };
+      return f; // ユーザーの選択が有効なら上書きしない
+    });
+  }, [monthsKey]); // stringキーなので月の内容が変わった時だけ発火
 
   // Filter (month/store/keyword)
   const filtered = React.useMemo(() => {
     return rows.filter((x) =>
-    (!filter.month || (x.date || "").startsWith(filter.month)) && (
+    (!filter.month || normDate(x.date).startsWith(filter.month)) && (
     !filter.store || x.store === filter.store) && (
     !filter.q || (x.store + x.date).includes(filter.q))
     );
@@ -403,12 +431,12 @@ const SalesReport = () => {
     const kept = rows.filter((r) => !keys.has(`${r.date}|${r.store}`));
     const stamped = newRows.map((r) => ({ ...r, id: Date.now() + Math.random(), importId }));
     const next = [...stamped, ...kept];
+    const newEntry = { id: importId, name: sourceName || "CSV取り込み", ts: Date.now(), count: stamped.length };
+    const nextImports = [newEntry, ...imports];
     setRows(next);
-    setImports((prev) => [
-    { id: importId, name: sourceName || "CSV取り込み", ts: Date.now(), count: stamped.length },
-    ...prev]
-    );
+    setImports(nextImports);
     syncSalesToCloud(next);
+    syncImportsToCloud(nextImports);
     const replaced = rows.length - kept.length;
     setToast(`${newRows.length} 件を取り込みました${replaced ? `（うち ${replaced} 件は上書き）` : ""}`);
   };
@@ -430,9 +458,11 @@ const SalesReport = () => {
     const n = rowCountById(im.id);
     if (!confirm(`「${im.name}」で取り込んだデータ ${n} 件を削除します。よろしいですか?`)) return;
     const next = rows.filter((r) => r.importId !== im.id);
+    const nextImports = imports.filter((x) => x.id !== im.id);
     setRows(next);
-    setImports((prev) => prev.filter((x) => x.id !== im.id));
+    setImports(nextImports);
     syncSalesToCloud(next);
+    syncImportsToCloud(nextImports);
     setToast(`「${im.name}」の取り込み分（${n} 件）を削除しました`);
   };
 
