@@ -9,6 +9,42 @@ const { DailyComparisonChart, CumulativeChart, StoreComparisonChart, CourseChart
 
 // ── Sortable detail table ───────────────────────────────
 const SalesTable = ({ rows, onEdit, onDelete, sort, setSort }) => {
+  const wrapRef = React.useRef(null);
+  const topRef  = React.useRef(null);
+  React.useEffect(() => {
+    const el  = wrapRef.current;
+    const top = topRef.current;
+    if (!el || !top) return;
+    // sync scrollbar widths
+    const syncW = () => { if (top.firstChild) top.firstChild.style.width = el.scrollWidth + 'px'; };
+    const ro = new ResizeObserver(syncW);
+    ro.observe(el);
+    syncW();
+    // sync scroll positions
+    let syncing = false;
+    const onWrap = () => { if (!syncing) { syncing = true; top.scrollLeft = el.scrollLeft;  syncing = false; } };
+    const onTop  = () => { if (!syncing) { syncing = true; el.scrollLeft  = top.scrollLeft; syncing = false; } };
+    el.addEventListener('scroll',  onWrap);
+    top.addEventListener('scroll', onTop);
+    // grab-to-scroll
+    let isDown = false, startX = 0, scrollLeft = 0;
+    const onDown = (e) => { isDown = true; startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft; el.style.cursor = 'grabbing'; el.style.userSelect = 'none'; };
+    const onUp   = ()  => { isDown = false; el.style.cursor = ''; el.style.userSelect = ''; };
+    const onMove = (e) => { if (!isDown) return; e.preventDefault(); el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX); };
+    el.addEventListener('mousedown', onDown);
+    el.addEventListener('mouseleave', onUp);
+    el.addEventListener('mouseup',   onUp);
+    el.addEventListener('mousemove', onMove);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('scroll',    onWrap);
+      top.removeEventListener('scroll',   onTop);
+      el.removeEventListener('mousedown', onDown);
+      el.removeEventListener('mouseleave',onUp);
+      el.removeEventListener('mouseup',   onUp);
+      el.removeEventListener('mousemove', onMove);
+    };
+  }, []);
   const cols = [
   { key: "date", label: "日付", align: "left" },
   { key: "store", label: "店舗", align: "left" },
@@ -27,6 +63,7 @@ const SalesTable = ({ rows, onEdit, onDelete, sort, setSort }) => {
   { key: "premium", label: "プレミアム", align: "right" },
   { key: "delicate", label: "デリケート", align: "right" },
   { key: "brand", label: "ブランド", align: "right" },
+  { key: "highBrand", label: "ハイブランド", align: "right" },
   { key: "itemPrice", label: "1点単価", align: "right" }];
 
   const flip = (k) => () => setSort({ key: k, dir: sort.key === k && sort.dir === "desc" ? "asc" : "desc" });
@@ -35,7 +72,9 @@ const SalesTable = ({ rows, onEdit, onDelete, sort, setSort }) => {
   <span style={{ color: "var(--ink-faint)" }}>—</span>;
 
   return (
-    <div className="table-wrap">
+    <>
+    <div className="table-topbar" ref={topRef}><div></div></div>
+    <div className="table-wrap" ref={wrapRef}>
       <table className="dt">
         <thead>
           <tr>
@@ -78,6 +117,7 @@ const SalesTable = ({ rows, onEdit, onDelete, sort, setSort }) => {
               <td className="num muted">{fmtNum(r.premium)}</td>
               <td className="num muted">{fmtNum(r.delicate)}</td>
               <td className="num muted">{fmtNum(r.brand)}</td>
+              <td className="num muted">{fmtNum(r.highBrand)}</td>
               <td className="num muted">{fmtYen(r.itemPrice)}</td>
               <td className="actions">
                 <button className="row-action" title="編集" onClick={() => onEdit(r)}>
@@ -97,7 +137,8 @@ const SalesTable = ({ rows, onEdit, onDelete, sort, setSort }) => {
           )}
         </tbody>
       </table>
-    </div>);
+    </div>
+    </>);
 
 };
 
@@ -108,7 +149,7 @@ const FilterBar = ({ filter, setFilter, months, onAdd, onImport, onExport, onHis
       <div className="field">
         <label className="field-label">対象月</label>
         <select className="select" style={{ width: 180 }}
-      value={filter.month} onChange={(e) => setFilter({ ...filter, month: e.target.value })}>
+      value={filter.month} onChange={(e) => { const v = e.target.value; setFilter((f) => ({ ...f, month: v })); }}>
           {months.length === 0 && <option value="">データなし</option>}
           {months.map((m) => {
           const [y, mo] = m.split("-");
@@ -230,6 +271,7 @@ const SalesReport = () => {
   const [sort, setSort] = React.useState({ key: "date", dir: "desc" });
   const [editing, setEditing] = React.useState(null);
   const [importing, setImporting] = React.useState(false);
+  const [dupConfirm, setDupConfirm] = React.useState(null); // { newRows, sourceName, dupCount, newCount }
   const [historyOpen, setHistoryOpen] = React.useState(false);
   const [toast, setToast] = React.useState("");
   const [dark, setDark] = React.useState(false);
@@ -303,12 +345,13 @@ const SalesReport = () => {
     return [...set].sort((a, b) => b.localeCompare(a));
   }, [rows]);
 
-  // Default month → most recent
+  // Default month → most recent; also reset if selected month no longer in data
   React.useEffect(() => {
-    if (!filter.month && months.length) {
+    if (!months.length) return;
+    if (!filter.month || !months.includes(filter.month)) {
       setFilter((f) => ({ ...f, month: months[0] }));
     }
-  }, [months, filter.month]);
+  }, [months]);
 
   // Filter (month/store/keyword)
   const filtered = React.useMemo(() => {
@@ -354,7 +397,7 @@ const SalesReport = () => {
   };
 
   // Import: accumulate, dedup by (date, store) — new replaces old
-  const importRows = (newRows, sourceName) => {
+  const doImport = (newRows, sourceName) => {
     const importId = "imp" + Date.now();
     const keys = new Set(newRows.map((r) => `${r.date}|${r.store}`));
     const kept = rows.filter((r) => !keys.has(`${r.date}|${r.store}`));
@@ -365,9 +408,20 @@ const SalesReport = () => {
     { id: importId, name: sourceName || "CSV取り込み", ts: Date.now(), count: stamped.length },
     ...prev]
     );
-    syncSalesToCloud(next); // マミー手動＋取込（全店）を全端末共有
+    syncSalesToCloud(next);
     const replaced = rows.length - kept.length;
     setToast(`${newRows.length} 件を取り込みました${replaced ? `（うち ${replaced} 件は上書き）` : ""}`);
+  };
+
+  const importRows = (newRows, sourceName) => {
+    const keys = new Set(newRows.map((r) => `${r.date}|${r.store}`));
+    const dupCount = rows.filter((r) => keys.has(`${r.date}|${r.store}`)).length;
+    if (dupCount > 0) {
+      const newCount = newRows.length;
+      setDupConfirm({ newRows, sourceName, dupCount, newCount });
+    } else {
+      doImport(newRows, sourceName);
+    }
   };
 
   // 取り込み履歴：ファイル単位でデータごと削除
@@ -383,13 +437,13 @@ const SalesReport = () => {
   };
 
   const exportCSV = () => {
-    const header = "日付,店舗,売上額,昨年実績,昨対比,客数,客数前年実績,客数前年比,新規数,新規前年実績,新規前年比,総点数,1点単価,レギュラー,スタンダード,プレミアム,デリケート,ブランド,ドライ,ワイシャツ,ロット外";
+    const header = "日付,店舗,売上額,昨年実績,昨対比,客数,客数前年実績,客数前年比,新規数,新規前年実績,新規前年比,総点数,1点単価,レギュラー,スタンダード,プレミアム,デリケート,ブランド,ハイブランド,ドライ,ワイシャツ,ロット外";
     const lines = sorted.map((r) =>
     [r.date, r.store, r.sales, r.lastYear || 0, r.yoy || 0,
     r.customers || 0, r.customersLastYear || 0, r.customersYoy || 0,
     r.newCustomers || 0, r.newCustomersLastYear || 0, r.newCustomersYoy || 0,
     r.items || 0, r.itemPrice || 0,
-    r.regular || 0, r.standard || 0, r.premium || 0, r.delicate || 0, r.brand || 0,
+    r.regular || 0, r.standard || 0, r.premium || 0, r.delicate || 0, r.brand || 0, r.highBrand || 0,
     r.drySheets || 0, r.shirts || 0, r.rotto || 0].join(",")
     );
     const csv = "\uFEFF" + [header, ...lines].join("\n");
@@ -503,7 +557,7 @@ const SalesReport = () => {
           }
 
           {tab === "detail" &&
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="card" style={{ padding: 0 }}>
               <div className="card-head" style={{ padding: "16px 20px 10px", marginBottom: 0 }}>
                 <h3 className="card-title">明細テーブル</h3>
                 <span className="card-sub">{sorted.length} 件</span>
@@ -554,6 +608,33 @@ const SalesReport = () => {
         onImport={importRows}
         onClose={() => setImporting(false)} />
 
+      }
+      {dupConfirm &&
+      <Modal
+        title="重複データの確認"
+        sub={`${dupConfirm.newCount} 件中 ${dupConfirm.dupCount} 件が既存データと重複（同じ日付・店舗）しています`}
+        onClose={() => setDupConfirm(null)}
+        footer={
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button className="btn btn-ghost" onClick={() => setDupConfirm(null)}>キャンセル</button>
+            <button className="btn btn-primary" onClick={() => {
+              const { newRows, sourceName } = dupConfirm;
+              setDupConfirm(null);
+              doImport(newRows, sourceName);
+            }}>重複部分を上書きして取り込む</button>
+          </div>
+        }>
+        <div style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, padding: "4px 0 8px" }}>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12 }}>
+            <span>取り込み件数：<strong style={{ color: "var(--ink)" }}>{dupConfirm.newCount} 件</strong></span>
+            <span>重複件数：<strong style={{ color: "#e54863" }}>{dupConfirm.dupCount} 件</strong>（上書き対象）</span>
+            <span>新規件数：<strong style={{ color: "oklch(0.55 0.16 150)" }}>{dupConfirm.newCount - dupConfirm.dupCount} 件</strong></span>
+          </div>
+          <div style={{ background: "var(--bg-2)", borderRadius: 10, padding: "10px 14px", fontSize: 12 }}>
+            「重複部分を上書きして取り込む」を選ぶと、同じ日付・店舗の既存データが新しいデータで置き換えられます。キャンセルすると何も変更されません。
+          </div>
+        </div>
+      </Modal>
       }
       {historyOpen &&
       <ImportHistoryModal

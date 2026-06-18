@@ -219,12 +219,13 @@ const COURSE_FIELDS = [
   { key: "premium",  label: "プレミアム", color: "#FBBC04" },
   { key: "delicate", label: "デリケート", color: "#34A853" },
   { key: "brand",    label: "ブランド",   color: "#5e97f6" },
+  { key: "highBrand", label: "ハイブランド", color: "#9333ea" },
 ];
 
 const CourseChart = ({ rows }) => {
   const byStore = {};
   rows.forEach((r) => {
-    if (!byStore[r.store]) byStore[r.store] = { regular: 0, standard: 0, premium: 0, delicate: 0, brand: 0 };
+    if (!byStore[r.store]) byStore[r.store] = { regular: 0, standard: 0, premium: 0, delicate: 0, brand: 0, highBrand: 0 };
     COURSE_FIELDS.forEach((c) => { byStore[r.store][c.key] += r[c.key] || 0; });
   });
   const entries = Object.entries(byStore)

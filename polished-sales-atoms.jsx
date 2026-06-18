@@ -94,6 +94,7 @@ const HEADER_MAP = {
   "プレミアム": "premium", "プレミアムコース": "premium",
   "デリケート": "delicate", "デリケートコース": "delicate",
   "ブランド": "brand", "ブランドコース": "brand",
+  "ハイブランド": "highBrand", "ハイブランドコース": "highBrand",
   "客数": "customers", "customers": "customers",
   "客数前年実績": "customersLastYear", "客数前年": "customersLastYear",
   "客数前年比": "customersYoy",
@@ -153,7 +154,7 @@ const parseCSV = (text) => {
       sales: 0, yoy: 0, lastYear: 0, items: 0, itemPrice: 0,
       customers: 0, customersLastYear: 0, customersYoy: 0,
       newCustomers: 0, newCustomersLastYear: 0, newCustomersYoy: 0,
-      regular: 0, standard: 0, premium: 0, delicate: 0, brand: 0,
+      regular: 0, standard: 0, premium: 0, delicate: 0, brand: 0, highBrand: 0,
       drySheets: 0, drySheetsLastYear: 0, shirts: 0, shirtsLastYear: 0, rotto: 0, rottoLastYear: 0, itemsLastYear: 0,
       ...row,
     });
@@ -240,7 +241,7 @@ const parseMultiStoreReport = (text) => {
         sales: 0, yoy: 0, lastYear: 0, items: 0, itemPrice: 0,
         customers: 0, customersLastYear: 0, customersYoy: 0,
         newCustomers: 0, newCustomersLastYear: 0, newCustomersYoy: 0,
-        regular: 0, standard: 0, premium: 0, delicate: 0, brand: 0,
+        regular: 0, standard: 0, premium: 0, delicate: 0, brand: 0, highBrand: 0,
         drySheets: 0, drySheetsLastYear: 0, shirts: 0, shirtsLastYear: 0, rotto: 0, rottoLastYear: 0, itemsLastYear: 0,
         id: Date.now() + Math.random(),
         ...row,
@@ -443,7 +444,7 @@ const ManualForm = ({ initial, onSave, onClose }) => {
     newCustomers: "", newCustomersLastYear: "",
     items: "", itemPrice: "",
     drySheets: "", shirts: "", rotto: "",
-    regular: "", standard: "", premium: "", delicate: "", brand: "",
+    regular: "", standard: "", premium: "", delicate: "", brand: "", highBrand: "",
   });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -475,6 +476,7 @@ const ManualForm = ({ initial, onSave, onClose }) => {
       premium: n(form.premium),
       delicate: n(form.delicate),
       brand: n(form.brand),
+      highBrand: n(form.highBrand),
     });
   };
 
@@ -594,6 +596,11 @@ const ManualForm = ({ initial, onSave, onClose }) => {
           <label className="field-label">ブランド</label>
           <input className="input" type="number" inputMode="numeric" placeholder="ブラ+プレ の ブラ"
                  value={form.brand} onChange={set("brand")}/>
+        </div>
+        <div className="field">
+          <label className="field-label">ハイブランド</label>
+          <input className="input" type="number" inputMode="numeric" placeholder="ハイブランドコース"
+                 value={form.highBrand} onChange={set("highBrand")}/>
         </div>
         {(() => {
           const dryN = Number(form.drySheets) || 0;
