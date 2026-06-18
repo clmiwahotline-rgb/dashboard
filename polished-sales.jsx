@@ -372,23 +372,21 @@ const SalesReport = () => {
   }, [rows]);
   const months = React.useMemo(() => monthsKey ? monthsKey.split(",") : [], [monthsKey]);
 
-  // Default month → most recent; only fires when available months truly change (not on every rows update)
-  React.useEffect(() => {
-    if (!months.length) return;
-    setFilter((f) => {
-      if (!f.month || !months.includes(f.month)) return { ...f, month: months[0] };
-      return f; // ユーザーの選択が有効なら上書きしない
-    });
-  }, [monthsKey]); // stringキーなので月の内容が変わった時だけ発火
+  // 選択中の月が無効なら最新月へ自動フォールバック（effectで非同期にやらず毎レンダで計算）
+  const effectiveMonth = React.useMemo(() => {
+    if (!filter.month) return "";               // 全期間
+    if (months.includes(filter.month)) return filter.month; // 有効
+    return months[0] || "";                     // 無効→最新月へフォールバック
+  }, [filter.month, months]);
 
-  // Filter (month/store/keyword)
+  // Filter (month/store/keyword) — effectiveMonth を使うことで常に正しい値でフィルタ
   const filtered = React.useMemo(() => {
     return rows.filter((x) =>
-    (!filter.month || normDate(x.date).startsWith(filter.month)) && (
+    (!effectiveMonth || normDate(x.date).startsWith(effectiveMonth)) && (
     !filter.store || x.store === filter.store) && (
     !filter.q || (x.store + x.date).includes(filter.q))
     );
-  }, [rows, filter]);
+  }, [rows, effectiveMonth, filter.store, filter.q]);
 
   const availableStores = React.useMemo(() => [...new Set(filtered.map((r) => r.store))], [filtered]);
 
@@ -488,8 +486,8 @@ const SalesReport = () => {
   };
 
   // Period label: shows selected month or count
-  const periodLabel = filter.month ?
-  `${filter.month.slice(0, 4)}年${parseInt(filter.month.slice(5, 7))}月` :
+  const periodLabel = effectiveMonth ?
+  `${effectiveMonth.slice(0, 4)}年${parseInt(effectiveMonth.slice(5, 7))}月` :
   "全期間";
 
   return (
@@ -520,7 +518,7 @@ const SalesReport = () => {
 
           {/* Filter bar */}
           <FilterBar
-            filter={filter}
+            filter={{ ...filter, month: effectiveMonth }}
             setFilter={setFilter}
             months={months}
             onAdd={() => setEditing({})}
