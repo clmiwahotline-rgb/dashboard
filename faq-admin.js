@@ -1457,22 +1457,12 @@ const FAQ_ADMIN_MARKUP = `
       </div>
 
       <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text)">💴 料金マスキング</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;">
-          ONにすると、知識ベースの回答に含まれる金額（¥〇〇・〇〇円）を<b>「💴 料金表参照」</b>に置き換えます。<br>
-          料金表スプレッドシートに移行済みの場合にONにしてください。
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text)">💴 料金表示ルール</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;">
+          ✅ 知識ベース内の料金は<b>常に非表示</b>（古い可能性があるため）<br>
+          ✅ <b>price_seed.js の最新料金</b>を優先してチャットに表示<br>
+          ✅ 料金表にない品目は「担当スタッフにお問い合わせください」と回答
         </div>
-        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
-          <div class="toggle-wrap" id="price-mask-toggle" onclick="togglePriceMask()" style="
-            width:44px;height:24px;border-radius:12px;background:var(--border);
-            position:relative;transition:background .2s;cursor:pointer;flex-shrink:0;">
-            <div class="toggle-knob" style="
-              position:absolute;top:3px;left:3px;width:18px;height:18px;
-              border-radius:50%;background:#fff;transition:transform .2s;
-              box-shadow:0 1px 3px rgba(0,0,0,.3);"></div>
-          </div>
-          <span style="font-size:13px;font-weight:600;" id="price-mask-label">OFF（料金をそのまま表示）</span>
-        </label>
       </div>
     </div>
   </div>
