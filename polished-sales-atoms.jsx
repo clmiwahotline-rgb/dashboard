@@ -145,7 +145,8 @@ const parseCSV = (text) => {
     colMap.forEach((k, ci) => {
       if (!k) return;
       const val = cells[ci];
-      if (k === "date" || k === "store") row[k] = val;
+      if (k === "date") row[k] = val.replace(/\//g, "-").replace(/^(\d{4})-(\d{1,2})-(\d{1,2})$/, (_, y, mo, d) => `${y}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`);
+      else if (k === "store") row[k] = val;
       else row[k] = Number(String(val).replace(/[¥, %人円件]/g, "")) || 0;
     });
     if (!row.date || !row.store) { errors.push(`${i + 1}行目: 日付/店舗が空欄`); continue; }
