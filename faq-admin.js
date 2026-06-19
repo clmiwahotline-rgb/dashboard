@@ -1008,7 +1008,7 @@ function renderDocs() {
     return;
   }
   list.innerHTML=faqDocs.map(doc=>`
-    <div draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${doc.id}')" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff;cursor:grab">
+    <div draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${doc.id}')" title="未回答の回答欄にドラッグして内容を挿入できます" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff;cursor:grab">
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:3px">${escHtml(doc.title)}</div>
@@ -1176,6 +1176,8 @@ async function refreshFaqLogRemote() {
     }).then(r => r.json()).catch(() => null);
     if (res && res.ok && Array.isArray(res.logs)) {
       faqLog = res.logs;
+      // 次回読み込み用にキャッシュ保存
+      try { localStorage.setItem('miwa.faq.log.cache.v1', JSON.stringify(faqLog)); } catch(e) {}
       faqLogSource = 'gas';
       okRemote = true;
     }
@@ -1209,7 +1211,9 @@ function onDropDoc(event, id) {
   if (ta) { const ex = ta.value.trim(); ta.value = (ex ? ex + '\n\n' : '') + doc.content; }
   const zone = document.getElementById('ua-drop-' + id);
   if (zone) { zone.style.borderColor = '#059669'; zone.textContent = '✅ ' + doc.title + ' を挿入しました'; }
-}（任意・将来用）
+}
+
+// 同一端末でスタッフFAQが質問するたびに呼べる記録API（任意・将来用）
 window.MiwaFaqLog = {
   append(entry) {
     try {
@@ -1634,7 +1638,12 @@ function initFaqAdmin() {
   renderKB();
   renderUnanswered();
   loadArchivedLogIds();
+  // キャッシュからログを先に表示（初回読み込み時に白画にならないよう）
+  const _cachedLog = localStorage.getItem('miwa.faq.log.cache.v1');
+  if (_cachedLog) { try { faqLog = JSON.parse(_cachedLog); faqLogSource = 'local'; } catch(e) {} }
   renderFaqLog();
+  // 初回ロード時に最新ログを取得
+  setTimeout(() => refreshFaqLogRemote(), 500);
   // クラウドUI初期化と同期
   setTimeout(() => { initCloudUI(); syncKBFromCloud(); }, 100);
   // 60秒ごとに質問ログを自動更新
