@@ -366,25 +366,29 @@ const SalesReport = () => {
     return () => { cancelled = true; };
   }, [cloudOn]); // eslint-disable-line
   // months: stable string key → only changes when month VALUES actually change
+  // months: stable key
   const monthsKey = React.useMemo(() => {
     const set = new Set(rows.map((r) => normDate(r.date).slice(0, 7)).filter(Boolean));
     return [...set].sort((a, b) => b.localeCompare(a)).join(",");
   }, [rows]);
   const months = React.useMemo(() => monthsKey ? monthsKey.split(",") : [], [monthsKey]);
 
-  // 選択中の月が無効なら最新月へ自動フォールバック（effectで非同期にやらず毎レンダで計算）
-  const effectiveMonth = React.useMemo(() => {
-    if (!filter.month) return "";               // 全期間
-    if (months.includes(filter.month)) return filter.month; // 有効
-    return months[0] || "";                     // 無効→最新月へフォールバック
-  }, [filter.month, months]);
+  // 初期月のセット（マウント後1回だけ）
+  const didInit = React.useRef(false);
+  React.useEffect(() => {
+    if (didInit.current || !months.length) return;
+    didInit.current = true;
+    setFilter((f) => ({ ...f, month: months[0] }));
+  }, [months]);
 
-  // Filter (month/store/keyword) — effectiveMonth を使うことで常に正しい値でフィルタ
+  // 現在の選択が有効かを計算（フォールバックなし — 選んだ月を尊重）
+  const effectiveMonth = (!filter.month || months.includes(filter.month)) ? filter.month : months[0] || "";
+
   const filtered = React.useMemo(() => {
-    return rows.filter((x) =>
-    (!effectiveMonth || normDate(x.date).startsWith(effectiveMonth)) && (
-    !filter.store || x.store === filter.store) && (
-    !filter.q || (x.store + x.date).includes(filter.q))
+    const byMonth = !effectiveMonth ? rows : rows.filter((x) => normDate(x.date).slice(0, 7) === effectiveMonth);
+    return byMonth.filter((x) =>
+      (!filter.store || x.store === filter.store) &&
+      (!filter.q || (x.store + x.date).includes(filter.q))
     );
   }, [rows, effectiveMonth, filter.store, filter.q]);
 
