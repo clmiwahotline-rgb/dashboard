@@ -731,6 +731,26 @@ const VehiclePage = () => {
     });
     return m;
   }, [maint]);
+  // 空気圧チェックの前回日も整備履歴から自動取得
+  const lastTireCheckByVehicle = React.useMemo(() => {
+    const m = {};
+    maint.forEach((r) => {
+      if (!/空気圧/.test(r.type || "")) return;
+      const v = (r.vehicle || "").trim(), d = r.date || "";
+      if (v && d && (!m[v] || d > m[v])) m[v] = d;
+    });
+    return m;
+  }, [maint]);
+  // オイル交換の前回日も整備履歴から自動取得
+  const lastOilChangeByVehicle = React.useMemo(() => {
+    const m = {};
+    maint.forEach((r) => {
+      if (!/オイル/.test(r.type || "")) return;
+      const v = (r.vehicle || "").trim(), d = r.date || "";
+      if (v && d && (!m[v] || d > m[v])) m[v] = d;
+    });
+    return m;
+  }, [maint]);
   // 報告された最新オドメーター（給油記録）
   const latestOdoByVehicle = React.useMemo(() => {
     const m = {};
@@ -756,19 +776,19 @@ const VehiclePage = () => {
     () => vehicles.map((v) => {
       const name = (v.name || "").trim();
       const repOdo = latestOdoByVehicle[name] || 0;
+      const latestDate = (a, b) => {
+        if (a && b) return a > b ? a : b;
+        return a || b;
+      };
       return {
         ...v,
         odometer: Math.max(Number(v.odometer) || 0, repOdo),
-        washLastDate: (() => {
-          const fromMaint = lastWashByVehicle[name] || "";
-          const fromVehicle = v.washLastDate || "";
-          // 最新の洗車日を使用（整備履歴から自動取得を優先）
-          if (fromMaint && fromVehicle) return fromMaint > fromVehicle ? fromMaint : fromVehicle;
-          return fromMaint || fromVehicle;
-        })(),
+        washLastDate: latestDate(lastWashByVehicle[name] || "", v.washLastDate || ""),
+        tireLastDate: latestDate(lastTireCheckByVehicle[name] || "", v.tireLastDate || ""),
+        oilLastDate:  latestDate(lastOilChangeByVehicle[name] || "", v.oilLastDate || ""),
       };
     }),
-    [vehicles, lastWashByVehicle, latestOdoByVehicle]
+    [vehicles, lastWashByVehicle, lastTireCheckByVehicle, lastOilChangeByVehicle, latestOdoByVehicle]
   );
 
   const worstRank = (v) => DUE_ITEMS.reduce((acc, it) => Math.min(acc, STATUS_RANK[itemStatus(v, it).cls]), 9);
