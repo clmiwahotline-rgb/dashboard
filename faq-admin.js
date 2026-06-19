@@ -269,7 +269,10 @@ function renderUnanswered() {
           <div class="ua-item-q">${escHtml(item.q)}</div>
           <div class="ua-item-meta">${item.addedAt}${item.answered ? ' · ✅ 回答済み・知識化済み' : ''}</div>
         </div>
-        ${!item.answered ? `<button class="btn btn-sm btn-success" onclick="toggleUAForm(${item.id})">回答して知識化</button>` : ''}
+        ${!item.answered ? `
+          <button class="btn btn-sm btn-success" onclick="toggleUAForm(${item.id})">回答して知識化</button>
+          <button class="btn btn-sm btn-outline" onclick="deleteUA(${item.id})" style="color:#dc2626;border-color:#fecaca;margin-left:4px">🗑 削除</button>
+        ` : ''}
       </div>
       <div class="ua-answer-form" id="ua-form-${item.id}">
         <div id="ua-drop-${item.id}"
@@ -323,6 +326,12 @@ function approveAnswer(id) {
 
   const el = document.getElementById(`ua-${id}`);
   if (el) el.style.background = '#ecfdf5';
+}
+
+function deleteUA(id) {
+  if (!confirm('この質問を未回答リストから削除しますか？')) return;
+  unansweredList = unansweredList.filter(u => u.id !== id);
+  persistFaq(); renderUnanswered(); updateStats();
 }
 
 // 未回答を手動で1件追加（管理画面の手入力用）
@@ -702,16 +711,26 @@ function clearImport() {
 // ═══════════════════════════════════════════════
 //  知識ベース管理
 // ═══════════════════════════════════════════════
+let kbFilter = 'all'; // all | approved | unapproved
+function setKbFilter(f) { kbFilter = f; renderKB(); }
 function renderKB() {
   const list = document.getElementById('kb-list');
   if (!list) return;
   const searchVal = document.getElementById('kb-search')?.value.toLowerCase() || '';
-  const items = knowledgeBase.filter(item =>
-    !searchVal ||
-    item.q.toLowerCase().includes(searchVal) ||
-    item.a.toLowerCase().includes(searchVal) ||
-    (item.category || '').toLowerCase().includes(searchVal)
-  );
+  const items = knowledgeBase.filter(item => {
+    const matchSearch = !searchVal ||
+      item.q.toLowerCase().includes(searchVal) ||
+      item.a.toLowerCase().includes(searchVal) ||
+      (item.category || '').toLowerCase().includes(searchVal);
+    const matchFilter = kbFilter === 'approved' ? !!item.approved :
+                        kbFilter === 'unapproved' ? !item.approved : true;
+    return matchSearch && matchFilter;
+  });
+
+  // KBフィルタチップ更新
+  document.querySelectorAll('#kb-filter-chips .kb-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.f === kbFilter);
+  });
 
   if (items.length === 0) {
     list.innerHTML = '<div class="kb-empty">該当する知識がありません</div>';
@@ -1056,7 +1075,41 @@ function toggleArchiveLog(rowId) {
   renderFaqLog();
 }
 
-// 未回答ログを未回答リストに自動追加
+// ── 不要ログ管理 (タイプミス・無意味) ──────────────────────────
+const FAQ_LOG_NEEDLESS_KEY = 'miwa.faq.log.needless.v1';
+let _needlessLogIds = new Set();
+function loadNeedlessLogIds() {
+  try { const s = localStorage.getItem(FAQ_LOG_NEEDLESS_KEY); if (s) _needlessLogIds = new Set(JSON.parse(s)); } catch(e) {}
+}
+function saveNeedlessLogIds() {
+  try { localStorage.setItem(FAQ_LOG_NEEDLESS_KEY, JSON.stringify([..._needlessLogIds])); } catch(e) {}
+}
+function toggleNeedlessLog(rowId, q) {
+  if (_needlessLogIds.has(rowId)) {
+    _needlessLogIds.delete(rowId);
+  } else {
+    _needlessLogIds.add(rowId);
+    // 対応する質問を未回答リストからも削除
+    if (q) {
+      const before = unansweredList.length;
+      unansweredList = unansweredList.filter(u => u.q.trim() !== q.trim());
+      if (unansweredList.length !== before) { persistFaq(); renderUnanswered(); updateStats(); }
+    }
+  }
+  saveNeedlessLogIds();
+  renderFaqLog();
+}
+
+// ── 閉覧履歴管理 (未確認タブ用) ─────────────────────────
+const FAQ_LOG_SEEN_KEY = 'miwa.faq.log.seen.v1';
+let _seenLogIds = new Set();
+function loadSeenLogIds() {
+  try { const s = localStorage.getItem(FAQ_LOG_SEEN_KEY); if (s) _seenLogIds = new Set(JSON.parse(s)); } catch(e) {}
+}
+function markLogsAsSeen(rows) {
+  rows.forEach(r => _seenLogIds.add(logRowId(r)));
+  try { localStorage.setItem(FAQ_LOG_SEEN_KEY, JSON.stringify([..._seenLogIds])); } catch(e) {}
+}
 function autoAddUnansweredToList(logs) {
   let added = false;
   (logs || []).forEach(r => {
@@ -1111,10 +1164,17 @@ function renderFaqLog() {
   });
 
   let rows = faqLog.slice();
-  if (faqLogFilter === 'unconfirmed') rows = rows.filter(r => !r.answered && !_archivedLogIds.has(logRowId(r)));
-  else if (faqLogFilter === 'unanswered')  rows = rows.filter(r => !r.answered && !_archivedLogIds.has(logRowId(r)));
-  else if (faqLogFilter === 'answered')    rows = rows.filter(r => !!r.answered && !_archivedLogIds.has(logRowId(r)));
-  else if (faqLogFilter === 'archived')    rows = rows.filter(r => _archivedLogIds.has(logRowId(r)));
+  const isNeedless = r => _needlessLogIds.has(logRowId(r));
+  const isSeen    = r => _seenLogIds.has(logRowId(r));
+  const isAnswered = r => r.answered === true || r.answered === 'true' || r.answered === 'TRUE';
+  const isArchived = r => _archivedLogIds.has(logRowId(r));
+  if (faqLogFilter === 'unconfirmed') rows = rows.filter(r => !isAnswered(r) && !isArchived(r) && !isNeedless(r) && !isSeen(r));
+  else if (faqLogFilter === 'unanswered')  rows = rows.filter(r => !isAnswered(r) && !isArchived(r) && !isNeedless(r));
+  else if (faqLogFilter === 'answered')    rows = rows.filter(r =>  isAnswered(r) && !isArchived(r));
+  else if (faqLogFilter === 'archived')    rows = rows.filter(r => isArchived(r));
+  else if (faqLogFilter === 'needless')    rows = rows.filter(r => isNeedless(r));
+  // 未確認タブを開いたときは表示後に既読化
+  if (faqLogFilter === 'unconfirmed') setTimeout(() => markLogsAsSeen(rows), 2000);
 
   if (faqLogSearch) {
     rows = rows.filter(r =>
@@ -1125,7 +1185,8 @@ function renderFaqLog() {
   }
 
   // バッジ更新（未確認数）
-  const unconfirmedCount = faqLog.filter(r => !r.answered && !_archivedLogIds.has(logRowId(r))).length;
+  const isAnsweredFn = r => r.answered === true || r.answered === 'true' || r.answered === 'TRUE';
+  const unconfirmedCount = faqLog.filter(r => !isAnsweredFn(r) && !_archivedLogIds.has(logRowId(r)) && !_needlessLogIds.has(logRowId(r)) && !_seenLogIds.has(logRowId(r))).length;
   const count = document.getElementById('faqlog-count');
   if (count) count.textContent = `${rows.length}件`;
   const badge = document.getElementById('faqlog-badge');
@@ -1139,17 +1200,19 @@ function renderFaqLog() {
   if (rows.length === 0) { list.innerHTML = '<div class="kb-empty">該当する記録がありません</div>'; return; }
 
   list.innerHTML = rows.map((r) => {
-    const ans = !!r.answered;
+    const ans = isAnswered(r);
     const rid = logRowId(r);
-    const isArchived = _archivedLogIds.has(rid);
+    const isArchived2 = _archivedLogIds.has(rid);
+    const isNeedless2 = _needlessLogIds.has(rid);
     const aPreview = escHtml(String(r.a || '').replace(/【.*?】/g, '').replace(/\n+/g, ' ').slice(0, 90));
-    return `<div class="log-row ${ans ? '' : 'log-unanswered'}" style="${isArchived ? 'opacity:.55' : ''}">
+    return `<div class="log-row ${ans ? '' : 'log-unanswered'}" style="${isArchived2 ? 'opacity:.55' : ''}">
       <div class="log-row-top">
-        <span class="log-status ${ans ? 'ok' : 'ng'}">${ans ? '回答済み' : '未確認'}</span>
+        <span class="log-status ${ans ? 'ok' : 'ng'}">${ans ? '回答済み' : '未回答'}</span>
         ${r.store ? `<span class="log-store">${escHtml(r.store)}</span>` : ''}
         <span class="log-time">${logTime(r.ts)}</span>
         <span style="flex:1"></span>
-        <button onclick="toggleArchiveLog('${rid.replace(/'/g, '')}')" class="btn btn-sm" style="background:${isArchived ? '#e0f2fe' : '#f3f4f6'};color:${isArchived ? '#0369a1' : '#6b7280'};border:none;font-size:11px;padding:2px 8px">${isArchived ? '↩ 取消' : '📁 アーカイブ'}</button>
+        <button onclick="toggleNeedlessLog('${rid.replace(/'/g,'')}','${(r.q||'').replace(/'/g,'').slice(0,30)}')" class="btn btn-sm" style="background:${isNeedless2?'#fce7f3':'#f3f4f6'};color:${isNeedless2?'#be185d':'#6b7280'};border:none;font-size:11px;padding:2px 8px;margin-right:4px">${isNeedless2?'↩ 有効化':'🚫 不要'}</button>
+        <button onclick="toggleArchiveLog('${rid.replace(/'/g, '')}')" class="btn btn-sm" style="background:${isArchived2 ? '#e0f2fe' : '#f3f4f6'};color:${isArchived2 ? '#0369a1' : '#6b7280'};border:none;font-size:11px;padding:2px 8px">${isArchived2 ? '↩ 取消' : '📁 アーカイブ'}</button>
       </div>
       <div class="log-q">${escHtml(r.q || '')}</div>
       ${r.a ? `<div class="log-a" onclick="this.classList.toggle('open')"><span class="log-a-label">AI回答</span> ${aPreview}${String(r.a||'').length > 90 ? '…' : ''}
@@ -1389,6 +1452,7 @@ const FAQ_ADMIN_MARKUP = `
           <button class="log-chip" data-f="unanswered" onclick="setFaqLogFilter('unanswered')">未回答</button>
           <button class="log-chip" data-f="answered" onclick="setFaqLogFilter('answered')">回答済み</button>
           <button class="log-chip" data-f="archived" onclick="setFaqLogFilter('archived')">アーカイブ</button>
+          <button class="log-chip" data-f="needless" onclick="setFaqLogFilter('needless')">不要</button>
         </div>
         <input class="form-input" id="faqlog-search" placeholder="🔍 質問・回答・拠点で検索" oninput="onFaqLogSearch(this.value)" style="flex:1;min-width:160px">
       </div>
@@ -1498,6 +1562,11 @@ const FAQ_ADMIN_MARKUP = `
         </div>
       </div>
 
+      <div id="kb-filter-chips" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="kb-chip log-chip active" data-f="all" onclick="setKbFilter('all')">すべて</button>
+        <button class="kb-chip log-chip" data-f="unapproved" onclick="setKbFilter('unapproved')">未承認</button>
+        <button class="kb-chip log-chip" data-f="approved" onclick="setKbFilter('approved')">承認済み</button>
+      </div>
       <div id="search-kb-wrap" style="margin-bottom:14px">
         <input class="form-input" id="kb-search" placeholder="🔍 知識を検索..." oninput="renderKB()" style="width:100%">
       </div>
@@ -1638,6 +1707,8 @@ function initFaqAdmin() {
   renderKB();
   renderUnanswered();
   loadArchivedLogIds();
+  loadNeedlessLogIds();
+  loadSeenLogIds();
   // キャッシュからログを先に表示（初回読み込み時に白画にならないよう）
   const _cachedLog = localStorage.getItem('miwa.faq.log.cache.v1');
   if (_cachedLog) { try { faqLog = JSON.parse(_cachedLog); faqLogSource = 'local'; } catch(e) {} }
