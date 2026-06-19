@@ -287,8 +287,13 @@ const SalesReport = () => {
   const MANUAL_STORE = "マミー川口安行店";
   const SALES_SHEET   = "売上_マミー安行";
   const IMPORTS_SHEET = "売上取込履歴";
-  // 日付の表記ゆれ（2026/04/02 ↔ 2026-04-02）を正規化
-  const normDate = (d) => String(d || "").replace(/\//g, "-").slice(0, 10);
+  // 日付の表記ゆれを正規化（スラッシュ→ハイフン＋ゼロ埋め: 2026/6/1 → 2026-06-01）
+  const normDate = (d) => {
+    const s = String(d || "").replace(/\//g, "-").trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+    return s.slice(0, 10);
+  };
 
   const NUM_SKIP = React.useRef(new Set(["date", "store", "ts"])).current;
   const coerceSalesRow = React.useCallback((r) => {
@@ -365,32 +370,37 @@ const SalesReport = () => {
     })();
     return () => { cancelled = true; };
   }, [cloudOn]); // eslint-disable-line
-  // months: stable string key → only changes when month VALUES actually change
-  // months: stable key
+  // 月一覧（降順）
   const monthsKey = React.useMemo(() => {
     const set = new Set(rows.map((r) => normDate(r.date).slice(0, 7)).filter(Boolean));
     return [...set].sort((a, b) => b.localeCompare(a)).join(",");
   }, [rows]);
   const months = React.useMemo(() => monthsKey ? monthsKey.split(",") : [], [monthsKey]);
 
-  // 初期月のセット（マウント後1回だけ）
-  const didInit = React.useRef(false);
+  // 初期月・月リスト変化時の自動セット
   React.useEffect(() => {
-    if (didInit.current || !months.length) return;
-    didInit.current = true;
-    setFilter((f) => ({ ...f, month: months[0] }));
-  }, [months]);
+    if (!months.length) return;
+    setFilter((f) => {
+      // 未設定 or 存在しない月の場合のみ最新月にセット
+      if (!f.month || !months.includes(f.month)) return { ...f, month: months[0] };
+      return f;
+    });
+  }, [monthsKey]); // monthsKey=文字列なので月の内容が変わった時だけ発火
 
-  // 現在の選択が有効かを計算（フォールバックなし — 選んだ月を尊重）
-  const effectiveMonth = (!filter.month || months.includes(filter.month)) ? filter.month : months[0] || "";
-
-  const filtered = React.useMemo(() => {
-    const byMonth = !effectiveMonth ? rows : rows.filter((x) => normDate(x.date).slice(0, 7) === effectiveMonth);
+  // フィルタ適用 — filter.month を直接使い、useMemo外の中間変数を排除
+  const filteredRows = React.useMemo(() => {
+    const m = filter.month;
+    // 選択月がリストにない場合は全件（月がずれているなら表示する）
+    const byMonth = (!m || !months.includes(m)) ? rows
+      : rows.filter((x) => normDate(x.date).slice(0, 7) === m);
     return byMonth.filter((x) =>
       (!filter.store || x.store === filter.store) &&
       (!filter.q || (x.store + x.date).includes(filter.q))
     );
-  }, [rows, effectiveMonth, filter.store, filter.q]);
+  }, [rows, monthsKey, filter]); // filterオブジェクト丸ごと依存でstale回避
+
+  const filtered = filteredRows; // 後続のコードに影響させないようエイリアス
+  const effectiveMonth = filter.month;
 
   const availableStores = React.useMemo(() => [...new Set(filtered.map((r) => r.store))], [filtered]);
 
@@ -409,9 +419,9 @@ const SalesReport = () => {
       setToast("売上データを更新しました");
     } else {
       // Dedup on (date, store) when manually adding
-      const filtered = rows.filter((r) => !(r.date === data.date && r.store === data.store));
-      next = [{ ...data, id: Date.now() }, ...filtered];
-      setToast(filtered.length === rows.length ? "売上データを追加しました" : "同日・同店舗のデータを更新しました");
+      const dedupedRows = rows.filter((r) => !(r.date === data.date && r.store === data.store));
+      next = [{ ...data, id: Date.now() }, ...dedupedRows];
+      setToast(dedupedRows.length === rows.length ? "売上データを追加しました" : "同日・同店舗のデータを更新しました");
     }
     setRows(next);
     syncSalesToCloud(next);
