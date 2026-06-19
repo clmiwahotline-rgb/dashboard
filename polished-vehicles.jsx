@@ -279,8 +279,18 @@ const AlertBanner = ({ vehicles }) => {
 };
 
 // ── KPI ─────────────────────────────────────────────────
-const VehicleKpi = ({ vehicles, fuel }) => {
-  const count = vehicles.length;
+const VehicleKpi = ({ vehicles, fuel, maint }) => {
+  // 保有台数：車両リスト ＋ 給油・整備に出てくる車名をユニーク合算
+  const registeredNames = new Set(vehicles.map((v) => (v.name || "").trim()).filter(Boolean));
+  const allNames = new Set([
+    ...registeredNames,
+    ...fuel.map((f) => (f.vehicle || "").trim()).filter(Boolean),
+    ...(maint || []).map((m) => (m.vehicle || "").trim()).filter(Boolean),
+  ]);
+  const count = allNames.size;
+  const unregistered = count - registeredNames.size;
+
+  // 要対応：登録済み車両のみ（期限情報があるもの）
   let needAttention = 0;
   vehicles.forEach((v) => {
     const worst = DUE_ITEMS.reduce((acc, it) => {
@@ -289,9 +299,13 @@ const VehicleKpi = ({ vehicles, fuel }) => {
     }, "ok");
     if (worst === "overdue" || worst === "urgent" || worst === "warn") needAttention++;
   });
+
+  // 給油額：今月のみ（ハードコードを除去）
   const thisMonth = TODAY_ISO.slice(0, 7);
-  const monthFuel = fuel.filter((f) => (f.date || "").startsWith(thisMonth) || (f.date || "").startsWith("2026-05"));
+  const monthFuel = fuel.filter((f) => (f.date || "").startsWith(thisMonth));
   const fuelAmount = monthFuel.reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
+  const thisMonthLabel = `${parseInt(thisMonth.slice(5))}月`;
+
   const eco = computeFuelEconomy(fuel);
   const ecoVals = Object.values(eco).filter((x) => x != null);
   const avgEco = ecoVals.length ? ecoVals.reduce((a, b) => a + b, 0) / ecoVals.length : 0;
@@ -305,9 +319,13 @@ const VehicleKpi = ({ vehicles, fuel }) => {
   );
   return (
     <div className="kpi-row kpi-row-4">
-      {card("🚚 保有台数", count + " 台", "全拠点", "var(--accent)")}
-      {card("⚠ 要対応", needAttention + " 台", "期限が近い車両", needAttention > 0 ? "#EA4335" : "#34A853", needAttention > 0 ? "#EA4335" : "#34A853")}
-      {card("⛽ 給油額", fmtYenV(fuelAmount), "直近月", "#4285F4")}
+      {card("🚚 保有台数", count + " 台",
+        unregistered > 0 ? `うち未登録 ${unregistered} 台` : "全拠点",
+        "var(--accent)")}
+      {card("⚠ 要対応", needAttention + " 台", "期限が近い車両",
+        needAttention > 0 ? "#EA4335" : "#34A853",
+        needAttention > 0 ? "#EA4335" : "#34A853")}
+      {card("⛽ 給油額", fmtYenV(fuelAmount), thisMonthLabel, "#4285F4")}
       {card("📈 平均燃費", avgEco ? avgEco.toFixed(1) + " km/L" : "—", "全車平均", "#FBBC04")}
     </div>
   );
@@ -756,6 +774,21 @@ const VehiclePage = () => {
   const worstRank = (v) => DUE_ITEMS.reduce((acc, it) => Math.min(acc, STATUS_RANK[itemStatus(v, it).cls]), 9);
   const sortedVehicles = [...vehiclesEnriched].sort((a, b) => worstRank(a) - worstRank(b));
 
+  // 給油・整備フォームの車両ドロップダウン：登録済み + 給油・整備履歴に出てくる車名を合算
+  const allVehiclesForDropdown = React.useMemo(() => {
+    const seen = new Set();
+    const list = [];
+    [
+      ...vehicles,
+      ...fuel.filter((f) => f.vehicle).map((f) => ({ name: (f.vehicle || "").trim() })),
+      ...maint.filter((m) => m.vehicle).map((m) => ({ name: (m.vehicle || "").trim() })),
+    ].forEach((v) => {
+      const n = (v.name || "").trim();
+      if (n && !seen.has(n)) { seen.add(n); list.push(v); }
+    });
+    return list.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ja"));
+  }, [vehicles, fuel, maint]);
+
   const cloudLabel = cloudOn
     ? (cloudState === "ok" ? "☁ 全店で共有中" : cloudState === "loading" ? "☁ 接続中…" : "☁ 接続エラー（端末内表示）")
     : "端末内表示";
@@ -796,7 +829,7 @@ const VehiclePage = () => {
           )}
 
           <AlertBanner vehicles={vehiclesEnriched} />
-          <VehicleKpi vehicles={vehiclesEnriched} fuel={fuel} />
+          <VehicleKpi vehicles={vehiclesEnriched} fuel={fuel} maint={maint} />
           <RecentReports fuel={fuel} maint={maint} />
 
           <div className="card">
@@ -818,8 +851,8 @@ const VehiclePage = () => {
       </div>
 
       {editVeh && <VehicleEditor initial={editVeh === "new" ? null : editVeh} vehicles={vehicles} onClose={() => setEditVeh(null)} onSave={vehicleMut.upsert} onDelete={vehicleMut.remove} />}
-      {editFuel && <FuelEditor initial={editFuel === "new" ? null : editFuel} vehicles={vehicles} onClose={() => setEditFuel(null)} onSave={fuelMut.upsert} onDelete={fuelMut.remove} />}
-      {editMaint && <MaintEditor initial={editMaint === "new" ? null : editMaint} vehicles={vehicles} onClose={() => setEditMaint(null)} onSave={maintMut.upsert} onDelete={maintMut.remove} />}
+      {editFuel && <FuelEditor initial={editFuel === "new" ? null : editFuel} vehicles={allVehiclesForDropdown} onClose={() => setEditFuel(null)} onSave={fuelMut.upsert} onDelete={fuelMut.remove} />}
+      {editMaint && <MaintEditor initial={editMaint === "new" ? null : editMaint} vehicles={allVehiclesForDropdown} onClose={() => setEditMaint(null)} onSave={maintMut.upsert} onDelete={maintMut.remove} />}
     </div>
   );
 };
