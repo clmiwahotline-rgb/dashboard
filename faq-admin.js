@@ -931,10 +931,24 @@ let faqDocs = [];
 
 function loadFaqDocs() {
   try { const s=localStorage.getItem(FAQ_DOCS_KEY); if(s) faqDocs=JSON.parse(s); } catch(e){ faqDocs=[]; }
+  // クラウドから最新を非同期取得（全端末共有）
+  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
+    cloudGet('FAQ資料').then(remote => {
+      if (Array.isArray(remote) && remote.length) {
+        faqDocs = remote;
+        try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
+        if (typeof renderDocs === 'function') renderDocs();
+      }
+    }).catch(() => {});
+  }
   return faqDocs;
 }
 function saveFaqDocs() {
   try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
+  // クラウドにも同期（全端末共有）
+  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
+    cloudReplaceAll('FAQ資料', faqDocs).catch(e => console.warn('FAQ資料クラウド同期失敗:', e));
+  }
 }
 function addDoc() {
   const title   = (document.getElementById('doc-title')?.value||'').trim();
