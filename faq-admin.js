@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════
 //  ★設定：GASプロキシのURL（APIキーはGAS側で秘匿）
 // ═══════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec';
 
 // ═══════════════════════════════════════════════
 //  データストア（暫定：localStorage。後日スプレッドシート化）
@@ -212,16 +212,16 @@ function initCloudUI() {
 //  AI呼び出し（生テキストを返す共通関数。GAS経由）
 // ═══════════════════════════════════════════════
 async function callAIRaw(systemPrompt, userContent, maxTokens) {
-  // AI呼び出しは常にAI専用GAS_URLを使用（クラウドデータ設定のURLとは別）
-  const useGas = GAS_URL && GAS_URL.trim() !== '';
-  const endpoint = useGas ? GAS_URL : 'https://api.anthropic.com/v1/messages';
+  // AI専用GAS（Anthropic中継）を使用。AI設定カードで上書き可。
+  const aiUrl = localStorage.getItem('miwa_faq_ai_url') || GAS_URL;
+  const useGas = !!aiUrl;
+  const endpoint = useGas ? aiUrl : 'https://api.anthropic.com/v1/messages';
   const body = {
     model: 'claude-haiku-4-5',
     max_tokens: maxTokens || 1500,
     system: systemPrompt,
     messages: [{ role: 'user', content: userContent }]
   };
-  // AI GASのトークン（クラウドデータ設定のトークンとは別に管理）
   const aiToken = localStorage.getItem('miwa_faq_ai_token') || '';
   if (useGas && aiToken) body.token = aiToken;
   const response = await fetch(endpoint, {
@@ -1476,10 +1476,14 @@ const FAQ_ADMIN_MARKUP = `
     </div>
     <div class="card-body">
       <p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;line-height:1.7">
-        「資料からAI一括取り込み」で使うAIプロキシGASのトークンを設定します。<br>
-        <span style="font-size:12px;color:var(--text-muted)">GASスクリプトの <code>VALID_TOKEN</code> または <code>AUTH_TOKEN</code> に設定した値を入力してください</span>
+        「資料からAI一括取り込み」で使うAIプロキシGASのURLとトークンを設定します。<br>
+        <span style="font-size:12px;color:var(--text-muted)">GASスクリプトの <code>AUTH_TOKEN</code> に設定した値を入力してください</span>
       </p>
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px">AI GAS URL（省略すると既定URLを使用）</label>
+          <input class="form-input" id="ai-gas-url" placeholder="https://script.google.com/macros/s/..." style="width:100%">
+        </div>
         <div>
           <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px">AI GAS トークン</label>
           <div style="display:flex;gap:8px">
@@ -1531,14 +1535,24 @@ const FAQ_ADMIN_MARKUP = `
 //  初期化
 // ═══════════════════════════════════════════════
 function saveAiGasToken() {
+  const url = (document.getElementById('ai-gas-url')?.value || '').trim();
   const val = (document.getElementById('ai-gas-token')?.value || '').trim();
-  try { localStorage.setItem('miwa_faq_ai_token', val); } catch(e) {}
-  alert(val ? 'AIトークンを保存しました。一括取り込みをお試しください。' : 'トークンをクリアしました。');
+  try {
+    if (url) localStorage.setItem('miwa_faq_ai_url', url);
+    else localStorage.removeItem('miwa_faq_ai_url');
+    localStorage.setItem('miwa_faq_ai_token', val);
+  } catch(e) {}
+  alert(val ? 'AI設定を保存しました。一括取り込みをお試しください。' : 'トークンをクリアしました。');
 }
 function initAiGasTokenUI() {
-  const el = document.getElementById('ai-gas-token');
-  if (!el) return;
-  try { const v = localStorage.getItem('miwa_faq_ai_token'); if (v) el.value = v; } catch(e) {}
+  const urlEl = document.getElementById('ai-gas-url');
+  const tokEl = document.getElementById('ai-gas-token');
+  try {
+    const u = localStorage.getItem('miwa_faq_ai_url');
+    const t = localStorage.getItem('miwa_faq_ai_token');
+    if (urlEl && u) urlEl.value = u;
+    if (tokEl && t) tokEl.value = t;
+  } catch(e) {}
 }
 
 function initFaqAdmin() {
