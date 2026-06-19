@@ -196,9 +196,96 @@ const FbLightbox = ({ candidates, name, href, onClose }) => {
   );
 };
 
+// ── Per-card Comments ───────────────────────────────────
+const FB_COMMENTS_KEY = "miwa.feedback.comments.v2";
+
+// 同期でfb.idが再生成されても同じキーを返す安定識別子
+const fbCommentKey = (fb) => {
+  const c = (fb.content || "").slice(0, 20).replace(/\s+/g, "_");
+  return `${fb.reportDate || "none"}_${fb.store || "none"}_${c}`;
+};
+
+const fmtCommentTs = (ts) => {
+  const diffMin = Math.floor((Date.now() - ts) / 60000);
+  if (diffMin < 1) return "たった今";
+  if (diffMin < 60) return `${diffMin}分前`;
+  const h = Math.floor(diffMin / 60);
+  if (h < 24) return `${h}時間前`;
+  const day = Math.floor(h / 24);
+  const d = new Date(ts);
+  return day < 14 ? `${day}日前` : `${d.getMonth()+1}/${d.getDate()}`;
+};
+
+// props-driven（状態はFeedbackPageで一元管理）
+const FbComments = ({ list = [], onAdd, onDelete }) => {
+  const [open, setOpen] = React.useState(false);
+  const [text, setText] = React.useState("");
+  const [author, setAuthor] = React.useState(
+    () => { try { return localStorage.getItem("miwa.fb.commentAuthor") || ""; } catch { return ""; } }
+  );
+  const inputRef = React.useRef(null);
+  const saveAuthor = (v) => { setAuthor(v); try { localStorage.setItem("miwa.fb.commentAuthor", v); } catch {} };
+  const handleToggle = () => {
+    setOpen((o) => {
+      if (!o) setTimeout(() => inputRef.current && inputRef.current.focus(), 130);
+      return !o;
+    });
+  };
+  const handleAdd = () => {
+    const t = text.trim();
+    if (!t) return;
+    onAdd(t, author.trim());
+    setText("");
+  };
+  return (
+    <div className="fb-comments">
+      <button className="fb-comments-toggle" onClick={handleToggle}>
+        <svg width="11" height="11" viewBox="0 0 24 24"
+             fill={list.length > 0 ? "var(--accent)" : "none"}
+             stroke={list.length > 0 ? "var(--accent)" : "currentColor"} strokeWidth="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        コメント
+        {list.length > 0 && <span className="fb-cmnt-badge">{list.length}</span>}
+        <svg className={`fb-cmnt-caret${open ? " open" : ""}`} width="10" height="10" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: "auto" }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="fb-cmnt-panel">
+          {list.length > 0 && (
+            <div className="fb-cmnt-list">
+              {list.map((c) => (
+                <div key={c.id} className="fb-cmnt-item">
+                  <div className="fb-cmnt-bubble">
+                    {c.author && <span className="fb-cmnt-author">{c.author}</span>}
+                    <span className="fb-cmnt-text">{c.text}</span>
+                    <button className="fb-cmnt-del" onClick={() => onDelete(c.id)} title="削除">✕</button>
+                  </div>
+                  <span className="fb-cmnt-ts">{fmtCommentTs(c.ts)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="fb-cmnt-input">
+            <input className="input fb-cmnt-name" placeholder="名前（任意）"
+                   value={author} onChange={(e) => saveAuthor(e.target.value)} />
+            <input ref={inputRef} className="input fb-cmnt-body" placeholder="コメントを入力…"
+                   value={text} onChange={(e) => setText(e.target.value)}
+                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }} />
+            <button className="btn btn-primary fb-cmnt-send" onClick={handleAdd} disabled={!text.trim()}>送信</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Card ───────────────────────────────────────────────
-const FbCard = ({ fb, onEdit, onDelete, onOpenImg }) => {
+const FbCard = ({ fb, onEdit, onDelete, onOpenImg, commentsMap, onAddComment, onDeleteComment }) => {
   const sc = typeColor(fb.type);
+  const fbKey = fbCommentKey(fb);
 
   return (
     <div className="card fb-card-root">
@@ -232,6 +319,11 @@ const FbCard = ({ fb, onEdit, onDelete, onOpenImg }) => {
           </button>
         </div>
       </div>
+      <FbComments
+        list={commentsMap[fbKey] || []}
+        onAdd={(text, author) => onAddComment(fbKey, text, author)}
+        onDelete={(id) => onDeleteComment(fbKey, id)}
+      />
     </div>
   );
 };
@@ -596,6 +688,43 @@ const FeedbackPage = () => {
   }));
   const [lastSync, setLastSync] = useFbState("miwa.feedback.lastSync", () => null);
   const [deletedIds, setDeletedIds] = useFbState("miwa.feedback.deleted.v1", () => []);
+
+  // ── コメント（安定キー + 別クラウドコレクションで同期と独立）──
+  const [commentsMap, setCommentsMap] = useFbState(FB_COMMENTS_KEY, () => ({}));
+
+  // クラウドからコメントを読み込む（フィードバック本体とは別コレクション）
+  React.useEffect(() => {
+    if (!cloudOn) return;
+    (async () => {
+      try {
+        const remote = await cloudGet("フィードバックコメント");
+        if (!remote || !remote.length) return;
+        const map = {};
+        remote.forEach((entry) => {
+          if (!entry.fbKey) return;
+          if (!map[entry.fbKey]) map[entry.fbKey] = [];
+          map[entry.fbKey].push({ id: entry.id, text: entry.text, author: entry.author || "", ts: entry.ts });
+        });
+        setCommentsMap(map);
+      } catch {}
+    })();
+  }, [cloudOn]); // eslint-disable-line
+
+  const onAddComment = React.useCallback((fbKey, text, author) => {
+    const comment = { id: Date.now() + Math.random(), fbKey, text, author: author || "", ts: Date.now() };
+    setCommentsMap((prev) => ({ ...prev, [fbKey]: [...(prev[fbKey] || []), comment] }));
+    if (cloudOn) cloudAdd("フィードバックコメント", comment);
+  }, [cloudOn]);
+
+  const onDeleteComment = React.useCallback((fbKey, commentId) => {
+    setCommentsMap((prev) => {
+      const next = { ...prev };
+      next[fbKey] = (next[fbKey] || []).filter((c) => c.id !== commentId);
+      if (!next[fbKey].length) delete next[fbKey];
+      return next;
+    });
+    if (cloudOn) cloudDelete("フィードバックコメント", commentId);
+  }, [cloudOn]);
   const [lastError, setLastError] = React.useState("");
   const [diag, setDiag] = React.useState(null);
   const [syncing, setSyncing] = React.useState(false);
@@ -875,7 +1004,8 @@ const FeedbackPage = () => {
           ) : (
             <div className="fb-grid">
               {filtered.map((fb) => (
-                <FbCard key={fb.id} fb={fb} onEdit={(r) => setEditing(r)} onDelete={deleteRow} onOpenImg={(p) => setLightbox(p)}/>
+                <FbCard key={fb.id} fb={fb} onEdit={(r) => setEditing(r)} onDelete={deleteRow} onOpenImg={(p) => setLightbox(p)}
+                        commentsMap={commentsMap} onAddComment={onAddComment} onDeleteComment={onDeleteComment}/>
               ))}
             </div>
           )}
