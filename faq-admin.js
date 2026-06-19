@@ -147,6 +147,10 @@ async function syncKBFromCloud() {
         enabled: item.enabled !== false,
         approved: item.approved === true || item.approved === 'true',
       }));
+    } else if (knowledgeBase.length > 0 && cfg.token) {
+      // クラウドが空だがローカルにデータあり → 自動でクラウドへ送信
+      console.log('[FAQ] クラウドKBが空のためローカルをプッシュ:', knowledgeBase.length, '件');
+      _cldPost('bulk_replace_kb', { items: knowledgeBase });
     }
     if (Array.isArray(uaData)) {
       unansweredList = uaData.map(item => ({
@@ -941,10 +945,15 @@ function loadFaqDocs() {
     if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
       cloudGet('FAQ資料').then(remote => {
         if (Array.isArray(remote) && remote.length) {
+          // クラウドにデータあり → ローカルを上書き
           faqDocs = remote;
           try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
           if (typeof renderDocs === 'function') renderDocs();
           console.log('[FAQ] 知識資料をクラウドから同期:', faqDocs.length, '件');
+        } else if (faqDocs.length > 0 && typeof cloudReplaceAll === 'function') {
+          // クラウドが空でローカルにデータあり → 自動でクラウドへ送信
+          console.log('[FAQ] クラウド資料が空のためローカルをプッシュ:', faqDocs.length, '件');
+          cloudReplaceAll('FAQ資料', faqDocs).catch(() => {});
         }
       }).catch(() => {});
     }
