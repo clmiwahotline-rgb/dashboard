@@ -8,12 +8,28 @@
 // ═══════════════════════════════════════════════
 //  ★設定：GASプロキシのURL（APIキーはGAS側で秘匿）
 // ═══════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
 
 // ═══════════════════════════════════════════════
 //  データストア（暫定：localStorage。後日スプレッドシート化）
 // ═══════════════════════════════════════════════
 const FAQ_LS_KEY = 'miwa.faq.kb.v1';
+const FAQ_CLOUD_KEY = 'miwa.faq.cloud.v1'; // { gasUrl, token, enabled }
+
+// ── クラウド設定の読み書き ──
+const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
+function loadCloudCfg() {
+  try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) {
+    const cfg = JSON.parse(s);
+    if (!cfg.gasUrl) cfg.gasUrl = DEFAULT_KB_GAS;
+    if (!cfg.hasOwnProperty('enabled')) cfg.enabled = true;
+    return cfg;
+  }} catch(e) {}
+  return { gasUrl: DEFAULT_KB_GAS, token: '', enabled: true };
+}
+function saveCloudCfg(cfg) {
+  try { localStorage.setItem(FAQ_CLOUD_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
 
 const FAQ_KB_SEED = [
   { id: 1, q: "高級ダウンの素材確認方法", a: "タグの素材表示を必ず確認してください。「ダウン80%以上」かつ「表地：ナイロン・ポリエステル製」であれば高級ダウン扱いとなります。ブランドタグ（モンクレール・タトラス等）がある場合は受付時に専用袋に入れて識別してください。", category: "素材確認", source: "社内マニュアル", addedAt: "2026-06-01" },
@@ -39,6 +55,7 @@ let unansweredList = [];
 let historyLog = [];
 let nextId = 100;
 let statsAnswered = 0;
+let editingKBId = null;
 
 // ─── 永続化 ───
 function persistFaq() {
@@ -66,20 +83,151 @@ function loadFaq() {
 }
 
 // ═══════════════════════════════════════════════
+//  クラウド同期（Googleスプレッドシート経由）
+// ═══════════════════════════════════════════════
+let _cldSt = 'idle'; // idle | syncing | ok | error
+
+function _cldBadge() {
+  const b = document.getElementById('cloud-badge');
+  if (!b) return;
+  const cfg = loadCloudCfg();
+  if (!cfg.enabled || !cfg.gasUrl) { b.textContent = '☁️ 未設定'; b.style.cssText = 'background:#f3f4f6;color:#6b7280'; return; }
+  const M = { idle:'☁️ クラウド', syncing:'⏳ 同期中…', ok:'✅ 同期済み', error:'⚠️ エラー' };
+  const C = { idle:'#e0f2fe;color:#0369a1', syncing:'#fef9c3;color:#854d0e', ok:'#dcfce7;color:#166534', error:'#fee2e2;color:#991b1b' };
+  b.textContent = M[_cldSt] || M.idle;
+  b.style.cssText = 'padding:2px 10px;border-radius:20px;font-weight:700;font-size:12px;background:' + (C[_cldSt] || C.idle);
+}
+
+async function _cldPost(action, extra) {
+  const cfg = loadCloudCfg();
+  if (!cfg.enabled || !cfg.gasUrl) return null;
+  _cldSt = 'syncing'; _cldBadge();
+  try {
+    const body = Object.assign({ action }, extra || {});
+    if (cfg.token && action !== 'add_ua') body.token = cfg.token;
+    const res = await fetch(cfg.gasUrl, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data && data.error === 'unauthorized') throw new Error('認証エラー：トークンを確認してください');
+    if (data && data.error) throw new Error(data.error);
+    _cldSt = 'ok'; _cldBadge();
+    return data;
+  } catch(e) {
+    _cldSt = 'error'; _cldBadge();
+    _cldMsg('⚠️ ' + e.message, 5000);
+    console.warn('FAQ cloud:', e);
+    return null;
+  }
+}
+
+function _cldMsg(text, ms) {
+  const el = document.getElementById('cloud-sync-msg');
+  if (!el) return;
+  el.textContent = text; el.style.display = 'block';
+  setTimeout(() => { if(el) el.style.display = 'none'; }, ms || 3000);
+}
+
+async function syncKBFromCloud() {
+  const cfg = loadCloudCfg();
+  if (!cfg.enabled || !cfg.gasUrl) return;
+  _cldSt = 'syncing'; _cldBadge();
+  try {
+    const [kbData, uaData] = await Promise.all([
+      fetch(cfg.gasUrl + '?action=get_kb').then(r => r.json()),
+      fetch(cfg.gasUrl + '?action=get_ua').then(r => r.json()),
+    ]);
+    if (Array.isArray(kbData) && kbData.length > 0) {
+      knowledgeBase = kbData.map(item => ({
+        ...item,
+        images: typeof item.images === 'string'
+          ? item.images.split(',').filter(Boolean)
+          : (Array.isArray(item.images) ? item.images : []),
+        enabled: item.enabled !== false,
+        approved: item.approved === true || item.approved === 'true',
+      }));
+    }
+    if (Array.isArray(uaData)) {
+      unansweredList = uaData.map(item => ({
+        ...item, answered: item.status === '回答済み',
+      }));
+    }
+    persistFaq();
+    _cldSt = 'ok'; _cldBadge();
+    updateStats(); renderKB(); renderUnanswered();
+    _cldMsg(`✅ クラウドから取得しました（知識 ${knowledgeBase.length} 件）`);
+  } catch(e) { _cldSt = 'error'; _cldBadge(); }
+}
+
+async function forceSyncFromCloud() { await syncKBFromCloud(); }
+
+async function forcePushToCloud() {
+  const cfg = loadCloudCfg();
+  if (!cfg.enabled || !cfg.gasUrl || !cfg.token) { alert('GAS URL とトークンを設定してください'); return; }
+  if (!confirm(`知識ベース ${knowledgeBase.length} 件をクラウドへ全件送信しますか？\n（スプレッドシートの既存データは上書きされます）`)) return;
+  const res = await _cldPost('bulk_replace_kb', { items: knowledgeBase });
+  if (res && res.ok) _cldMsg(`✅ ${knowledgeBase.length} 件を送信しました`);
+}
+
+function saveCloudSettingsFromUI() {
+  const url = (document.getElementById('cloud-gas-url')?.value || '').trim();
+  const token = (document.getElementById('cloud-token')?.value || '').trim();
+  const enabled = document.getElementById('cloud-enable-toggle')?.dataset.on === '1';
+  saveCloudCfg({ gasUrl: url, token, enabled });
+  _cldBadge();
+  _cldMsg('設定を保存しました');
+  if (enabled && url) syncKBFromCloud();
+}
+
+function toggleCloudEnabled() {
+  const tg = document.getElementById('cloud-enable-toggle');
+  const kn = document.getElementById('cloud-toggle-knob');
+  const lb = document.getElementById('cloud-enable-label');
+  if (!tg) return;
+  const on = tg.dataset.on !== '1';
+  tg.dataset.on = on ? '1' : '0';
+  tg.style.background = on ? '#059669' : 'var(--border)';
+  if (kn) kn.style.transform = on ? 'translateX(20px)' : 'translateX(0)';
+  if (lb) lb.textContent = on ? 'ON（クラウド同期する）' : 'OFF（ローカルのみ）';
+}
+
+function initCloudUI() {
+  const cfg = loadCloudCfg();
+  const urlEl = document.getElementById('cloud-gas-url');
+  const tokEl = document.getElementById('cloud-token');
+  const tg = document.getElementById('cloud-enable-toggle');
+  const kn = document.getElementById('cloud-toggle-knob');
+  const lb = document.getElementById('cloud-enable-label');
+  if (urlEl) urlEl.value = cfg.gasUrl || '';
+  if (tokEl) tokEl.value = cfg.token || '';
+  const on = !!(cfg.enabled && cfg.gasUrl);
+  if (tg) { tg.dataset.on = on ? '1' : '0'; tg.style.background = on ? '#059669' : 'var(--border)'; }
+  if (kn) kn.style.transform = on ? 'translateX(20px)' : 'translateX(0)';
+  if (lb) lb.textContent = on ? 'ON（クラウド同期する）' : 'OFF（ローカルのみ）';
+  _cldBadge();
+}
+
+// ═══════════════════════════════════════════════
 //  AI呼び出し（生テキストを返す共通関数。GAS経由）
 // ═══════════════════════════════════════════════
 async function callAIRaw(systemPrompt, userContent, maxTokens) {
-  const useGas = GAS_URL && GAS_URL.trim() !== '';
-  const endpoint = useGas ? GAS_URL : 'https://api.anthropic.com/v1/messages';
+  // クラウド設定の gasUrl / token を優先（未設定時はハードコード GAS_URL）
+  const cfg = loadCloudCfg();
+  const gasUrl = (cfg.gasUrl && cfg.gasUrl.trim()) || (GAS_URL && GAS_URL.trim()) || '';
+  const useGas = !!gasUrl;
+  const endpoint = useGas ? gasUrl : 'https://api.anthropic.com/v1/messages';
+  const body = {
+    model: 'claude-haiku-4-5',
+    max_tokens: maxTokens || 1500,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userContent }]
+  };
+  if (useGas && cfg.token) body.token = cfg.token;
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': useGas ? 'text/plain;charset=utf-8' : 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5',
-      max_tokens: maxTokens || 1500,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userContent }]
-    })
+    body: JSON.stringify(body)
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -148,17 +296,19 @@ function approveAnswer(id) {
   const imgs = parseImageUrls(document.getElementById(`ua-img-${id}`).value);
   if (!a) { alert('回答内容を入力してください'); return; }
 
-  knowledgeBase.push({
+  const newKb = {
     id: nextId++, q: item.q, a,
     category: cat || '未分類', source: '未回答リストから追加',
     images: imgs, addedAt: nowStr()
-  });
+  };
+  knowledgeBase.push(newKb);
 
   item.answered = true;
   persistFaq();
   renderUnanswered();
   renderKB();
   updateStats();
+  _cldPost('answer_ua', { ua_id: id, item: newKb });
 
   const el = document.getElementById(`ua-${id}`);
   if (el) el.style.background = '#ecfdf5';
@@ -170,16 +320,57 @@ function addUnansweredManual() {
   const q = (el?.value || '').trim();
   if (!q) return;
   if (unansweredList.find(u => u.q === q)) { alert('同じ質問がすでに未回答リストにあります'); el.value = ''; return; }
-  unansweredList.unshift({ id: nextId++, q, addedAt: nowStr(), answered: false });
+  const newUa = { id: nextId++, q, addedAt: nowStr(), answered: false };
+  unansweredList.unshift(newUa);
   el.value = '';
   persistFaq();
   renderUnanswered();
   updateStats();
+  _cldPost('add_ua', { q });
 }
 
-// ═══════════════════════════════════════════════
-//  資料から一括取り込み
-// ═══════════════════════════════════════════════
+// ── 長文チャンク分割 ──────────────────────────────────────────
+function splitIntoChunks(text, maxLen = 1400) {
+  // 段落・見出し・改行で区切ってから結合してチャンク化
+  const lines = text.split(/\n/);
+  const chunks = [];
+  let cur = '';
+  for (const line of lines) {
+    // 見出し行（第1条 / 第○章 / ●● など）でも区切る
+    const isHeading = /^(第\d|\d+\.|第[一二三四五六七八九十百]+|[●◆■▶【]|={3,})/.test(line.trim());
+    if ((cur.length + line.length > maxLen && cur.length > 100) || (isHeading && cur.length > 300)) {
+      chunks.push(cur.trim());
+      cur = '';
+    }
+    cur += line + '\n';
+  }
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks.filter(c => c.length > 20);
+}
+
+// ── 堅牢なJSONパーサー ────────────────────────────────────────
+function robustParseJsonArray(raw) {
+  // 1. コードフェンス除去
+  let text = raw.trim()
+    .replace(/^```[a-z]*\n?/i, '')
+    .replace(/\n?```$/i, '')
+    .trim();
+  // 2. [ 〜 ] 抽出
+  const s = text.indexOf('['), e = text.lastIndexOf(']');
+  if (s !== -1 && e !== -1) text = text.slice(s, e + 1);
+  // 3. 末尾が不完全な場合（途中切れ）は最後の完全なオブジェクトまで切り詰め
+  try {
+    return JSON.parse(text);
+  } catch(e1) {
+    const last = text.lastIndexOf('},');
+    if (last > 0) {
+      try { return JSON.parse(text.slice(0, last + 1) + ']'); } catch(e2) {}
+    }
+    throw new Error('JSONパース失敗: ' + (e1.message || e1));
+  }
+}
+
+// ── 資料一括取り込み ────────────────────────────────────────────
 let importCandidates = [];
 
 function existingCategories() {
@@ -213,8 +404,6 @@ async function bulkSort() {
   const btn = document.getElementById('import-btn');
   const result = document.getElementById('import-result');
   btn.disabled = true;
-  btn.textContent = '⏳ 仕分け中...';
-  result.innerHTML = '<div style="font-size:13px;color:var(--text-sub)">AIが資料を読んで知識候補に分けています...</div>';
 
   const cats = existingCategories();
   const systemPrompt = `あなたはクリーニング店「クリーニングみわ」の知識ベース編集アシスタントです。
@@ -233,42 +422,72 @@ async function bulkSort() {
 - 既存カテゴリ一覧：${cats.join('、') || '（まだ無し）'}
 
 【出力形式】
-JSON配列だけを出力する。前置き・説明・コードフェンス(\`\`\`)は一切付けない。
+JSONの配列だけを返す。前置き・説明・コードフェンス(\`\`\`)は絶対に付けない。
 [{"question":"...","knowledge":"...","procedure":"...","proposal":"...","category":"..."}]`;
 
-  try {
-    const raw = await callAIRaw(systemPrompt, src, 2500);
-    let jsonText = raw.trim();
-    const s = jsonText.indexOf('['), e = jsonText.lastIndexOf(']');
-    if (s !== -1 && e !== -1) jsonText = jsonText.slice(s, e + 1);
-    const arr = JSON.parse(jsonText);
+  const chunks = splitIntoChunks(src);
+  const total = chunks.length;
+  let allCandidates = [];
+  let errors = [];
 
-    importCandidates = arr.map((c, i) => {
-      const q = c.question || '';
-      const dup = findSimilarKnowledge(q);
-      return {
-        id: 'imp' + i,
-        q,
-        knowledge: c.knowledge || '',
-        procedure: c.procedure || '',
-        proposal: c.proposal || '',
-        category: c.category || '未分類',
-        image: '',
-        catMode: cats.includes(c.category) ? 'existing' : (c.category ? 'new' : 'existing'),
-        dup,
-        decision: dup ? 'overwrite' : 'new'
-      };
-    });
+  const setProgress = (done, msg) => {
+    result.innerHTML = `
+      <div style="font-size:13px;color:var(--text-sub);margin-bottom:10px">${msg}</div>
+      <div style="background:#e2e8f0;border-radius:6px;height:8px;overflow:hidden">
+        <div style="height:100%;background:var(--primary);border-radius:6px;transition:width .3s;width:${Math.round(done/total*100)}%"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px">チャンク ${done}/${total}</div>`;
+  };
 
-    renderImport();
-  } catch (err) {
-    result.innerHTML = `<div class="dup-warn"><div class="dup-warn-title">⚠️ 仕分けに失敗しました</div>
-      <div>${escHtml(err.message)}</div>
-      <div style="margin-top:6px;color:var(--text-muted)">AIの応答がJSON形式にならなかった可能性があります。テキストを短くするか、もう一度お試しください。</div></div>`;
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    btn.textContent = `⏳ 処理中 ${i+1}/${total}`;
+    setProgress(i, `AIが資料を読んでいます…（${i+1}/${total} チャンク）`);
+    try {
+      const raw = await callAIRaw(systemPrompt, chunk, 3500);
+      const arr = robustParseJsonArray(raw);
+      allCandidates = allCandidates.concat(arr);
+    } catch(err) {
+      errors.push(`チャンク${i+1}: ${err.message}`);
+    }
   }
 
   btn.disabled = false;
   btn.textContent = '🪄 AIで仕分け';
+
+  if (allCandidates.length === 0) {
+    result.innerHTML = `<div class="dup-warn">
+      <div class="dup-warn-title">⚠️ 仕分けに失敗しました</div>
+      <div>${errors.map(escHtml).join('<br>')}</div>
+      <div style="margin-top:6px;color:var(--text-muted)">資料が短すぎるか、形式が想定外の可能性があります。</div>
+    </div>`;
+    return;
+  }
+
+  importCandidates = allCandidates.map((c, i) => {
+    const q = c.question || '';
+    const dup = findSimilarKnowledge(q);
+    return {
+      id: 'imp' + i,
+      q,
+      knowledge: c.knowledge || '',
+      procedure: c.procedure || '',
+      proposal: c.proposal || '',
+      category: c.category || '未分類',
+      image: '',
+      catMode: cats.includes(c.category) ? 'existing' : (c.category ? 'new' : 'existing'),
+      dup,
+      decision: dup ? 'overwrite' : 'new'
+    };
+  });
+
+  if (errors.length) {
+    result.innerHTML = `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:10px">
+      ⚠️ ${errors.length}チャンクで取込エラーが発生しましたが、残り${allCandidates.length}件は取込成功しました。<br>${errors.map(escHtml).join('<br>')}
+    </div>`;
+  }
+
+  renderImport();
 }
 
 // 編集中のDOM値を状態へ反映（再描画前に呼ぶ）
@@ -456,6 +675,11 @@ function commitImport() {
   persistFaq();
   renderKB();
   updateStats();
+  // クラウドへ一括添加
+  const cloudNewItems = toAdd.filter(c => c.decision !== 'discard' && c.decision !== 'overwrite').map(c => knowledgeBase[knowledgeBase.length - toAdd.filter(x => x.decision !== 'discard').indexOf(c) - 1]).filter(Boolean);
+  const cloudUpdItems = toAdd.filter(c => c.decision === 'overwrite' && c.dup);
+  if (cloudNewItems.length) _cldPost('bulk_add_kb', { items: cloudNewItems });
+  cloudUpdItems.forEach(c => { const t = knowledgeBase.find(k => k.id === c.dup.item.id); if(t) _cldPost('update_kb', { item: t }); });
 }
 
 function clearImport() {
@@ -483,25 +707,59 @@ function renderKB() {
     return;
   }
 
-  list.innerHTML = items.map(item => `
-    <div class="kb-item">
-      <div class="kb-item-head" onclick="toggleKB(${item.id})">
-        <div class="kb-item-q">
-          <span class="kb-tag">${escHtml(item.category || '未分類')}</span>
-          ${escHtml(item.q)}
-        </div>
-        <span style="color:var(--text-muted);font-size:12px">▼</span>
-      </div>
-      <div class="kb-item-body" id="kb-body-${item.id}">
-        ${mdToHtml(item.a)}
-        ${imagesHtml([item])}
-        <div class="kb-item-source">出典: ${escHtml(item.source || '—')} | 追加日: ${escHtml(item.addedAt || '—')}${(item.images||[]).length ? ` | 🖼 画像${item.images.length}枚` : ''}</div>
-        <div style="margin-top:10px">
-          <button class="btn btn-sm btn-outline" onclick="deleteKB(${item.id})">🗑 削除</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
+  list.innerHTML = items.map(item => {
+    const approvedBadge = item.approved
+      ? '<span style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px">✅ 承認済み</span>'
+      : '';
+    const isEditing = editingKBId === item.id;
+
+    const viewHtml =
+      mdToHtml(item.a) +
+      imagesHtml([item]) +
+      '<div class="kb-item-source">出典: ' + escHtml(item.source || '—') + ' | 追加日: ' + escHtml(item.addedAt || '—') +
+      ((item.images||[]).length ? ' | 🖼 画像' + item.images.length + '枚' : '') +
+      (item.approved ? ' | 承認: ' + escHtml(item.approvedAt||'') : '') + '</div>' +
+      '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<button class="btn btn-sm btn-outline" onclick="editKB(' + item.id + ')">✏️ 編集</button>' +
+        '<button class="btn btn-sm btn-outline" onclick="deleteKB(' + item.id + ')">🗑 削除</button>' +
+        '<button class="btn btn-sm" onclick="approveKB(' + item.id + ')" style="' +
+          (item.approved ? 'background:#dcfce7;color:#166534;border:1px solid #a7f3d0' : 'background:#f3f4f6;color:var(--text-sub);border:1px solid var(--border)') + '">' +
+          (item.approved ? '✅ 承認済み（取消）' : '　承認する　') +
+        '</button>' +
+      '</div>';
+
+    const editHtml =
+      '<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">' +
+        '<div><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">質問・キーワード</label>' +
+        '<input class="form-input" id="edit-q-' + item.id + '" value="' + escHtml(item.q) + '" style="width:100%"></div>' +
+        '<div><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">回答内容</label>' +
+        '<textarea class="form-textarea" id="edit-a-' + item.id + '" style="min-height:80px">' + escHtml(item.a) + '</textarea></div>' +
+        '<div style="display:flex;gap:10px">' +
+          '<div style="flex:1"><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">カテゴリ</label>' +
+          '<input class="form-input" id="edit-cat-' + item.id + '" value="' + escHtml(item.category||'') + '"></div>' +
+          '<div style="flex:1"><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">出典メモ</label>' +
+          '<input class="form-input" id="edit-src-' + item.id + '" value="' + escHtml(item.source||'') + '"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button class="btn btn-sm btn-primary" onclick="saveEditKB(' + item.id + ')">💾 保存</button>' +
+          '<button class="btn btn-sm btn-outline" onclick="cancelEditKB()">キャンセル</button>' +
+        '</div>' +
+      '</div>';
+
+    return '<div class="kb-item">' +
+      '<div class="kb-item-head" onclick="' + (isEditing ? '' : 'toggleKB(' + item.id + ')') + '" style="' + (isEditing ? 'cursor:default' : '') + '">' +
+        '<div class="kb-item-q">' +
+          '<span class="kb-tag">' + escHtml(item.category || '未分類') + '</span>' +
+          approvedBadge +
+          escHtml(item.q) +
+        '</div>' +
+        '<span style="color:var(--text-muted);font-size:12px">' + (isEditing ? '✏️' : '▼') + '</span>' +
+      '</div>' +
+      '<div class="kb-item-body ' + (isEditing ? 'open' : '') + '" id="kb-body-' + item.id + '">' +
+        (isEditing ? editHtml : viewHtml) +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function toggleKB(id) {
@@ -512,15 +770,134 @@ function toggleKB(id) {
 function deleteKB(id) {
   if (!confirm('この知識を削除しますか？')) return;
   knowledgeBase = knowledgeBase.filter(k => k.id !== id);
+  if (editingKBId === id) editingKBId = null;
   persistFaq();
   renderKB();
   updateStats();
+  _cldPost('delete_kb', { id });
+}
+
+function editKB(id) {
+  editingKBId = id;
+  // 開いていなければ開く
+  const body = document.getElementById('kb-body-' + id);
+  if (body && !body.classList.contains('open')) body.classList.add('open');
+  renderKB();
+  setTimeout(() => { const el = document.getElementById('edit-q-' + id); if (el) el.focus(); }, 50);
+}
+
+function cancelEditKB() {
+  editingKBId = null;
+  renderKB();
+}
+
+function saveEditKB(id) {
+  const item = knowledgeBase.find(k => k.id === id);
+  if (!item) return;
+  const q   = (document.getElementById('edit-q-'   + id)?.value || '').trim();
+  const a   = (document.getElementById('edit-a-'   + id)?.value || '').trim();
+  const cat = (document.getElementById('edit-cat-' + id)?.value || '').trim();
+  const src = (document.getElementById('edit-src-' + id)?.value || '').trim();
+  if (!q || !a) { alert('質問と回答は必須です'); return; }
+  item.q = q;
+  item.a = a;
+  item.category = cat || '未分類';
+  if (src) item.source = src;
+  editingKBId = null;
+  persistFaq();
+  renderKB();
+  updateStats();
+  _cldPost('update_kb', { item });
+}
+
+function approveKB(id) {
+  const item = knowledgeBase.find(k => k.id === id);
+  if (!item) return;
+  item.approved = !item.approved;
+  if (item.approved) item.approvedAt = nowStr();
+  else delete item.approvedAt;
+  persistFaq();
+  renderKB();
+  _cldPost('update_kb', { item });
 }
 
 let addFormOpen = false;
 function toggleAddForm() {
   addFormOpen = !addFormOpen;
   document.getElementById('add-form-wrap').style.display = addFormOpen ? 'block' : 'none';
+  if (addFormOpen) renderNewImgPreview();
+}
+
+// ── ファイル添付（画像・PDF を GAS 経由で Drive へアップロード）──────────
+async function uploadFaqFile(inputEl) {
+  const file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  const cfg = loadCloudCfg();
+  if (!cfg.gasUrl) { alert('クラウド設定のGAS URLが未設定です（FAQ設定→クラウドKB設定）'); inputEl.value=''; return; }
+  if (!cfg.token) { alert('アップロードにはトークン設定が必要です（FAQ設定→クラウドKB設定のトークン）'); inputEl.value=''; return; }
+  const MAXMB = 15;
+  if (file.size > MAXMB*1024*1024) { alert('ファイルが大きすぎます（最大'+MAXMB+'MB）'); inputEl.value=''; return; }
+  const statusEl = document.getElementById('upload-status');
+  const setStatus = (t) => { if(statusEl){ statusEl.style.display='inline'; statusEl.textContent=t; } };
+  setStatus('⏳ アップロード中… ' + file.name);
+  try {
+    const dataUrl = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result); fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+    const base64 = String(dataUrl).split(',')[1];
+    const res = await fetch(cfg.gasUrl, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'uploadFile', name:file.name, mimeType:file.type, data:base64, token:cfg.token })
+    });
+    const data = await res.json();
+    if (!data || !data.ok) throw new Error((data && (data.error||data.message)) || '失敗');
+    const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name);
+    const tagged = data.viewUrl + (isPdf ? '#pdf' : '#img');
+    const ta = document.getElementById('new-img');
+    ta.value = (ta.value.trim() ? ta.value.trim()+'\n' : '') + tagged;
+    renderNewImgPreview();
+    setStatus('✅ 追加しました: ' + file.name);
+  } catch(e) {
+    setStatus('⚠️ ' + e.message);
+    alert('アップロード失敗: ' + e.message);
+  } finally {
+    inputEl.value = '';
+    setTimeout(()=>{ if(statusEl) statusEl.style.display='none'; }, 4000);
+  }
+}
+
+// Driveリンクから fileId / PDF判定を抽出（未該当は null）
+function faqDriveInfo(url) {
+  const u = String(url||'');
+  const m = u.match(/\/file\/d\/([-\w]{20,})/) || u.match(/[?&]id=([-\w]{20,})/);
+  if (!m) return null;
+  return { fileId: m[1], isPdf: /#pdf/i.test(u) || /\.pdf/i.test(u) };
+}
+
+// 追加フォームの画像・PDFプレビュー（サムネイル＋削除）
+function renderNewImgPreview() {
+  const wrap = document.getElementById('new-img-preview');
+  if (!wrap) return;
+  const urls = parseImageUrls(document.getElementById('new-img').value);
+  if (!urls.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = urls.slice(0,5).map((u, i) => {
+    const d = faqDriveInfo(u);
+    const thumb = d ? ('https://drive.google.com/thumbnail?id='+d.fileId+'&sz=w400') : u;
+    const badge = (d && d.isPdf) ? '<span style="position:absolute;top:2px;left:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">PDF</span>' : '';
+    return '<div style="position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f3f4f6">'
+      + '<img src="'+thumb.replace(/"/g,'&quot;')+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.opacity=.3">'
+      + badge
+      + '<button onclick="removeNewImg('+i+')" title="削除" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;line-height:1;cursor:pointer;padding:0">×</button>'
+      + '</div>';
+  }).join('');
+}
+function removeNewImg(i) {
+  const urls = parseImageUrls(document.getElementById('new-img').value);
+  urls.splice(i, 1);
+  document.getElementById('new-img').value = urls.join('\n');
+  renderNewImgPreview();
 }
 
 function addKB() {
@@ -531,21 +908,101 @@ function addKB() {
   const imgs = parseImageUrls(document.getElementById('new-img').value);
   if (!q || !a) { alert('質問と回答は必須です'); return; }
 
-  knowledgeBase.push({
+  const addedKb = {
     id: nextId++, q, a,
     category: cat || '未分類', source: src || '手動追加',
     images: imgs, addedAt: nowStr()
-  });
+  };
+  knowledgeBase.push(addedKb);
 
   document.getElementById('new-q').value = '';
   document.getElementById('new-a').value = '';
   document.getElementById('new-cat').value = '';
   document.getElementById('new-src').value = '';
   document.getElementById('new-img').value = '';
+  const _pv = document.getElementById('new-img-preview'); if (_pv) _pv.innerHTML = '';
   toggleAddForm();
   persistFaq();
   renderKB();
   updateStats();
+  _cldPost('add_kb', { item: addedKb });
+}
+
+// ═══════════════════════════════════════════════
+//  知識資料ストック（長文資料をそのまま保存して検索参照）
+// ═══════════════════════════════════════════════
+const FAQ_DOCS_KEY = 'miwa.faq.docs.v1';
+let faqDocs = [];
+
+function loadFaqDocs() {
+  try { const s=localStorage.getItem(FAQ_DOCS_KEY); if(s) faqDocs=JSON.parse(s); } catch(e){ faqDocs=[]; }
+  // クラウドから最新を非同期取得（全端末共有）
+  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
+    cloudGet('FAQ資料').then(remote => {
+      if (Array.isArray(remote) && remote.length) {
+        faqDocs = remote;
+        try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
+        if (typeof renderDocs === 'function') renderDocs();
+      }
+    }).catch(() => {});
+  }
+  return faqDocs;
+}
+function saveFaqDocs() {
+  try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
+  // クラウドにも同期（全端末共有）
+  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
+    cloudReplaceAll('FAQ資料', faqDocs).catch(e => console.warn('FAQ資料クラウド同期失敗:', e));
+  }
+}
+function addDoc() {
+  const title   = (document.getElementById('doc-title')?.value||'').trim();
+  const category= (document.getElementById('doc-cat')?.value||'').trim();
+  const content = (document.getElementById('doc-content')?.value||'').trim();
+  if (!title)   { alert('タイトルを入力してください'); return; }
+  if (!content) { alert('内容を入力してください'); return; }
+  faqDocs.push({ id:Date.now(), title, category:category||'未分類', content, addedAt:new Date().toISOString().slice(0,10) });
+  saveFaqDocs();
+  document.getElementById('doc-title').value='';
+  document.getElementById('doc-cat').value='';
+  document.getElementById('doc-content').value='';
+  document.getElementById('doc-form').style.display='none';
+  renderDocs();
+}
+function deleteDoc(id) {
+  if (!confirm('この資料を削除しますか？')) return;
+  faqDocs = faqDocs.filter(d=>d.id!==id);
+  saveFaqDocs();
+  renderDocs();
+}
+function toggleDocForm() {
+  const f=document.getElementById('doc-form');
+  if(f) f.style.display = f.style.display==='none'?'':'none';
+}
+function renderDocs() {
+  const list=document.getElementById('doc-list');
+  if(!list) return;
+  const cnt=document.getElementById('doc-count');
+  if(cnt) cnt.textContent=`${faqDocs.length}件`;
+  if(!faqDocs.length){
+    list.innerHTML=`<div class="kb-empty">資料がありません。<br><span style="font-size:12px">就業規則・研修資料・マニュアルなどを追加してください。<br>スタッフFAQで質問すると、登録した資料からキーワード検索してAIに参考として渡します。</span></div>`;
+    return;
+  }
+  list.innerHTML=faqDocs.map(doc=>`
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:3px">${escHtml(doc.title)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted);display:flex;gap:10px;flex-wrap:wrap">
+            <span>📁 ${escHtml(doc.category)}</span>
+            <span>📅 ${escHtml(doc.addedAt)}</span>
+            <span>📝 ${doc.content.length.toLocaleString()}文字</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-sub);margin-top:5px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escHtml(doc.content.slice(0,150))}${doc.content.length>150?'…':''}</div>
+        </div>
+        <button onclick="deleteDoc(${doc.id})" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0;margin-top:2px">🗑</button>
+      </div>
+    </div>`).join('');
 }
 
 // ═══════════════════════════════════════════════
@@ -640,7 +1097,9 @@ async function refreshFaqLogRemote() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 取得中...'; }
   let okRemote = false;
   try {
-    const res = await fetch(GAS_URL, {
+    const sharedGasUrl = loadCloudCfg().gasUrl;
+    if (!sharedGasUrl) throw new Error('共有データGAS URLが未設定です（FAQ設定→クラウドKB設定）');
+    const res = await fetch(sharedGasUrl, {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -662,7 +1121,7 @@ async function refreshFaqLogRemote() {
     faqLogSource = 'local';
     const note = document.getElementById('faqlog-note');
     if (note) {
-      note.textContent = 'まだ全端末ログを取得できません（GAS側のログ保存／getFaqLog が未実装です。第3段階で対応）。現在はこの端末の記録のみ表示しています。';
+      note.textContent = '全端末ログを取得できませんでした。クラウドKB設定のGAS URLを確認するか、GASを再デプロイしてください。現在はこの端末の記録のみ表示しています。';
       note.style.display = 'block';
     }
   } else {
@@ -748,9 +1207,15 @@ function imagesHtml(items) {
   }
   if (urls.length === 0) return '';
   return `<div class="answer-images">${
-    urls.slice(0, 5).map(u =>
-      `<img src="${escHtml(u)}" alt="参考画像" onclick="window.open('${escHtml(u)}','_blank')" onerror="this.style.display='none'">`
-    ).join('')
+    urls.slice(0, 5).map(u => {
+      const d = faqDriveInfo(u);
+      const thumb = d ? ('https://drive.google.com/thumbnail?id='+d.fileId+'&sz=w1000') : u;
+      const open = d ? ('https://drive.google.com/file/d/'+d.fileId+'/view') : u;
+      const badge = (d && d.isPdf) ? '<span style="position:absolute;top:3px;left:3px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">PDF</span>' : '';
+      return `<span style="position:relative;display:inline-block">`
+        + `<img src="${escHtml(thumb)}" alt="参考資料" onclick="window.open('${escHtml(open)}','_blank')" onerror="this.style.opacity=.3">`
+        + badge + `</span>`;
+    }).join('')
   }</div>`;
 }
 
@@ -775,9 +1240,27 @@ function nowStr() {
 function setChatFontSize(px) {
   document.documentElement.style.setProperty('--chat-fs', px + 'px');
   try { localStorage.setItem('miwa_chat_fs', String(px)); } catch (e) {}
-  document.querySelectorAll('#fs-options .fs-btn').forEach(b => {
-    b.classList.toggle('active', Number(b.dataset.fs) === px);
-  });
+  const btns = document.querySelectorAll('.fs-btn');
+  btns.forEach(b => b.classList.toggle('active', Number(b.dataset.fs) === px));
+}
+
+// ═══════════════════════════════════════════════
+//  料金マスキングトグル
+// ═══════════════════════════════════════════════
+const PRICE_MASK_KEY = 'miwa_price_mask';
+function applyPriceMaskUI(enabled) {
+  const wrap = document.getElementById('price-mask-toggle');
+  const lbl  = document.getElementById('price-mask-label');
+  if (!wrap || !lbl) return;
+  wrap.style.background = enabled ? 'var(--primary, #1a8f5c)' : 'var(--border)';
+  wrap.querySelector('.toggle-knob').style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+  lbl.textContent = enabled ? 'ON（料金をマスクして「💴 料金表参照」表示）' : 'OFF（料金をそのまま表示）';
+}
+function togglePriceMask() {
+  const cur = localStorage.getItem(PRICE_MASK_KEY) === '1';
+  const next = !cur;
+  try { localStorage.setItem(PRICE_MASK_KEY, next ? '1' : '0'); } catch (e) {}
+  applyPriceMaskUI(next);
 }
 function initChatFontSize() {
   let px = 15;
@@ -803,6 +1286,7 @@ const FAQ_ADMIN_MARKUP = `
       <div class="stat-label">未回答（確認待ち）</div>
     </div>
   </div>
+
 
   <!-- 質問ログ -->
   <div class="card" style="margin-bottom:16px">
@@ -860,13 +1344,38 @@ const FAQ_ADMIN_MARKUP = `
       <span style="font-size:12px;color:var(--text-muted)">AIが仕分け→確認して追加</span>
     </div>
     <div class="card-body">
-      <p style="font-size:13px;color:var(--text-sub);margin-bottom:10px">マニュアルやメモを貼り付けて「AIで仕分け」を押すと、知識候補に分解します。確認・修正してから知識ベースに追加してください。</p>
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:10px">就業規則・研修資料・マニュアルなどを貼り付けて「AIで仕分け」を押すと、自動で知識候補に分解します。<strong>長文も自動でチャンク分割して処理します。</strong>確認・修正してから知識ベースに追加してください。</p>
       <textarea class="form-textarea" id="import-src" placeholder="例：毛100%のセーターはネットに入れて洗う。タンブル乾燥不可。裏返して洗うのがおすすめ。乾燥機は避けてスチームでうかしながらアイロン。毛玉は引っぱらず毛玉取り器で…" style="min-height:90px"></textarea>
       <div class="form-row" style="margin-top:10px">
         <button class="btn btn-primary btn-sm" id="import-btn" onclick="bulkSort()">🪄 AIで仕分け</button>
         <button class="btn btn-outline btn-sm" onclick="clearImport()">クリア</button>
       </div>
       <div id="import-result" style="margin-top:16px"></div>
+    </div>
+  </div>
+  <!-- 資料ストック -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head">
+      <span>📚</span>
+      <h2>知識資料ストック</h2>
+      <span id="doc-count" class="log-count">0件</span>
+      <button class="btn btn-primary btn-sm" onclick="toggleDocForm()" style="margin-left:auto">＋ 資料を追加</button>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px">就業規則・研修資料・マニュアルなどをそのまま登録。質問時にキーワードで該当箇所を抽出し、AIの回答参考に渡します。</p>
+      <!-- 追加フォーム -->
+      <div id="doc-form" style="display:none;background:var(--surface-1,#f7f9fd);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+        <div class="form-row" style="margin-bottom:10px">
+          <input class="form-input" id="doc-title" placeholder="資料名（例：就業規則 2026年版）" style="flex:1">
+          <input class="form-input" id="doc-cat" placeholder="カテゴリ（例：規則・制度）" style="flex:1">
+        </div>
+        <textarea class="form-textarea" id="doc-content" placeholder="内容を貼り付け（長文OK）" style="min-height:120px"></textarea>
+        <div class="form-row" style="margin-top:10px">
+          <button class="btn btn-primary btn-sm" onclick="addDoc()">💾 保存</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleDocForm()">キャンセル</button>
+        </div>
+      </div>
+      <div id="doc-list"><div class="kb-empty">資料がありません</div></div>
     </div>
   </div>
 
@@ -889,8 +1398,16 @@ const FAQ_ADMIN_MARKUP = `
           <input class="form-input" id="new-cat" placeholder="例：受付・素材確認・シミ抜き・料金">
           <label>出典メモ（任意）</label>
           <input class="form-input" id="new-src" placeholder="例：社内マニュアルVer.3">
-          <label>参考画像URL（任意・最大5枚・改行かカンマ区切り）</label>
-          <textarea class="form-textarea" id="new-img" placeholder="https://... （Googleドライブ共有リンク等）" style="min-height:48px"></textarea>
+          <label>参考画像・PDF（任意・最大5件）</label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+            <label class="btn btn-sm btn-outline" style="cursor:pointer;margin:0">
+              📎 ファイルを選んでアップロード
+              <input type="file" accept="image/*,application/pdf" style="display:none" onchange="uploadFaqFile(this)">
+            </label>
+            <span id="upload-status" style="display:none;font-size:12px;color:var(--text-sub)"></span>
+          </div>
+          <div id="new-img-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px"></div>
+          <textarea class="form-textarea" id="new-img" placeholder="https://... （直接URLや既存のGoogleドライブ共有リンクを貼ってもOK・改行かカンマ区切り）" style="min-height:48px" oninput="renderNewImgPreview()"></textarea>
           <div class="form-row">
             <button class="btn btn-primary btn-sm" onclick="addKB()">登録する</button>
             <button class="btn btn-outline btn-sm" onclick="toggleAddForm()">キャンセル</button>
@@ -926,6 +1443,60 @@ const FAQ_ADMIN_MARKUP = `
       <div class="fs-preview">
         <div class="fs-preview-bubble">あ、こんにちは！文字サイズの見え方はこのくらいです。</div>
       </div>
+
+      <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text)">💴 料金マスキング</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;">
+          ONにすると、知識ベースの回答に含まれる金額（¥〇〇・〇〇円）を<b>「💴 料金表参照」</b>に置き換えます。<br>
+          料金表スプレッドシートに移行済みの場合にONにしてください。
+        </div>
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+          <div class="toggle-wrap" id="price-mask-toggle" onclick="togglePriceMask()" style="
+            width:44px;height:24px;border-radius:12px;background:var(--border);
+            position:relative;transition:background .2s;cursor:pointer;flex-shrink:0;">
+            <div class="toggle-knob" style="
+              position:absolute;top:3px;left:3px;width:18px;height:18px;
+              border-radius:50%;background:#fff;transition:transform .2s;
+              box-shadow:0 1px 3px rgba(0,0,0,.3);"></div>
+          </div>
+          <span style="font-size:13px;font-weight:600;" id="price-mask-label">OFF（料金をそのまま表示）</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- クラウド設定 -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-head">
+      <span>☁️</span>
+      <h2>Googleスプレッドシート連携</h2>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline btn-sm" onclick="forceSyncFromCloud()">🔄 取得</button>
+      <button class="btn btn-outline btn-sm" onclick="forcePushToCloud()" style="margin-left:6px">⬆️ 全件送信</button>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;line-height:1.7">
+        GASウェブアプリのURLを設定すると、知識ベース・未回答リストが全店舗で共有されます。<br>
+        <span style="font-size:12px;color:var(--text-muted)">スクリプト: <code>gas/faq-knowledge-base.gs</code> をコピペしてデプロイしてください</span>
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px">GAS ウェブアプリ URL</label>
+          <input class="form-input" id="cloud-gas-url" placeholder="https://script.google.com/macros/s/..." style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px">認証トークン（書き込み用・AUTH_TOKEN）</label>
+          <input class="form-input" id="cloud-token" type="password" placeholder="スクリプトプロパティに設定した値" style="width:100%">
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:14px">
+        <div id="cloud-enable-toggle" data-on="0" onclick="toggleCloudEnabled()" style="width:44px;height:24px;border-radius:12px;background:var(--border);position:relative;transition:background .2s;cursor:pointer;flex-shrink:0">
+          <div id="cloud-toggle-knob" style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>
+        </div>
+        <span style="font-size:13px;font-weight:600" id="cloud-enable-label">OFF（ローカルのみ）</span>
+      </label>
+      <button class="btn btn-primary btn-sm" onclick="saveCloudSettingsFromUI()">保存して同期</button>
+      <div id="cloud-sync-msg" style="display:none;margin-top:10px;font-size:12px;color:var(--text-sub);padding:8px 12px;background:var(--surface2);border-radius:8px"></div>
     </div>
   </div>
 `;
@@ -935,13 +1506,18 @@ const FAQ_ADMIN_MARKUP = `
 // ═══════════════════════════════════════════════
 function initFaqAdmin() {
   loadFaq();
+  loadFaqDocs();
+  renderDocs();
   faqLog = loadLocalLog();
   faqLogSource = 'local';
   updateStats();
+  try { const v = localStorage.getItem(PRICE_MASK_KEY); if (v !== null) applyPriceMaskUI(v === '1'); } catch (e) {}
   initChatFontSize();
   renderKB();
   renderUnanswered();
   renderFaqLog();
+  // クラウドUI初期化と同期
+  setTimeout(() => { initCloudUI(); syncKBFromCloud(); }, 100);
 }
 
 // グローバル公開（jsx 側 / inline onclick から参照）
