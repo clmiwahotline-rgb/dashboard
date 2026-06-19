@@ -272,6 +272,13 @@ function renderUnanswered() {
         ${!item.answered ? `<button class="btn btn-sm btn-success" onclick="toggleUAForm(${item.id})">回答して知識化</button>` : ''}
       </div>
       <div class="ua-answer-form" id="ua-form-${item.id}">
+        <div id="ua-drop-${item.id}"
+          ondragover="event.preventDefault();this.style.borderColor='#059669'"
+          ondragleave="this.style.borderColor='#d1fae5'"
+          ondrop="onDropDoc(event,${item.id})"
+          style="border:2px dashed #d1fae5;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:6px;cursor:copy">
+          📄 知識資料をここにドラッグ＆ドロップで内容を挿入
+        </div>
         <label style="font-size:12px;font-weight:600;color:var(--success)">回答内容</label>
         <textarea class="form-textarea" id="ua-a-${item.id}" placeholder="この質問への正しい回答を入力..."></textarea>
         <label style="font-size:12px;font-weight:600;color:var(--success)">カテゴリ（任意）</label>
@@ -1001,7 +1008,7 @@ function renderDocs() {
     return;
   }
   list.innerHTML=faqDocs.map(doc=>`
-    <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff">
+    <div draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${doc.id}')" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff;cursor:grab">
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:3px">${escHtml(doc.title)}</div>
@@ -1028,9 +1035,42 @@ function renderDocs() {
 // ═══════════════════════════════════════════════
 const FAQ_LOG_KEY = 'miwa.faq.log.v1';
 let faqLog = [];
-let faqLogFilter = 'all';     // all | answered | unanswered
+let faqLogFilter = 'unconfirmed'; // unconfirmed | unanswered | answered | archived
 let faqLogSource = 'local';   // local | gas
 let faqLogSearch = '';
+
+// ── アーカイブ管理 ──────────────────────────────────────────────────
+const FAQ_LOG_ARCHIVE_KEY = 'miwa.faq.log.archive.v1';
+let _archivedLogIds = new Set();
+function loadArchivedLogIds() {
+  try { const s = localStorage.getItem(FAQ_LOG_ARCHIVE_KEY); if (s) _archivedLogIds = new Set(JSON.parse(s)); } catch(e) {}
+}
+function saveArchivedLogIds() {
+  try { localStorage.setItem(FAQ_LOG_ARCHIVE_KEY, JSON.stringify([..._archivedLogIds])); } catch(e) {}
+}
+function logRowId(r) { return String(r.ts || '') + '_' + String(r.q || '').slice(0, 20); }
+function toggleArchiveLog(rowId) {
+  if (_archivedLogIds.has(rowId)) _archivedLogIds.delete(rowId);
+  else _archivedLogIds.add(rowId);
+  saveArchivedLogIds();
+  renderFaqLog();
+}
+
+// 未回答ログを未回答リストに自動追加
+function autoAddUnansweredToList(logs) {
+  let added = false;
+  (logs || []).forEach(r => {
+    if (r.answered) return;
+    const q = (r.q || '').trim();
+    if (!q) return;
+    const already = unansweredList.some(u => u.q.trim() === q);
+    if (!already) {
+      unansweredList.unshift({ id: nextId++, q, addedAt: r.ts ? r.ts.slice(0,10) : nowStr(), status: '未回答', answered: false });
+      added = true;
+    }
+  });
+  if (added) { persistFaq(); renderUnanswered(); updateStats(); }
+}
 
 function loadLocalLog() {
   try { const s = localStorage.getItem(FAQ_LOG_KEY); const a = s ? JSON.parse(s) : []; return Array.isArray(a) ? a : []; }
@@ -1065,9 +1105,17 @@ function renderFaqLog() {
       : 'この端末の記録のみ';
   }
 
+  // フィルタチップ選択状態更新
+  document.querySelectorAll('#faqlog-filters .log-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.f === faqLogFilter);
+  });
+
   let rows = faqLog.slice();
-  if (faqLogFilter === 'answered') rows = rows.filter(r => r.answered);
-  else if (faqLogFilter === 'unanswered') rows = rows.filter(r => !r.answered);
+  if (faqLogFilter === 'unconfirmed') rows = rows.filter(r => !r.answered && !_archivedLogIds.has(logRowId(r)));
+  else if (faqLogFilter === 'unanswered')  rows = rows.filter(r => !r.answered && !_archivedLogIds.has(logRowId(r)));
+  else if (faqLogFilter === 'answered')    rows = rows.filter(r => !!r.answered && !_archivedLogIds.has(logRowId(r)));
+  else if (faqLogFilter === 'archived')    rows = rows.filter(r => _archivedLogIds.has(logRowId(r)));
+
   if (faqLogSearch) {
     rows = rows.filter(r =>
       String(r.q || '').toLowerCase().includes(faqLogSearch) ||
@@ -1076,25 +1124,32 @@ function renderFaqLog() {
     );
   }
 
+  // バッジ更新（未確認数）
+  const unconfirmedCount = faqLog.filter(r => !r.answered && !_archivedLogIds.has(logRowId(r))).length;
   const count = document.getElementById('faqlog-count');
   if (count) count.textContent = `${rows.length}件`;
+  const badge = document.getElementById('faqlog-badge');
+  if (badge) { badge.textContent = unconfirmedCount; badge.style.display = unconfirmedCount > 0 ? 'inline-flex' : 'none'; }
 
   if (faqLog.length === 0) {
     list.innerHTML = `<div class="kb-empty" style="line-height:1.8">まだ記録がありません。<br>
-      <span style="font-size:12px;color:var(--text-muted)">スタッフFAQでの質問が、全端末共有のログ保存（第3段階）に対応すると、ここに自動で一覧表示されます。<br>
-      「🔄 全端末から取得」を押すとスプレッドシートのログを読み込みます。</span></div>`;
+      <span style="font-size:12px;color:var(--text-muted)">「🔄 全端末から取得」を押すとスプレッドシートのログを読み込みます。</span></div>`;
     return;
   }
   if (rows.length === 0) { list.innerHTML = '<div class="kb-empty">該当する記録がありません</div>'; return; }
 
-  list.innerHTML = rows.map((r, i) => {
+  list.innerHTML = rows.map((r) => {
     const ans = !!r.answered;
+    const rid = logRowId(r);
+    const isArchived = _archivedLogIds.has(rid);
     const aPreview = escHtml(String(r.a || '').replace(/【.*?】/g, '').replace(/\n+/g, ' ').slice(0, 90));
-    return `<div class="log-row ${ans ? '' : 'log-unanswered'}">
+    return `<div class="log-row ${ans ? '' : 'log-unanswered'}" style="${isArchived ? 'opacity:.55' : ''}">
       <div class="log-row-top">
-        <span class="log-status ${ans ? 'ok' : 'ng'}">${ans ? '回答済み' : '未回答'}</span>
+        <span class="log-status ${ans ? 'ok' : 'ng'}">${ans ? '回答済み' : '未確認'}</span>
         ${r.store ? `<span class="log-store">${escHtml(r.store)}</span>` : ''}
         <span class="log-time">${logTime(r.ts)}</span>
+        <span style="flex:1"></span>
+        <button onclick="toggleArchiveLog('${rid.replace(/'/g, '')}')" class="btn btn-sm" style="background:${isArchived ? '#e0f2fe' : '#f3f4f6'};color:${isArchived ? '#0369a1' : '#6b7280'};border:none;font-size:11px;padding:2px 8px">${isArchived ? '↩ 取消' : '📁 アーカイブ'}</button>
       </div>
       <div class="log-q">${escHtml(r.q || '')}</div>
       ${r.a ? `<div class="log-a" onclick="this.classList.toggle('open')"><span class="log-a-label">AI回答</span> ${aPreview}${String(r.a||'').length > 90 ? '…' : ''}
@@ -1140,10 +1195,21 @@ async function refreshFaqLogRemote() {
     const note = document.getElementById('faqlog-note');
     if (note) note.style.display = 'none';
   }
+  autoAddUnansweredToList(faqLog);
   renderFaqLog();
 }
 
-// 同一端末でスタッフFAQが質問するたびに呼べる記録API（任意・将来用）
+// D&D: 知識資料を未回答モーダルにドロップ
+function onDropDoc(event, id) {
+  event.preventDefault();
+  const docId = event.dataTransfer.getData('text/plain');
+  const doc = faqDocs.find(d => String(d.id) === String(docId));
+  if (!doc) return;
+  const ta = document.getElementById('ua-a-' + id);
+  if (ta) { const ex = ta.value.trim(); ta.value = (ex ? ex + '\n\n' : '') + doc.content; }
+  const zone = document.getElementById('ua-drop-' + id);
+  if (zone) { zone.style.borderColor = '#059669'; zone.textContent = '✅ ' + doc.title + ' を挿入しました'; }
+}（任意・将来用）
 window.MiwaFaqLog = {
   append(entry) {
     try {
@@ -1315,9 +1381,10 @@ const FAQ_ADMIN_MARKUP = `
       <div id="faqlog-note" style="display:none;background:var(--warn-light);border:1px solid #fde68a;border-radius:8px;padding:9px 12px;font-size:12px;color:var(--warn);margin-bottom:10px"></div>
       <div class="log-toolbar">
         <div class="log-chips" id="faqlog-filters">
-          <button class="log-chip active" data-f="all" onclick="setFaqLogFilter('all')">すべて</button>
-          <button class="log-chip" data-f="answered" onclick="setFaqLogFilter('answered')">回答済み</button>
+          <button class="log-chip active" data-f="unconfirmed" onclick="setFaqLogFilter('unconfirmed')">未確認 <span id="faqlog-badge" style="display:none;background:#ef4444;color:#fff;border-radius:20px;padding:0 6px;font-size:11px;margin-left:3px">0</span></button>
           <button class="log-chip" data-f="unanswered" onclick="setFaqLogFilter('unanswered')">未回答</button>
+          <button class="log-chip" data-f="answered" onclick="setFaqLogFilter('answered')">回答済み</button>
+          <button class="log-chip" data-f="archived" onclick="setFaqLogFilter('archived')">アーカイブ</button>
         </div>
         <input class="form-input" id="faqlog-search" placeholder="🔍 質問・回答・拠点で検索" oninput="onFaqLogSearch(this.value)" style="flex:1;min-width:160px">
       </div>
@@ -1566,9 +1633,12 @@ function initFaqAdmin() {
   initChatFontSize();
   renderKB();
   renderUnanswered();
+  loadArchivedLogIds();
   renderFaqLog();
   // クラウドUI初期化と同期
   setTimeout(() => { initCloudUI(); syncKBFromCloud(); }, 100);
+  // 60秒ごとに質問ログを自動更新
+  setInterval(() => refreshFaqLogRemote(), 60000);
 }
 
 // グローバル公開（jsx 側 / inline onclick から参照）
