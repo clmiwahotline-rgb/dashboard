@@ -212,17 +212,22 @@ function initCloudUI() {
 //  AI呼び出し（生テキストを返す共通関数。GAS経由）
 // ═══════════════════════════════════════════════
 async function callAIRaw(systemPrompt, userContent, maxTokens) {
+  // AI呼び出しは常にAI専用GAS_URLを使用（クラウドデータ設定のURLとは別）
   const useGas = GAS_URL && GAS_URL.trim() !== '';
   const endpoint = useGas ? GAS_URL : 'https://api.anthropic.com/v1/messages';
+  const body = {
+    model: 'claude-haiku-4-5',
+    max_tokens: maxTokens || 1500,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userContent }]
+  };
+  // AI GASのトークン（クラウドデータ設定のトークンとは別に管理）
+  const aiToken = localStorage.getItem('miwa_faq_ai_token') || '';
+  if (useGas && aiToken) body.token = aiToken;
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': useGas ? 'text/plain;charset=utf-8' : 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5',
-      max_tokens: maxTokens || 1500,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userContent }]
-    })
+    body: JSON.stringify(body)
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -931,16 +936,19 @@ let faqDocs = [];
 
 function loadFaqDocs() {
   try { const s=localStorage.getItem(FAQ_DOCS_KEY); if(s) faqDocs=JSON.parse(s); } catch(e){ faqDocs=[]; }
-  // クラウドから最新を非同期取得（全端末共有）
-  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
-    cloudGet('FAQ資料').then(remote => {
-      if (Array.isArray(remote) && remote.length) {
-        faqDocs = remote;
-        try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
-        if (typeof renderDocs === 'function') renderDocs();
-      }
-    }).catch(() => {});
-  }
+  // polished-cloud.jsx はBabelで非同期ロードされるため、少し待ってから同期
+  setTimeout(() => {
+    if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
+      cloudGet('FAQ資料').then(remote => {
+        if (Array.isArray(remote) && remote.length) {
+          faqDocs = remote;
+          try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
+          if (typeof renderDocs === 'function') renderDocs();
+          console.log('[FAQ] 知識資料をクラウドから同期:', faqDocs.length, '件');
+        }
+      }).catch(() => {});
+    }
+  }, 2000); // Babel処理完了を待つ
   return faqDocs;
 }
 function saveFaqDocs() {
@@ -1460,6 +1468,29 @@ const FAQ_ADMIN_MARKUP = `
     </div>
   </div>
 
+  <!-- AI GAS トークン設定 -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-head">
+      <span>🤖</span>
+      <h2>AI設定（一括取り込み用）</h2>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;line-height:1.7">
+        「資料からAI一括取り込み」で使うAIプロキシGASのトークンを設定します。<br>
+        <span style="font-size:12px;color:var(--text-muted)">GASスクリプトの <code>VALID_TOKEN</code> または <code>AUTH_TOKEN</code> に設定した値を入力してください</span>
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px">AI GAS トークン</label>
+          <div style="display:flex;gap:8px">
+            <input class="form-input" id="ai-gas-token" type="password" placeholder="GASスクリプトに設定したトークン値" style="flex:1">
+            <button class="btn btn-primary btn-sm" onclick="saveAiGasToken()">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- クラウド設定 -->
   <div class="card" style="margin-top:16px">
     <div class="card-head">
@@ -1499,9 +1530,21 @@ const FAQ_ADMIN_MARKUP = `
 // ═══════════════════════════════════════════════
 //  初期化
 // ═══════════════════════════════════════════════
+function saveAiGasToken() {
+  const val = (document.getElementById('ai-gas-token')?.value || '').trim();
+  try { localStorage.setItem('miwa_faq_ai_token', val); } catch(e) {}
+  alert(val ? 'AIトークンを保存しました。一括取り込みをお試しください。' : 'トークンをクリアしました。');
+}
+function initAiGasTokenUI() {
+  const el = document.getElementById('ai-gas-token');
+  if (!el) return;
+  try { const v = localStorage.getItem('miwa_faq_ai_token'); if (v) el.value = v; } catch(e) {}
+}
+
 function initFaqAdmin() {
   loadFaq();
   loadFaqDocs();
+  initAiGasTokenUI();
   renderDocs();
   faqLog = loadLocalLog();
   faqLogSource = 'local';
