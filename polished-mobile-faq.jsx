@@ -287,7 +287,8 @@ const MFaq = ({ registerHeader, registerFab }) => {
     await Promise.all([syncFaq(), fetchLog()]);
   }, [syncFaq, fetchLog]);
 
-  React.useEffect(() => { === "ok" ? "FAQシステム同期済み"
+  React.useEffect(() => {
+    const sub = syncState === "ok" ? "FAQシステム同期済み"
       : syncState === "loading" ? "🔄 同期中…"
       : syncState === "error" ? "⚠ 接続エラー" : "";
     registerHeader && registerHeader({ title: "FAQ管理", sub });
