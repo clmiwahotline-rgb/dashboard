@@ -347,8 +347,21 @@ const MFaq = ({ registerHeader, registerFab }) => {
           </button>
         </div>
         <button onClick={handleRefresh} disabled={syncState === "loading" || logLoading}
-          style={{ flexShrink: 0, padding: "7px 10px", borderRadius: 10, border: "1.5px solid var(--line)", background: "var(--surface)", color: "var(--brand)", fontSize: 13, fontWeight: 700, cursor: syncState === "loading" || logLoading ? "default" : "pointer", opacity: syncState === "loading" || logLoading ? 0.5 : 1 }}>
-          {syncState === "loading" || logLoading ? "⏳" : "🔄"}
+          title="データを更新"
+          style={{
+            flexShrink: 0, width: 38, height: 38,
+            borderRadius: "50%",
+            border: "none",
+            background: syncState === "loading" || logLoading
+              ? "#e2e8f0"
+              : "linear-gradient(135deg, var(--brand) 0%, oklch(0.55 0.22 270) 100%)",
+            color: syncState === "loading" || logLoading ? "#94a3b8" : "#fff",
+            fontSize: 16, cursor: syncState === "loading" || logLoading ? "default" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: syncState === "loading" || logLoading ? "none" : "0 2px 8px rgba(0,0,0,.18)",
+            transition: "all .2s"
+          }}>
+          <span style={{ display: "inline-block", animation: syncState === "loading" || logLoading ? "spin 1s linear infinite" : "none" }}>⟳</span>
         </button>
       </div>
 

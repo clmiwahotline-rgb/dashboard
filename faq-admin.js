@@ -283,7 +283,8 @@ function renderUnanswered() {
 
   const totalUAPages = Math.ceil(unansweredList.length / PAGE_SIZE);
   if (_uaPage >= totalUAPages) _uaPage = Math.max(0, totalUAPages - 1);
-  const pagedUA = unansweredList.slice(_uaPage * PAGE_SIZE, (_uaPage + 1) * PAGE_SIZE);
+  const sortedUA = [...unansweredList].sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''));
+  const pagedUA = sortedUA.slice(_uaPage * PAGE_SIZE, (_uaPage + 1) * PAGE_SIZE);
 
   list.innerHTML = pagedUA.map(item => `
     <div class="ua-item ${item.answered ? 'ua-answered' : ''}" id="ua-${item.id}">
@@ -343,6 +344,9 @@ function approveAnswer(id) {
   knowledgeBase.push(newKb);
 
   item.answered = true;
+  // 回答済みはクラウド同期後も未回答リストに戻らないよう抑制
+  _suppressedUAQuestions.add((item.q || '').trim());
+  saveSuppressedUAQuestions();
   persistFaq();
   renderUnanswered();
   renderKB();
@@ -783,7 +787,8 @@ function renderKB() {
 
   const totalKBPages = Math.ceil(items.length / PAGE_SIZE);
   if (_kbPage >= totalKBPages) _kbPage = Math.max(0, totalKBPages - 1);
-  const pagedKB = items.slice(_kbPage * PAGE_SIZE, (_kbPage + 1) * PAGE_SIZE);
+  const sortedKB = [...items].sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''));
+  const pagedKB = sortedKB.slice(_kbPage * PAGE_SIZE, (_kbPage + 1) * PAGE_SIZE);
 
   list.innerHTML = pagedKB.map(item => {
     const approvedBadge = item.approved
@@ -1263,7 +1268,8 @@ function renderFaqLog() {
 
   const totalLogPages = Math.ceil(rows.length / PAGE_SIZE);
   if (_logPage >= totalLogPages) _logPage = Math.max(0, totalLogPages - 1);
-  const pagedRows = rows.slice(_logPage * PAGE_SIZE, (_logPage + 1) * PAGE_SIZE);
+  const sortedLog = [...rows].sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+  const pagedRows = sortedLog.slice(_logPage * PAGE_SIZE, (_logPage + 1) * PAGE_SIZE);
 
   list.innerHTML = pagedRows.map((r) => {
     const ans = isAnswered(r);
