@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════
 //  ★設定：GASプロキシのURL（APIキーはGAS側で秘匿）
 // ═══════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec';
 
 // ═══════════════════════════════════════════════
 //  データストア（暫定：localStorage。後日スプレッドシート化）
@@ -17,15 +17,9 @@ const FAQ_LS_KEY = 'miwa.faq.kb.v1';
 const FAQ_CLOUD_KEY = 'miwa.faq.cloud.v1'; // { gasUrl, token, enabled }
 
 // ── クラウド設定の読み書き ──
-const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
 function loadCloudCfg() {
-  try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) {
-    const cfg = JSON.parse(s);
-    if (!cfg.gasUrl) cfg.gasUrl = DEFAULT_KB_GAS;
-    if (!cfg.hasOwnProperty('enabled')) cfg.enabled = true;
-    return cfg;
-  }} catch(e) {}
-  return { gasUrl: DEFAULT_KB_GAS, token: '', enabled: true };
+  try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) return JSON.parse(s); } catch(e) {}
+  return { gasUrl: '', token: '', enabled: false };
 }
 function saveCloudCfg(cfg) {
   try { localStorage.setItem(FAQ_CLOUD_KEY, JSON.stringify(cfg)); } catch(e) {}
@@ -55,7 +49,6 @@ let unansweredList = [];
 let historyLog = [];
 let nextId = 100;
 let statsAnswered = 0;
-let editingKBId = null;
 
 // ─── 永続化 ───
 function persistFaq() {
@@ -145,7 +138,6 @@ async function syncKBFromCloud() {
           ? item.images.split(',').filter(Boolean)
           : (Array.isArray(item.images) ? item.images : []),
         enabled: item.enabled !== false,
-        approved: item.approved === true || item.approved === 'true',
       }));
     }
     if (Array.isArray(uaData)) {
@@ -212,22 +204,18 @@ function initCloudUI() {
 //  AI呼び出し（生テキストを返す共通関数。GAS経由）
 // ═══════════════════════════════════════════════
 async function callAIRaw(systemPrompt, userContent, maxTokens) {
-  // クラウド設定の gasUrl / token を優先（未設定時はハードコード GAS_URL）
-  const cfg = loadCloudCfg();
-  const gasUrl = (cfg.gasUrl && cfg.gasUrl.trim()) || (GAS_URL && GAS_URL.trim()) || '';
-  const useGas = !!gasUrl;
-  const endpoint = useGas ? gasUrl : 'https://api.anthropic.com/v1/messages';
-  const body = {
-    model: 'claude-haiku-4-5',
-    max_tokens: maxTokens || 1500,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userContent }]
-  };
-  if (useGas && cfg.token) body.token = cfg.token;
+  const activeUrl = getActiveGasUrl();
+  const useGas = activeUrl && activeUrl.trim() !== '';
+  const endpoint = useGas ? activeUrl : 'https://api.anthropic.com/v1/messages';
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': useGas ? 'text/plain;charset=utf-8' : 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: maxTokens || 1500,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userContent }]
+    })
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -258,14 +246,21 @@ function renderUnanswered() {
     badge.style.display = pending.length > 0 ? 'inline-flex' : 'none';
   }
 
-  list.innerHTML = unansweredList.map(item => `
+  const totalUAPages = Math.ceil(unansweredList.length / PAGE_SIZE);
+  if (_uaPage >= totalUAPages) _uaPage = Math.max(0, totalUAPages - 1);
+  const pagedUA = unansweredList.slice(_uaPage * PAGE_SIZE, (_uaPage + 1) * PAGE_SIZE);
+
+  list.innerHTML = pagedUA.map(item => `
     <div class="ua-item ${item.answered ? 'ua-answered' : ''}" id="ua-${item.id}">
       <div class="ua-item-head">
         <div class="ua-item-info">
           <div class="ua-item-q">${escHtml(item.q)}</div>
           <div class="ua-item-meta">${item.addedAt}${item.answered ? ' · ✅ 回答済み・知識化済み' : ''}</div>
         </div>
-        ${!item.answered ? `<button class="btn btn-sm btn-success" onclick="toggleUAForm(${item.id})">回答して知識化</button>` : ''}
+        ${!item.answered ? `
+          <button class="btn btn-sm btn-success" onclick="toggleUAForm(${item.id})">回答して知識化</button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;padding:4px 8px" onclick="deleteUA(${item.id})" title="削除">🗑</button>
+        ` : ''}
       </div>
       <div class="ua-answer-form" id="ua-form-${item.id}">
         <label style="font-size:12px;font-weight:600;color:var(--success)">回答内容</label>
@@ -280,7 +275,7 @@ function renderUnanswered() {
         </div>
       </div>
     </div>
-  `).join('');
+  `).join('') + renderPagination(_uaPage, unansweredList.length, totalUAPages, 'setUAPage');
 }
 
 function toggleUAForm(id) {
@@ -312,6 +307,14 @@ function approveAnswer(id) {
 
   const el = document.getElementById(`ua-${id}`);
   if (el) el.style.background = '#ecfdf5';
+}
+
+function deleteUA(id) {
+  if (!confirm('この未回答質問を削除しますか？')) return;
+  unansweredList = unansweredList.filter(u => u.id !== id);
+  persistFaq();
+  renderUnanswered();
+  updateStats();
 }
 
 // 未回答を手動で1件追加（管理画面の手入力用）
@@ -691,75 +694,64 @@ function clearImport() {
 // ═══════════════════════════════════════════════
 //  知識ベース管理
 // ═══════════════════════════════════════════════
+function setKbFilter(f) { kbFilter = f; _kbPage = 0; renderKB(); }
+
+function approveKB(id) {
+  const item = knowledgeBase.find(k => k.id === id);
+  if (item) { item.approved = true; persistFaq(); renderKB(); _cldPost('update_kb', { item }); }
+}
+
 function renderKB() {
   const list = document.getElementById('kb-list');
   if (!list) return;
+
+  document.querySelectorAll('#kb-filter-chips .log-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.kf === kbFilter);
+  });
+
   const searchVal = document.getElementById('kb-search')?.value.toLowerCase() || '';
-  const items = knowledgeBase.filter(item =>
+  let items = knowledgeBase.filter(item =>
     !searchVal ||
     item.q.toLowerCase().includes(searchVal) ||
     item.a.toLowerCase().includes(searchVal) ||
     (item.category || '').toLowerCase().includes(searchVal)
   );
 
+  if (kbFilter === 'approved') items = items.filter(item => item.approved === true);
+  else if (kbFilter === 'unapproved') items = items.filter(item => !item.approved);
+
   if (items.length === 0) {
     list.innerHTML = '<div class="kb-empty">該当する知識がありません</div>';
     return;
   }
 
-  list.innerHTML = items.map(item => {
-    const approvedBadge = item.approved
-      ? '<span style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px">✅ 承認済み</span>'
-      : '';
-    const isEditing = editingKBId === item.id;
+  const totalKBPages = Math.ceil(items.length / PAGE_SIZE);
+  if (_kbPage >= totalKBPages) _kbPage = Math.max(0, totalKBPages - 1);
+  const pagedKB = items.slice(_kbPage * PAGE_SIZE, (_kbPage + 1) * PAGE_SIZE);
 
-    const viewHtml =
-      mdToHtml(item.a) +
-      imagesHtml([item]) +
-      '<div class="kb-item-source">出典: ' + escHtml(item.source || '—') + ' | 追加日: ' + escHtml(item.addedAt || '—') +
-      ((item.images||[]).length ? ' | 🖼 画像' + item.images.length + '枚' : '') +
-      (item.approved ? ' | 承認: ' + escHtml(item.approvedAt||'') : '') + '</div>' +
-      '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-        '<button class="btn btn-sm btn-outline" onclick="editKB(' + item.id + ')">✏️ 編集</button>' +
-        '<button class="btn btn-sm btn-outline" onclick="deleteKB(' + item.id + ')">🗑 削除</button>' +
-        '<button class="btn btn-sm" onclick="approveKB(' + item.id + ')" style="' +
-          (item.approved ? 'background:#dcfce7;color:#166534;border:1px solid #a7f3d0' : 'background:#f3f4f6;color:var(--text-sub);border:1px solid var(--border)') + '">' +
-          (item.approved ? '✅ 承認済み（取消）' : '　承認する　') +
-        '</button>' +
-      '</div>';
-
-    const editHtml =
-      '<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">' +
-        '<div><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">質問・キーワード</label>' +
-        '<input class="form-input" id="edit-q-' + item.id + '" value="' + escHtml(item.q) + '" style="width:100%"></div>' +
-        '<div><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">回答内容</label>' +
-        '<textarea class="form-textarea" id="edit-a-' + item.id + '" style="min-height:80px">' + escHtml(item.a) + '</textarea></div>' +
-        '<div style="display:flex;gap:10px">' +
-          '<div style="flex:1"><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">カテゴリ</label>' +
-          '<input class="form-input" id="edit-cat-' + item.id + '" value="' + escHtml(item.category||'') + '"></div>' +
-          '<div style="flex:1"><label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:3px">出典メモ</label>' +
-          '<input class="form-input" id="edit-src-' + item.id + '" value="' + escHtml(item.source||'') + '"></div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-sm btn-primary" onclick="saveEditKB(' + item.id + ')">💾 保存</button>' +
-          '<button class="btn btn-sm btn-outline" onclick="cancelEditKB()">キャンセル</button>' +
-        '</div>' +
-      '</div>';
-
-    return '<div class="kb-item">' +
-      '<div class="kb-item-head" onclick="' + (isEditing ? '' : 'toggleKB(' + item.id + ')') + '" style="' + (isEditing ? 'cursor:default' : '') + '">' +
-        '<div class="kb-item-q">' +
-          '<span class="kb-tag">' + escHtml(item.category || '未分類') + '</span>' +
-          approvedBadge +
-          escHtml(item.q) +
-        '</div>' +
-        '<span style="color:var(--text-muted);font-size:12px">' + (isEditing ? '✏️' : '▼') + '</span>' +
-      '</div>' +
-      '<div class="kb-item-body ' + (isEditing ? 'open' : '') + '" id="kb-body-' + item.id + '">' +
-        (isEditing ? editHtml : viewHtml) +
-      '</div>' +
-    '</div>';
-  }).join('');
+  list.innerHTML = pagedKB.map(item => `
+    <div class="kb-item">
+      <div class="kb-item-head" onclick="toggleKB(${item.id})">
+        <div class="kb-item-q">
+          <span class="kb-tag">${escHtml(item.category || '未分類')}</span>
+          ${escHtml(item.q)}
+        </div>
+        <span style="color:var(--text-muted);font-size:12px">▼</span>
+      </div>
+      <div class="kb-item-body" id="kb-body-${item.id}">
+        ${mdToHtml(item.a)}
+        ${imagesHtml([item])}
+        <div class="kb-item-source">出典: ${escHtml(item.source || '—')} | 追加日: ${escHtml(item.addedAt || '—')}${(item.images||[]).length ? ` | 🖼 画像${item.images.length}枚` : ''}</div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${item.approved
+            ? `<span style="font-size:11px;background:#dcfce7;color:#166534;padding:2px 8px;border-radius:20px;font-weight:600">✅ 承認済み</span>`
+            : `<button class="btn btn-sm btn-success" onclick="approveKB(${item.id})">✅ 承認</button>`
+          }
+          <button class="btn btn-sm btn-outline" onclick="deleteKB(${item.id})">🗑 削除</button>
+        </div>
+      </div>
+    </div>
+  `).join('') + renderPagination(_kbPage, items.length, totalKBPages, 'setKBPage');
 }
 
 function toggleKB(id) {
@@ -770,134 +762,16 @@ function toggleKB(id) {
 function deleteKB(id) {
   if (!confirm('この知識を削除しますか？')) return;
   knowledgeBase = knowledgeBase.filter(k => k.id !== id);
-  if (editingKBId === id) editingKBId = null;
   persistFaq();
   renderKB();
   updateStats();
   _cldPost('delete_kb', { id });
 }
 
-function editKB(id) {
-  editingKBId = id;
-  // 開いていなければ開く
-  const body = document.getElementById('kb-body-' + id);
-  if (body && !body.classList.contains('open')) body.classList.add('open');
-  renderKB();
-  setTimeout(() => { const el = document.getElementById('edit-q-' + id); if (el) el.focus(); }, 50);
-}
-
-function cancelEditKB() {
-  editingKBId = null;
-  renderKB();
-}
-
-function saveEditKB(id) {
-  const item = knowledgeBase.find(k => k.id === id);
-  if (!item) return;
-  const q   = (document.getElementById('edit-q-'   + id)?.value || '').trim();
-  const a   = (document.getElementById('edit-a-'   + id)?.value || '').trim();
-  const cat = (document.getElementById('edit-cat-' + id)?.value || '').trim();
-  const src = (document.getElementById('edit-src-' + id)?.value || '').trim();
-  if (!q || !a) { alert('質問と回答は必須です'); return; }
-  item.q = q;
-  item.a = a;
-  item.category = cat || '未分類';
-  if (src) item.source = src;
-  editingKBId = null;
-  persistFaq();
-  renderKB();
-  updateStats();
-  _cldPost('update_kb', { item });
-}
-
-function approveKB(id) {
-  const item = knowledgeBase.find(k => k.id === id);
-  if (!item) return;
-  item.approved = !item.approved;
-  if (item.approved) item.approvedAt = nowStr();
-  else delete item.approvedAt;
-  persistFaq();
-  renderKB();
-  _cldPost('update_kb', { item });
-}
-
 let addFormOpen = false;
 function toggleAddForm() {
   addFormOpen = !addFormOpen;
   document.getElementById('add-form-wrap').style.display = addFormOpen ? 'block' : 'none';
-  if (addFormOpen) renderNewImgPreview();
-}
-
-// ── ファイル添付（画像・PDF を GAS 経由で Drive へアップロード）──────────
-async function uploadFaqFile(inputEl) {
-  const file = inputEl.files && inputEl.files[0];
-  if (!file) return;
-  const cfg = loadCloudCfg();
-  if (!cfg.gasUrl) { alert('クラウド設定のGAS URLが未設定です（FAQ設定→クラウドKB設定）'); inputEl.value=''; return; }
-  if (!cfg.token) { alert('アップロードにはトークン設定が必要です（FAQ設定→クラウドKB設定のトークン）'); inputEl.value=''; return; }
-  const MAXMB = 15;
-  if (file.size > MAXMB*1024*1024) { alert('ファイルが大きすぎます（最大'+MAXMB+'MB）'); inputEl.value=''; return; }
-  const statusEl = document.getElementById('upload-status');
-  const setStatus = (t) => { if(statusEl){ statusEl.style.display='inline'; statusEl.textContent=t; } };
-  setStatus('⏳ アップロード中… ' + file.name);
-  try {
-    const dataUrl = await new Promise((res, rej) => {
-      const fr = new FileReader();
-      fr.onload = () => res(fr.result); fr.onerror = rej;
-      fr.readAsDataURL(file);
-    });
-    const base64 = String(dataUrl).split(',')[1];
-    const res = await fetch(cfg.gasUrl, {
-      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'uploadFile', name:file.name, mimeType:file.type, data:base64, token:cfg.token })
-    });
-    const data = await res.json();
-    if (!data || !data.ok) throw new Error((data && (data.error||data.message)) || '失敗');
-    const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name);
-    const tagged = data.viewUrl + (isPdf ? '#pdf' : '#img');
-    const ta = document.getElementById('new-img');
-    ta.value = (ta.value.trim() ? ta.value.trim()+'\n' : '') + tagged;
-    renderNewImgPreview();
-    setStatus('✅ 追加しました: ' + file.name);
-  } catch(e) {
-    setStatus('⚠️ ' + e.message);
-    alert('アップロード失敗: ' + e.message);
-  } finally {
-    inputEl.value = '';
-    setTimeout(()=>{ if(statusEl) statusEl.style.display='none'; }, 4000);
-  }
-}
-
-// Driveリンクから fileId / PDF判定を抽出（未該当は null）
-function faqDriveInfo(url) {
-  const u = String(url||'');
-  const m = u.match(/\/file\/d\/([-\w]{20,})/) || u.match(/[?&]id=([-\w]{20,})/);
-  if (!m) return null;
-  return { fileId: m[1], isPdf: /#pdf/i.test(u) || /\.pdf/i.test(u) };
-}
-
-// 追加フォームの画像・PDFプレビュー（サムネイル＋削除）
-function renderNewImgPreview() {
-  const wrap = document.getElementById('new-img-preview');
-  if (!wrap) return;
-  const urls = parseImageUrls(document.getElementById('new-img').value);
-  if (!urls.length) { wrap.innerHTML = ''; return; }
-  wrap.innerHTML = urls.slice(0,5).map((u, i) => {
-    const d = faqDriveInfo(u);
-    const thumb = d ? ('https://drive.google.com/thumbnail?id='+d.fileId+'&sz=w400') : u;
-    const badge = (d && d.isPdf) ? '<span style="position:absolute;top:2px;left:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">PDF</span>' : '';
-    return '<div style="position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f3f4f6">'
-      + '<img src="'+thumb.replace(/"/g,'&quot;')+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.opacity=.3">'
-      + badge
-      + '<button onclick="removeNewImg('+i+')" title="削除" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;line-height:1;cursor:pointer;padding:0">×</button>'
-      + '</div>';
-  }).join('');
-}
-function removeNewImg(i) {
-  const urls = parseImageUrls(document.getElementById('new-img').value);
-  urls.splice(i, 1);
-  document.getElementById('new-img').value = urls.join('\n');
-  renderNewImgPreview();
 }
 
 function addKB() {
@@ -920,7 +794,6 @@ function addKB() {
   document.getElementById('new-cat').value = '';
   document.getElementById('new-src').value = '';
   document.getElementById('new-img').value = '';
-  const _pv = document.getElementById('new-img-preview'); if (_pv) _pv.innerHTML = '';
   toggleAddForm();
   persistFaq();
   renderKB();
@@ -936,24 +809,10 @@ let faqDocs = [];
 
 function loadFaqDocs() {
   try { const s=localStorage.getItem(FAQ_DOCS_KEY); if(s) faqDocs=JSON.parse(s); } catch(e){ faqDocs=[]; }
-  // クラウドから最新を非同期取得（全端末共有）
-  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
-    cloudGet('FAQ資料').then(remote => {
-      if (Array.isArray(remote) && remote.length) {
-        faqDocs = remote;
-        try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
-        if (typeof renderDocs === 'function') renderDocs();
-      }
-    }).catch(() => {});
-  }
   return faqDocs;
 }
 function saveFaqDocs() {
   try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
-  // クラウドにも同期（全端末共有）
-  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
-    cloudReplaceAll('FAQ資料', faqDocs).catch(e => console.warn('FAQ資料クラウド同期失敗:', e));
-  }
 }
 function addDoc() {
   const title   = (document.getElementById('doc-title')?.value||'').trim();
@@ -1014,11 +873,26 @@ function renderDocs() {
 //  ・スタッフFAQ側は質問のたびに POST {action:'logFaq', entry:{q,a,answered,store,device,ts}}
 //    を送る（第3段階で実装）。同一端末ぶんは下の MiwaFaqLog.append でも記録できる。
 // ═══════════════════════════════════════════════
-const FAQ_LOG_KEY = 'miwa.faq.log.v1';
+const FAQ_LOG_KEY          = 'miwa.faq.log.v1';
+const FAQ_LOG_SEEN_KEY     = 'miwa.faq.log.seen.v1';
+const FAQ_LOG_NEEDLESS_KEY = 'miwa.faq.log.needless.v1';
 let faqLog = [];
-let faqLogFilter = 'all';     // all | answered | unanswered
+let faqLogFilter = 'unseen';  // unseen | all | answered | unanswered | needless
 let faqLogSource = 'local';   // local | gas
 let faqLogSearch = '';
+let _seenLogIds     = new Set();
+let _needlessLogIds = new Set();
+let kbFilter = 'all'; // all | approved | unapproved
+const PAGE_SIZE = 7;
+let _logPage = 0;
+let _uaPage  = 0;
+let _kbPage  = 0;
+
+function isAdmin() { return !!(window.MiwaAuth && window.MiwaAuth.isAdmin && window.MiwaAuth.isAdmin()); }
+function getActiveGasUrl() {
+  try { const u = localStorage.getItem('miwa_faq_ai_url'); if (u && u.trim()) return u.trim(); } catch(e) {}
+  return GAS_URL;
+}
 
 function loadLocalLog() {
   try { const s = localStorage.getItem(FAQ_LOG_KEY); const a = s ? JSON.parse(s) : []; return Array.isArray(a) ? a : []; }
@@ -1032,9 +906,9 @@ function logTime(ts) {
   return d.toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-function setFaqLogFilter(f) { faqLogFilter = f; renderFaqLog(); }
+function setFaqLogFilter(f) { faqLogFilter = f; _logPage = 0; renderFaqLog(); }
 
-function onFaqLogSearch(v) { faqLogSearch = (v || '').toLowerCase(); renderFaqLog(); }
+function onFaqLogSearch(v) { faqLogSearch = (v || '').toLowerCase(); _logPage = 0; renderFaqLog(); }
 
 function renderFaqLog() {
   const list = document.getElementById('faqlog-list');
@@ -1045,6 +919,11 @@ function renderFaqLog() {
     c.classList.toggle('active', c.dataset.f === faqLogFilter);
   });
 
+  // 未確認バッジ更新
+  const unseenAll = faqLog.filter(r => !r.answered && !_needlessLogIds.has(_logKey(r)) && !_seenLogIds.has(_logKey(r)));
+  const unsBadge = document.getElementById('faqlog-unseen-badge');
+  if (unsBadge) { unsBadge.textContent = unseenAll.length; unsBadge.style.display = unseenAll.length > 0 ? 'inline-flex' : 'none'; }
+
   // ソース表示
   const src = document.getElementById('faqlog-source');
   if (src) {
@@ -1054,8 +933,18 @@ function renderFaqLog() {
   }
 
   let rows = faqLog.slice();
-  if (faqLogFilter === 'answered') rows = rows.filter(r => r.answered);
-  else if (faqLogFilter === 'unanswered') rows = rows.filter(r => !r.answered);
+  if (faqLogFilter === 'unseen') {
+    rows = rows.filter(r => !r.answered && !_needlessLogIds.has(_logKey(r)) && !_seenLogIds.has(_logKey(r)));
+  } else if (faqLogFilter === 'answered') {
+    rows = rows.filter(r => r.answered && !_needlessLogIds.has(_logKey(r)));
+  } else if (faqLogFilter === 'unanswered') {
+    rows = rows.filter(r => !r.answered && !_needlessLogIds.has(_logKey(r)));
+  } else if (faqLogFilter === 'needless') {
+    rows = rows.filter(r => _needlessLogIds.has(_logKey(r)));
+  } else {
+    rows = rows.filter(r => !_needlessLogIds.has(_logKey(r)));
+  }
+
   if (faqLogSearch) {
     rows = rows.filter(r =>
       String(r.q || '').toLowerCase().includes(faqLogSearch) ||
@@ -1075,20 +964,43 @@ function renderFaqLog() {
   }
   if (rows.length === 0) { list.innerHTML = '<div class="kb-empty">該当する記録がありません</div>'; return; }
 
-  list.innerHTML = rows.map((r, i) => {
+  const totalLogPages = Math.ceil(rows.length / PAGE_SIZE);
+  if (_logPage >= totalLogPages) _logPage = Math.max(0, totalLogPages - 1);
+  const pagedRows = rows.slice(_logPage * PAGE_SIZE, (_logPage + 1) * PAGE_SIZE);
+
+  list.innerHTML = pagedRows.map((r, i) => {
     const ans = !!r.answered;
+    const faqIdx = faqLog.indexOf(r);
+    const key = _logKey(r);
+    const isNeedless = _needlessLogIds.has(key);
     const aPreview = escHtml(String(r.a || '').replace(/【.*?】/g, '').replace(/\n+/g, ' ').slice(0, 90));
     return `<div class="log-row ${ans ? '' : 'log-unanswered'}">
       <div class="log-row-top">
         <span class="log-status ${ans ? 'ok' : 'ng'}">${ans ? '回答済み' : '未回答'}</span>
         ${r.store ? `<span class="log-store">${escHtml(r.store)}</span>` : ''}
         <span class="log-time">${logTime(r.ts)}</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-sm" style="font-size:11px;padding:2px 8px;${isNeedless ? 'background:#fef3c7;color:#92400e;border-color:#fde68a' : 'background:#f3f4f6;color:#6b7280;border-color:#e5e7eb'}" onclick="toggleNeedlessLog(${faqIdx})">
+          ${isNeedless ? '↩ 不要解除' : 'タイプミス'}
+        </button>
       </div>
       <div class="log-q">${escHtml(r.q || '')}</div>
       ${r.a ? `<div class="log-a" onclick="this.classList.toggle('open')"><span class="log-a-label">AI回答</span> ${aPreview}${String(r.a||'').length > 90 ? '…' : ''}
         <div class="log-a-full">${mdToHtml(r.a)}</div></div>` : ''}
     </div>`;
-  }).join('');
+  }).join('') + renderPagination(_logPage, rows.length, totalLogPages, 'setFaqLogPage');
+
+  // 未確認タブ：2秒後に全件を既読化
+  if (faqLogFilter === 'unseen' && rows.length > 0) {
+    const snap = faqLogFilter;
+    setTimeout(() => {
+      if (faqLogFilter !== snap) return;
+      rows.forEach(r => _seenLogIds.add(_logKey(r)));
+      saveSeenLogIds();
+      const b = document.getElementById('faqlog-unseen-badge');
+      if (b) { b.textContent = '0'; b.style.display = 'none'; }
+    }, 2000);
+  }
 }
 
 async function refreshFaqLogRemote() {
@@ -1143,6 +1055,40 @@ window.MiwaFaqLog = {
   all() { return loadLocalLog(); }
 };
 
+// ─── ログ既読・不要管理 ─────────────────────────────────────
+function _logKey(r) { return String(r.ts||'') + '|' + String(r.q||'').slice(0,20); }
+
+function loadSeenLogIds() {
+  try { const s=localStorage.getItem(FAQ_LOG_SEEN_KEY); return new Set(s?JSON.parse(s):[]); } catch(e){return new Set();}
+}
+function saveSeenLogIds() {
+  try { localStorage.setItem(FAQ_LOG_SEEN_KEY, JSON.stringify([..._seenLogIds])); } catch(e){}
+}
+function loadNeedlessLogIds() {
+  try { const s=localStorage.getItem(FAQ_LOG_NEEDLESS_KEY); return new Set(s?JSON.parse(s):[]); } catch(e){return new Set();}
+}
+function saveNeedlessLogIds() {
+  try { localStorage.setItem(FAQ_LOG_NEEDLESS_KEY, JSON.stringify([..._needlessLogIds])); } catch(e){}
+}
+
+function toggleNeedlessLog(faqIdx) {
+  const r = faqLog[faqIdx];
+  if (!r) return;
+  const key = _logKey(r);
+  if (_needlessLogIds.has(key)) {
+    _needlessLogIds.delete(key);
+  } else {
+    _needlessLogIds.add(key);
+    // 不要にしたら未回答リストからも除外（#32）
+    unansweredList = unansweredList.filter(u => u.q !== r.q);
+    persistFaq();
+  }
+  saveNeedlessLogIds();
+  renderFaqLog();
+  renderUnanswered();
+  updateStats();
+}
+
 // ═══════════════════════════════════════════════
 //  統計
 // ═══════════════════════════════════════════════
@@ -1153,6 +1099,83 @@ function updateStats() {
   if (k) k.textContent = knowledgeBase.length;
   if (a) a.textContent = statsAnswered;
   if (u) u.textContent = unansweredList.filter(x => !x.answered).length;
+}
+
+// ═══════════════════════════════════════════════
+//  ページネーション
+// ═══════════════════════════════════════════════
+function renderPagination(page, total, totalPages, setFn) {
+  if (totalPages <= 1) return '';
+  const start = page * PAGE_SIZE + 1;
+  const end = Math.min((page + 1) * PAGE_SIZE, total);
+  return `<div class="faq-pagination">
+    <button class="btn btn-sm btn-outline" onclick="${setFn}(${page - 1})" ${page === 0 ? 'disabled' : ''}>&larr; 前へ</button>
+    <span class="faq-page-info">${start}〜${end} / 全${total}件</span>
+    <button class="btn btn-sm btn-outline" onclick="${setFn}(${page + 1})" ${page >= totalPages - 1 ? 'disabled' : ''}>次へ &rarr;</button>
+  </div>`;
+}
+function setFaqLogPage(n) { _logPage = n; renderFaqLog(); }
+function setUAPage(n)     { _uaPage  = n; renderUnanswered(); }
+function setKBPage(n)     { _kbPage  = n; renderKB(); }
+
+// ═══════════════════════════════════════════════
+//  AI設定（管理者専用）・全端末共有
+// ═══════════════════════════════════════════════
+async function _faqCloudFetch(sheet, payload) {
+  const url = window.CLOUD_API_URL;
+  if (!url) return null;
+  try {
+    if (payload) {
+      return await fetch(url, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      }).then(r => r.json());
+    } else {
+      return await fetch(url + '?sheet=' + encodeURIComponent(sheet) + '&t=' + Date.now(),
+        { redirect: 'follow' }).then(r => r.json());
+    }
+  } catch(e) { return null; }
+}
+
+async function loadAISettingsFromCloud() {
+  try {
+    const data = await _faqCloudFetch('FAQ設定', null);
+    const rows = Array.isArray(data) ? data : (data && data.rows || []);
+    if (rows.length > 0 && rows[0].ai_gas_url) {
+      try { localStorage.setItem('miwa_faq_ai_url', rows[0].ai_gas_url); } catch(e) {}
+      initAISettingsUI();
+    }
+  } catch(e) {}
+}
+
+function initAISettingsUI() {
+  const el = document.getElementById('ai-gas-url');
+  if (el) try { el.value = localStorage.getItem('miwa_faq_ai_url') || GAS_URL || ''; } catch(e) {}
+}
+
+async function saveAISettings() {
+  const url = (document.getElementById('ai-gas-url')?.value || '').trim();
+  try {
+    if (url) localStorage.setItem('miwa_faq_ai_url', url);
+    else localStorage.removeItem('miwa_faq_ai_url');
+  } catch(e) {}
+  let cloudOk = false;
+  try {
+    const res = await _faqCloudFetch('FAQ設定', {
+      sheet: 'FAQ設定', action: 'replaceAll',
+      rows: [{ ai_gas_url: url, updatedAt: new Date().toISOString() }]
+    });
+    cloudOk = !!(res && res.ok);
+  } catch(e) {}
+  const msg = document.getElementById('ai-settings-msg');
+  if (msg) {
+    msg.textContent = cloudOk
+      ? '✅ 保存し、全端末に共有しました'
+      : '✅ この端末に保存しました（スプレッドシート連携設定後に全端末共有）';
+    msg.style.display = 'block';
+    setTimeout(() => { if (msg) msg.style.display = 'none'; }, 3500);
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -1207,15 +1230,9 @@ function imagesHtml(items) {
   }
   if (urls.length === 0) return '';
   return `<div class="answer-images">${
-    urls.slice(0, 5).map(u => {
-      const d = faqDriveInfo(u);
-      const thumb = d ? ('https://drive.google.com/thumbnail?id='+d.fileId+'&sz=w1000') : u;
-      const open = d ? ('https://drive.google.com/file/d/'+d.fileId+'/view') : u;
-      const badge = (d && d.isPdf) ? '<span style="position:absolute;top:3px;left:3px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">PDF</span>' : '';
-      return `<span style="position:relative;display:inline-block">`
-        + `<img src="${escHtml(thumb)}" alt="参考資料" onclick="window.open('${escHtml(open)}','_blank')" onerror="this.style.opacity=.3">`
-        + badge + `</span>`;
-    }).join('')
+    urls.slice(0, 5).map(u =>
+      `<img src="${escHtml(u)}" alt="参考画像" onclick="window.open('${escHtml(u)}','_blank')" onerror="this.style.display='none'">`
+    ).join('')
   }</div>`;
 }
 
@@ -1303,9 +1320,11 @@ const FAQ_ADMIN_MARKUP = `
       <div id="faqlog-note" style="display:none;background:var(--warn-light);border:1px solid #fde68a;border-radius:8px;padding:9px 12px;font-size:12px;color:var(--warn);margin-bottom:10px"></div>
       <div class="log-toolbar">
         <div class="log-chips" id="faqlog-filters">
-          <button class="log-chip active" data-f="all" onclick="setFaqLogFilter('all')">すべて</button>
+          <button class="log-chip active" data-f="unseen" onclick="setFaqLogFilter('unseen')">未確認 <span id="faqlog-unseen-badge" class="badge" style="display:none;margin-left:3px;font-size:10px;vertical-align:middle">0</span></button>
+          <button class="log-chip" data-f="all" onclick="setFaqLogFilter('all')">すべて</button>
           <button class="log-chip" data-f="answered" onclick="setFaqLogFilter('answered')">回答済み</button>
           <button class="log-chip" data-f="unanswered" onclick="setFaqLogFilter('unanswered')">未回答</button>
+          <button class="log-chip" data-f="needless" onclick="setFaqLogFilter('needless')">不要</button>
         </div>
         <input class="form-input" id="faqlog-search" placeholder="🔍 質問・回答・拠点で検索" oninput="onFaqLogSearch(this.value)" style="flex:1;min-width:160px">
       </div>
@@ -1398,16 +1417,8 @@ const FAQ_ADMIN_MARKUP = `
           <input class="form-input" id="new-cat" placeholder="例：受付・素材確認・シミ抜き・料金">
           <label>出典メモ（任意）</label>
           <input class="form-input" id="new-src" placeholder="例：社内マニュアルVer.3">
-          <label>参考画像・PDF（任意・最大5件）</label>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-            <label class="btn btn-sm btn-outline" style="cursor:pointer;margin:0">
-              📎 ファイルを選んでアップロード
-              <input type="file" accept="image/*,application/pdf" style="display:none" onchange="uploadFaqFile(this)">
-            </label>
-            <span id="upload-status" style="display:none;font-size:12px;color:var(--text-sub)"></span>
-          </div>
-          <div id="new-img-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px"></div>
-          <textarea class="form-textarea" id="new-img" placeholder="https://... （直接URLや既存のGoogleドライブ共有リンクを貼ってもOK・改行かカンマ区切り）" style="min-height:48px" oninput="renderNewImgPreview()"></textarea>
+          <label>参考画像URL（任意・最大5枚・改行かカンマ区切り）</label>
+          <textarea class="form-textarea" id="new-img" placeholder="https://... （Googleドライブ共有リンク等）" style="min-height:48px"></textarea>
           <div class="form-row">
             <button class="btn btn-primary btn-sm" onclick="addKB()">登録する</button>
             <button class="btn btn-outline btn-sm" onclick="toggleAddForm()">キャンセル</button>
@@ -1415,6 +1426,13 @@ const FAQ_ADMIN_MARKUP = `
         </div>
       </div>
 
+      <div style="margin-bottom:10px">
+        <div class="log-chips" id="kb-filter-chips">
+          <button class="log-chip active" data-kf="all" onclick="setKbFilter('all')">すべて</button>
+          <button class="log-chip" data-kf="approved" onclick="setKbFilter('approved')">承認済み</button>
+          <button class="log-chip" data-kf="unapproved" onclick="setKbFilter('unapproved')">未承認</button>
+        </div>
+      </div>
       <div id="search-kb-wrap" style="margin-bottom:14px">
         <input class="form-input" id="kb-search" placeholder="🔍 知識を検索..." oninput="renderKB()" style="width:100%">
       </div>
@@ -1465,8 +1483,27 @@ const FAQ_ADMIN_MARKUP = `
     </div>
   </div>
 
-  <!-- クラウド設定 -->
-  <div class="card" style="margin-top:16px">
+  <!-- AI設定（管理者専用） -->
+  <div class="card faq-admin-only" style="margin-top:16px">
+    <div class="card-head">
+      <span>🤖</span>
+      <h2>AI設定</h2>
+      <span style="flex:1"></span>
+      <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 9px;border-radius:20px;font-weight:700">管理者専用</span>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;line-height:1.7">スタッフFAQ AIのGASプロキシURLを設定します。<br>保存すると<b>スプレッドシート連携経由で全端末に自動反映</b>されます。</p>
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px">AI GAS ウェブアプリ URL</label>
+        <input class="form-input" id="ai-gas-url" placeholder="https://script.google.com/macros/s/..." style="width:100%">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="saveAISettings()">💾 保存して全端末に共有</button>
+      <div id="ai-settings-msg" style="display:none;margin-top:10px;font-size:12px;padding:8px 12px;background:var(--surface2);border-radius:8px"></div>
+    </div>
+  </div>
+
+  <!-- クラウド設定（管理者専用） -->
+  <div class="card faq-admin-only" style="margin-top:16px">
     <div class="card-head">
       <span>☁️</span>
       <h2>Googleスプレッドシート連携</h2>
@@ -1507,6 +1544,8 @@ const FAQ_ADMIN_MARKUP = `
 function initFaqAdmin() {
   loadFaq();
   loadFaqDocs();
+  _seenLogIds = loadSeenLogIds();
+  _needlessLogIds = loadNeedlessLogIds();
   renderDocs();
   faqLog = loadLocalLog();
   faqLogSource = 'local';
@@ -1516,6 +1555,13 @@ function initFaqAdmin() {
   renderKB();
   renderUnanswered();
   renderFaqLog();
+  // 管理者専用セクションの表示制御
+  if (!isAdmin()) {
+    document.querySelectorAll('.faq-admin-only').forEach(el => { el.style.display = 'none'; });
+  } else {
+    initAISettingsUI();
+    loadAISettingsFromCloud();
+  }
   // クラウドUI初期化と同期
   setTimeout(() => { initCloudUI(); syncKBFromCloud(); }, 100);
 }

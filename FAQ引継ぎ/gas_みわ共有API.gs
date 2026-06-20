@@ -47,6 +47,7 @@ function doGet(e) {
     // クレーム・事故品フォームの取込（GETでも叩けるように）
     if (p.action === 'importClaimForm') { return reply_(importClaimForm(), p.callback); }
     if (p.action === 'importVehicleForm') { return reply_(importVehicleForm(), p.callback); }
+    if (p.action === 'importFeedbackForm') { return reply_(importFeedbackForm(), p.callback); }
     var sheetName = p.sheet || p.tab || '';
     if (!sheetName) { out = { error: true, message: 'sheet パラメータが必要です' }; }
     else { out = readSheet_(sheetName); }
@@ -81,6 +82,11 @@ function doPost(e) {
     // ─ クレーム・事故品フォームの取込（sheet 不要）─
     if (action === 'importClaimForm') { return reply_(importClaimForm(), null); }
     if (action === 'importVehicleForm') { return reply_(importVehicleForm(), null); }
+    if (action === 'importFeedbackForm') { return reply_(importFeedbackForm(), null); }
+
+    // ─ FAQログ（第3段階：全端末ログ共有）─
+    if (action === 'logFaq')    { return reply_(logFaq_(body.entry), null); }
+    if (action === 'getFaqLog') { return reply_(getFaqLog_(), null); }
 
     var sheetName = body.sheet || body.tab;
     if (!sheetName) throw new Error('sheet が必要です');
@@ -239,10 +245,12 @@ function importClaimForm() {
     var headers = values[0];
     var fieldByCol = headers.map(claimFieldOf_);
 
-    // 既存クレームの formTs を集めて重複防止
+    // 既存クレームの formTs を集めて重複防止（＋削除済みは再取込しない）
     var existing = readSheet_(CLAIM_SHEET_NAME);
     var seen = {};
     existing.forEach(function (r) { if (r.formTs) seen[String(r.formTs)] = 1; });
+    var delC = deletedFormTsSet_(CLAIM_SHEET_NAME);
+    Object.keys(delC).forEach(function (ft) { seen[ft] = 1; });
 
     var imported = 0, total = 0;
     for (var i = 1; i < values.length; i++) {
@@ -339,6 +347,11 @@ function importVehicleForm() {
     var seenF = {}, seenM = {};
     fuelExisting.forEach(function (r) { if (r.formTs) seenF[String(r.formTs)] = 1; });
     maintExisting.forEach(function (r) { if (r.formTs) seenM[String(r.formTs)] = 1; });
+    // 削除済みのトゥームストーンを参照（削除した投稿が再取込されるのを防ぐ）
+    var delF = deletedFormTsSet_(FUEL_SHEET_NAME);
+    var delM = deletedFormTsSet_(MAINT_SHEET_NAME);
+    Object.keys(delF).forEach(function (ft) { seenF[ft] = 1; });
+    Object.keys(delM).forEach(function (ft) { seenM[ft] = 1; });
 
     var fuelN = 0, maintN = 0, total = 0;
     for (var i = 1; i < values.length; i++) {
@@ -385,6 +398,132 @@ function setupVehicleFormTrigger() {
   ScriptApp.newTrigger('importVehicleForm').timeBased().everyMinutes(5).create();
   Logger.log('OK: 5分ごとに車両フォーム取込を実行します。');
   return 'OK: 5分ごとに車両フォーム取込を実行します。';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  フィードバック報告 — Googleフォーム回答の取込
+//  「フィードバック報告フォーム（回答）」スプレッドシートの各行を
+//  「フィードバック」シートへ1回だけ取り込む（タイムスタンプで重複防止）。
+//  取り込んだ後は、ダッシュボードのフィードバックページに表示され、
+//  編集・削除・写真表示ができる。
+//
+//  ■ 使い方
+//   ・手動 : フィードバックページの「フォームから取込」ボタン
+//            もしくは エディタで importFeedbackForm を ▶実行
+//   ・自動 : setupFeedbackFormTrigger を【1度だけ】▶実行 → 以後5分ごと
+//  ※ 別スプレッドシート（フォーム回答）を読むため、初回実行時に
+//    「権限を確認」が出たら許可してください（スプレッドシート＋ドライブ）。
+// ═══════════════════════════════════════════════════════════════════
+var FEEDBACK_FORM_SS_ID = '1Hp6-7Yww77YgZtKEYr-CKp6rWrhYDUGDSzih6ku97d0'; // フィードバック回答スプレッドシートID
+var FEEDBACK_FORM_SHEET = '';              // 空 = 先頭シート（「フォームの回答 1」）
+var FEEDBACK_SHEET_NAME = 'フィードバック';
+
+function feedbackFormSheet_() {
+  var ss = FEEDBACK_FORM_SS_ID ? SpreadsheetApp.openById(FEEDBACK_FORM_SS_ID) : book_();
+  if (FEEDBACK_FORM_SHEET) { var s = ss.getSheetByName(FEEDBACK_FORM_SHEET); if (s) return s; }
+  return ss.getSheets()[0];
+}
+
+// 見出し文（長い質問文）→ フィードバック項目キーを推定
+//  ※ 判定順が重要（「商品名」の前に「アイテム」を先に判定 等）
+function feedbackFieldOf_(header) {
+  var h = String(header || '');
+  if (/タイムスタンプ|timestamp/i.test(h)) return '_ts';
+  if (/報告日|日付/.test(h))               return 'reportDate';
+  if (/工場/.test(h))                      return 'factory';
+  if (/店舗|拠点/.test(h))                 return 'store';
+  if (/アイテム/.test(h))                  return 'item';        // 「対象商品のアイテム」
+  if (/種類|区分/.test(h))                 return 'type';
+  if (/写真|添付|画像|ファイル/.test(h))    return '_photo';
+  if (/原因/.test(h))                      return 'cause';
+  if (/改善|対策/.test(h))                 return 'improvement';
+  if (/内容|詳細|状況/.test(h))            return 'content';
+  if (/タグ/.test(h))                      return 'tag';
+  if (/商品名/.test(h))                    return 'itemOther';   // 「その他を選んだ場合の商品名」
+  return null;
+}
+
+// Drive の共有URL/ID（複数可）→ 先頭の fileId（共有も付与）
+function feedbackExtractFileId_(cellValue) {
+  var s = String(cellValue || '').trim();
+  if (!s) return '';
+  var ids = [];
+  s.split(/[\s,、]+/).forEach(function (p) {
+    var m = p.match(/[?&]id=([-\w]{20,})/) || p.match(/\/d\/([-\w]{20,})/) || p.match(/^([-\w]{25,})$/);
+    if (m && ids.indexOf(m[1]) < 0) ids.push(m[1]);
+  });
+  if (!ids.length) return '';
+  try {
+    var f = DriveApp.getFileById(ids[0]);
+    try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+  } catch (e) {}
+  return ids[0];
+}
+
+// 回答シート → 「フィードバック」シートへ取込（重複は formTs でスキップ）
+function importFeedbackForm() {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch (e) { return { ok: false, message: '混雑しています。少し待って再実行してください。' }; }
+  try {
+    var fsh = feedbackFormSheet_();
+    var values = fsh.getDataRange().getValues();
+    if (values.length < 2) return { ok: true, imported: 0, total: 0 };
+    var headers = values[0];
+    var fieldByCol = headers.map(feedbackFieldOf_);
+
+    // 既存フィードバックの formTs を集めて重複防止（＋削除済みは再取込しない）
+    var existing = readSheet_(FEEDBACK_SHEET_NAME);
+    var seen = {};
+    existing.forEach(function (r) { if (r.formTs) seen[String(r.formTs)] = 1; });
+    var delF = deletedFormTsSet_(FEEDBACK_SHEET_NAME);
+    Object.keys(delF).forEach(function (ft) { seen[ft] = 1; });
+
+    var imported = 0, total = 0;
+    for (var i = 1; i < values.length; i++) {
+      var row = values[i];
+      if (row.every(function (c) { return c === '' || c === null; })) continue;
+      total++;
+      var rec = {
+        reportDate: '', factory: '', store: '', item: '', type: '',
+        content: '', cause: '', improvement: '', fileId: '', tag: '',
+      };
+      var ts = '', itemOther = '';
+      for (var c = 0; c < headers.length; c++) {
+        var key = fieldByCol[c], val = row[c];
+        if (!key) continue;
+        if (key === '_ts') ts = claimToIso_(val);
+        else if (key === '_photo') rec.fileId = feedbackExtractFileId_(val);
+        else if (key === 'reportDate') rec.reportDate = claimDateOnly_(val);
+        else if (key === 'itemOther') itemOther = (val === '' || val == null) ? '' : String(val).trim();
+        else rec[key] = (val === '' || val == null) ? '' : String(val).trim();
+      }
+      if (!ts) ts = claimToIso_(new Date());
+      if (seen[ts]) continue;                 // 取込済み
+      if (!rec.reportDate) rec.reportDate = claimDateOnly_(ts);
+      if ((!rec.item || /その他/.test(rec.item)) && itemOther) rec.item = itemOther;
+      if (!rec.type) rec.type = 'その他';
+      rec.formTs = ts;                         // 重複防止キー
+      rec.id = 'FB' + new Date(ts).getTime() + Math.floor(Math.random() * 100);
+      rec.ts = ts;
+      addRow_(FEEDBACK_SHEET_NAME, rec);
+      seen[ts] = 1;
+      imported++;
+    }
+    return { ok: true, imported: imported, total: total };
+  } catch (err) {
+    return { ok: false, message: String(err && err.message || err) };
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
+}
+
+function setupFeedbackFormTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'importFeedbackForm') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('importFeedbackForm').timeBased().everyMinutes(5).create();
+  Logger.log('OK: 5分ごとにフィードバックフォーム取込を実行します。');
+  return 'OK: 5分ごとにフィードバックフォーム取込を実行します。';
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -534,6 +673,53 @@ function removeUser_(idToken, email) {
   return { ok: false, message: '対象が見つかりません。' };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  FAQログ（第3段階：全端末ログ共有）
+//  スタッフFAQで質問のたびに logFaq_ でシート「FAQログ」へ追記。
+//  管理画面の「🔄 全端末から取得」は getFaqLog_ で新しい順に返す。
+//  認証なし：スタッフFAQは非ログインのため idToken 不要。
+// ═══════════════════════════════════════════════════════════════════
+var FAQ_LOG_SHEET = 'FAQログ';
+
+function logFaq_(entry) {
+  if (!entry) return { error: true, message: 'entry が必要です' };
+  var row = {
+    ts:       String(entry.ts  || new Date().toISOString()),
+    q:        String(entry.q   || ''),
+    a:        String(entry.a   || '').slice(0, 2000),
+    answered: (entry.answered === true || entry.answered === 'true') ? 'true' : 'false',
+    store:    String(entry.store  || ''),
+    device:   String(entry.device || ''),
+  };
+  try {
+    return addRow_(FAQ_LOG_SHEET, row);
+  } catch(e) {
+    return { error: true, message: String(e && e.message || e) };
+  }
+}
+
+function getFaqLog_() {
+  try {
+    var rows = readSheet_(FAQ_LOG_SHEET);
+    rows.sort(function(a, b) {
+      return String(b.ts || '').localeCompare(String(a.ts || ''));
+    });
+    var logs = rows.map(function(r) {
+      return {
+        q:        String(r.q  || ''),
+        a:        String(r.a  || ''),
+        answered: r.answered === 'true' || r.answered === true,
+        store:    String(r.store  || ''),
+        device:   String(r.device || ''),
+        ts:       String(r.ts || ''),
+      };
+    });
+    return { ok: true, logs: logs };
+  } catch(e) {
+    return { error: true, message: String(e && e.message || e) };
+  }
+}
+
 // ─── 応答ヘルパ（JSON / JSONP） ──────────────────────────────────────
 function reply_(obj, callback) {
   var json = JSON.stringify(obj);
@@ -649,13 +835,43 @@ function updateRow_(name, id, row) {
   return { ok: true, id: id };
 }
 
+// ─── 削除トゥームストーン（フォーム再取込での復活防止） ───────────────
+//  フォーム取込で作られた行（formTs を持つ）を削除したら、その formTs を
+//  記録しておく。次回の取込で「すでに削除済み」として再取込をスキップする。
+var DELETED_LOG_SHEET = '_削除ログ';   // 列: sheet, formTs, deletedAt
+
+function recordDeletedFormTs_(sheetName, formTs) {
+  if (!formTs) return;
+  var ss = book_();
+  var sh = ss.getSheetByName(DELETED_LOG_SHEET);
+  if (!sh) { sh = ss.insertSheet(DELETED_LOG_SHEET); sh.appendRow(['sheet', 'formTs', 'deletedAt']); }
+  sh.appendRow([String(sheetName || ''), String(formTs), new Date().toISOString()]);
+}
+
+function deletedFormTsSet_(sheetName) {
+  var set = {};
+  var ss = book_();
+  var sh = ss.getSheetByName(DELETED_LOG_SHEET);
+  if (!sh) return set;
+  var values = sh.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    var s = String(values[i][0] || ''); var ft = String(values[i][1] || '');
+    if (ft && (s === sheetName || s === '')) set[ft] = 1;
+  }
+  return set;
+}
+
 // ─── 削除 ──────────────────────────────────────────────────────────
 function deleteRow_(name, id) {
   if (id == null || id === '') throw new Error('delete には id が必要です');
   var sh = getOrCreateSheet_(name);
   var info = findRow_(sh, id);
   if (!info) return { ok: true, deleted: 0 };
+  // formTs を控えてトゥームストーン登録（フォーム再取込での復活を防ぐ）
+  var ftCol = info.headers.indexOf('formTs');
+  var formTs = ftCol >= 0 ? info.values[ftCol] : '';
   sh.deleteRow(info.rowIndex);
+  if (formTs) recordDeletedFormTs_(name, formTs);
   return { ok: true, deleted: 1 };
 }
 
