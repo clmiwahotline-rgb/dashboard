@@ -22,6 +22,9 @@ const mfaqGetKbGas = () => {
   return cfg.gasUrl || MFAQ_KB_GAS;
 };
 const mfaqGetToken = () => mfaqGetCfg().token || "";
+const mfaqGetSuppressed = () => {
+  try { const s = localStorage.getItem("miwa.faq.ua.suppressed.v1"); return s ? new Set(JSON.parse(s)) : new Set(); } catch(e) { return new Set(); }
+};
 
 // ── データフック ────────────────────────────────────
 const useMFaqData = () => {
@@ -50,8 +53,11 @@ const useMFaqData = () => {
         fetch(url + "?action=get_kb").then((r) => r.json()),
         fetch(url + "?action=get_ua").then((r) => r.json()),
       ]);
+      const suppressed = mfaqGetSuppressed();
       const kb = Array.isArray(kbData) ? kbData : data.knowledgeBase;
-      const ua = Array.isArray(uaData) ? uaData.map((i) => ({ ...i, answered: i.status === "回答済み" })) : data.unansweredList;
+      const ua = Array.isArray(uaData)
+        ? uaData.filter(i => !suppressed.has((i.q || "").trim())).map((i) => ({ ...i, answered: i.status === "回答済み" }))
+        : data.unansweredList;
       const next = { knowledgeBase: kb, unansweredList: ua, statsAnswered: data.statsAnswered };
       setData(next);
       try { localStorage.setItem(MFAQ_LS_KEY, JSON.stringify({ ...next, nextId: 100 })); } catch (e) {}
@@ -67,7 +73,7 @@ const useMFaqData = () => {
 };
 
 // ── 未回答カード（回答入力付き） ─────────────────────
-const MFaqUnansweredCard = ({ item, gasUrl, onAnswered }) => {
+const MFaqUnansweredCard = ({ item, gasUrl, onAnswered, onDelete }) => {
   const [open, setOpen] = React.useState(false);
   const [ans, setAns] = React.useState("");
   const [cat, setCat] = React.useState("");
@@ -99,15 +105,27 @@ const MFaqUnansweredCard = ({ item, gasUrl, onAnswered }) => {
     } finally { setSaving(false); }
   };
 
+  const handleDelete = () => {
+    if (!window.confirm("この質問を未回答リストから削除しますか？")) return;
+    try {
+      const key = "miwa.faq.ua.suppressed.v1";
+      const set = new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+      set.add((item.q || item.question || "").trim());
+      localStorage.setItem(key, JSON.stringify([...set]));
+    } catch(e) {}
+    onDelete && onDelete(item.id);
+  };
+
   return (
-    <div style={{ background: "var(--card)", borderRadius: 14, marginBottom: 10, overflow: "hidden", border: "1px solid var(--line)", boxShadow: "0 1px 4px rgba(40,55,80,.07)" }}>
-      <div style={{ padding: "12px 14px 10px", cursor: "pointer" }} onClick={() => setOpen(o => !o)}>
+    <div style={{ background: "var(--card)", borderRadius: 14, marginBottom: 10, border: "1px solid var(--line)", boxShadow: "0 1px 4px rgba(40,55,80,.07)" }}>
+      <div style={{ padding: "12px 14px 10px" }}>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
           <span style={{ background: "#fef2f2", color: "#c5221f", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 20, flexShrink: 0, marginTop: 2 }}>未回答</span>
           {date && <span style={{ fontSize: 11, color: "var(--text-sub)", flexShrink: 0, marginTop: 3 }}>{date}</span>}
+          <button onClick={handleDelete} style={{ marginLeft: "auto", background: "none", border: "none", fontSize: 16, cursor: "pointer", padding: "0 4px", color: "#c5221f" }}>🗑</button>
         </div>
-        <div style={{ marginTop: 6, fontSize: 14.5, fontWeight: 600, lineHeight: 1.5, color: "var(--text)" }}>{item.question || item.q || "（質問なし）"}</div>
-        <div style={{ marginTop: 6, display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ marginTop: 6, fontSize: 14.5, fontWeight: 600, lineHeight: 1.5, color: "var(--text)", cursor: "pointer" }} onClick={() => setOpen(o => !o)}>{item.question || item.q || "（質問なし）"}</div>
+        <div style={{ marginTop: 6, display: "flex", justifyContent: "flex-end", cursor: "pointer" }} onClick={() => setOpen(o => !o)}>
           <span style={{ fontSize: 12, color: "var(--brand)", fontWeight: 700 }}>{open ? "▲ 閉じる" : "✏️ 回答する"}</span>
         </div>
       </div>
@@ -146,21 +164,23 @@ const MFaqUnansweredCard = ({ item, gasUrl, onAnswered }) => {
 // ── 質問ログカード ──────────────────────────────────
 const MFaqLogCard = ({ item }) => {
   const answered = item.answered || item.status === "回答済み";
-  const date = (item.askedAt || item.addedAt || "").slice(0, 10);
+  const date = (item.ts || item.askedAt || item.addedAt || "").slice(0, 10);
+  const ansText = item.a || item.answer || "";
   const [open, setOpen] = React.useState(false);
   return (
     <div style={{ background: "var(--card)", borderRadius: 14, marginBottom: 8, border: "1px solid var(--line)", overflow: "hidden" }}>
-      <div style={{ padding: "11px 14px", cursor: item.answer ? "pointer" : "default" }} onClick={() => item.answer && setOpen(o => !o)}>
+      <div style={{ padding: "11px 14px", cursor: ansText ? "pointer" : "default" }} onClick={() => ansText && setOpen(o => !o)}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5 }}>
           <span style={{ background: answered ? "#e6f4ea" : "#fef2f2", color: answered ? "#1e8e3e" : "#c5221f", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 20 }}>{answered ? "回答済み" : "未回答"}</span>
+          {item.store && <span style={{ fontSize: 11, color: "var(--text-sub)", background: "#f1f5f9", padding: "1px 6px", borderRadius: 10 }}>{item.store}</span>}
           {date && <span style={{ fontSize: 11, color: "var(--text-sub)" }}>{date}</span>}
-          {item.answer && <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--brand)" }}>{open ? "▲" : "▼"}</span>}
+          {ansText && <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--brand)" }}>{open ? "▲" : "▼"}</span>}
         </div>
-        <div style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text)" }}>{item.question || item.q || "（質問なし）"}</div>
+        <div style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text)" }}>{item.q || item.question || "（質問なし）"}</div>
       </div>
-      {open && item.answer && (
+      {open && ansText && (
         <div style={{ padding: "8px 14px 12px", borderTop: "1px solid var(--line)", fontSize: 13, color: "var(--text-sub)", lineHeight: 1.6 }}>
-          {item.answer}
+          {ansText}
         </div>
       )}
     </div>
@@ -168,8 +188,25 @@ const MFaqLogCard = ({ item }) => {
 };
 
 // ── 知識ベースカード ────────────────────────────────
-const MFaqKbCard = ({ item }) => {
+const MFaqKbCard = ({ item, gasUrl, onApprove }) => {
   const [open, setOpen] = React.useState(false);
+  const [approving, setApproving] = React.useState(false);
+
+  const handleApprove = async () => {
+    const token = mfaqGetToken();
+    if (!token) { alert("トークン未設定（PC版FAQ管理→クラウド設定）"); return; }
+    const newApproved = !item.approved;
+    setApproving(true);
+    try {
+      await fetch(gasUrl, {
+        method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "update_kb", token, item: { ...item, approved: newApproved, approvedAt: newApproved ? new Date().toISOString().slice(0,10) : "" } })
+      }).then(r => r.json());
+      onApprove && onApprove(item.id, newApproved);
+    } catch(e) { alert("エラー: " + e.message); }
+    finally { setApproving(false); }
+  };
+
   return (
     <div style={{ background: "var(--card)", borderRadius: 14, marginBottom: 8, border: "1px solid var(--line)", overflow: "hidden" }}>
       <div style={{ padding: "11px 14px", cursor: "pointer" }} onClick={() => setOpen(o => !o)}>
@@ -189,6 +226,11 @@ const MFaqKbCard = ({ item }) => {
         <div style={{ padding: "8px 14px 12px", borderTop: "1px solid var(--line)" }}>
           <div style={{ fontSize: 13.5, color: "var(--text)", lineHeight: 1.7 }}>{item.a}</div>
           {item.source && <div style={{ fontSize: 11, color: "var(--text-sub)", marginTop: 6 }}>出典: {item.source}</div>}
+          <div style={{ marginTop: 12 }}>
+            <button onClick={handleApprove} disabled={approving} style={{ padding: "8px 16px", borderRadius: 10, border: item.approved ? "1.5px solid #a7f3d0" : "1.5px solid var(--line)", background: item.approved ? "#dcfce7" : "#f3f4f6", color: item.approved ? "#166534" : "var(--text-sub)", fontSize: 13, fontWeight: 700, cursor: approving ? "default" : "pointer" }}>
+              {approving ? "処理中…" : item.approved ? "✅ 承認済み（取消）" : "　承認する　"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -201,11 +243,36 @@ const MFaq = ({ registerHeader, registerFab }) => {
   const [tab, setTab] = React.useState("unanswered");
   const [kbSearch, setKbSearch] = React.useState("");
   const [kbCat, setKbCat] = React.useState("");
+  const [faqLog, setFaqLog] = React.useState([]);
+  const [logLoading, setLogLoading] = React.useState(false);
+
+  const fetchLog = React.useCallback(async () => {
+    if (!kbGasUrl) return;
+    setLogLoading(true);
+    try {
+      const res = await fetch(kbGasUrl, {
+        method: "POST", redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "getFaqLog" })
+      }).then(r => r.json());
+      if (res && res.ok && Array.isArray(res.logs)) {
+        setFaqLog(res.logs);
+        try { localStorage.setItem("miwa.faq.log.cache.v1", JSON.stringify(res.logs)); } catch(e) {}
+      } else {
+        try { const c = localStorage.getItem("miwa.faq.log.cache.v1"); if (c) setFaqLog(JSON.parse(c)); } catch(e) {}
+      }
+    } catch(e) {
+      try { const c = localStorage.getItem("miwa.faq.log.cache.v1"); if (c) setFaqLog(JSON.parse(c)); } catch(e2) {}
+    } finally { setLogLoading(false); }
+  }, [kbGasUrl]);
+
+  React.useEffect(() => { fetchLog(); }, [kbGasUrl]);
+  React.useEffect(() => { if (tab === "log") fetchLog(); }, [tab]);
 
   const kb  = (data.knowledgeBase  || []).filter(k => k.enabled !== false);
   const ua  = data.unansweredList || [];
   const unanswered = ua.filter((i) => !i.answered && i.status !== "回答済み");
-  const allQ = [...ua].sort((a, b) => (b.askedAt || "").localeCompare(a.askedAt || ""));
+  const logRows = [...faqLog].sort((a, b) => (b.ts || "").localeCompare(a.ts || ""));
 
   // 知識ベース絞り込み
   const cats = [...new Set(kb.map(k => k.category).filter(Boolean))];
@@ -225,12 +292,13 @@ const MFaq = ({ registerHeader, registerFab }) => {
   }, [syncState]);
 
   const handleAnswered = (id, ans) => {
-    setData(prev => ({
-      ...prev,
-      unansweredList: (prev.unansweredList || []).map(i =>
-        i.id === id ? { ...i, answered: true, status: "回答済み", answer: ans } : i
-      )
-    }));
+    setData(prev => ({ ...prev, unansweredList: (prev.unansweredList || []).map(i => i.id === id ? { ...i, answered: true, status: "回答済み", answer: ans } : i) }));
+  };
+  const handleDelete = (id) => {
+    setData(prev => ({ ...prev, unansweredList: (prev.unansweredList || []).filter(i => i.id !== id) }));
+  };
+  const handleApprove = (id, approved) => {
+    setData(prev => ({ ...prev, knowledgeBase: (prev.knowledgeBase || []).map(k => k.id === id ? { ...k, approved, approvedAt: approved ? new Date().toISOString().slice(0,10) : "" } : k) }));
   };
 
   return (
@@ -279,15 +347,17 @@ const MFaq = ({ registerHeader, registerFab }) => {
         unanswered.length === 0
           ? <div className="m-empty" style={{ marginTop: 24 }}>未回答の質問はありません 🎉</div>
           : unanswered.map((item) => (
-              <MFaqUnansweredCard key={item.id} item={item} gasUrl={kbGasUrl} onAnswered={handleAnswered} />
+              <MFaqUnansweredCard key={item.id} item={item} gasUrl={kbGasUrl} onAnswered={handleAnswered} onDelete={handleDelete} />
             ))
       )}
 
       {/* 質問ログタブ */}
       {tab === "log" && (
-        allQ.length === 0
-          ? <div className="m-empty" style={{ marginTop: 24 }}>質問ログがありません</div>
-          : allQ.map((item, i) => <MFaqLogCard key={i} item={item} />)
+        logLoading
+          ? <div className="m-empty" style={{ marginTop: 24 }}>🔄 ログを取得中…</div>
+          : logRows.length === 0
+            ? <div className="m-empty" style={{ marginTop: 24 }}>質問ログがありません</div>
+            : logRows.map((item, i) => <MFaqLogCard key={i} item={item} />)
       )}
 
       {/* 知識ベースタブ */}
@@ -317,7 +387,7 @@ const MFaq = ({ registerHeader, registerFab }) => {
           </div>
           {kbFiltered.length === 0
             ? <div className="m-empty" style={{ marginTop: 16 }}>{kbSearch || kbCat ? "一致する知識がありません" : "知識ベースが空です"}</div>
-            : kbFiltered.map((item) => <MFaqKbCard key={item.id} item={item} />)
+            : kbFiltered.map((item) => <MFaqKbCard key={item.id} item={item} gasUrl={kbGasUrl} onApprove={handleApprove} />)
           }
         </div>
       )}
