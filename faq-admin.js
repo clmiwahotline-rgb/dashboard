@@ -1144,6 +1144,9 @@ function autoAddUnansweredToList(logs) {
     if (r.answered) return;
     const q = (r.q || '').trim();
     if (!q) return;
+    // 不要・アーカイブ済みはスキップ（リロード後に戻るバグの主因）
+    if (_needlessLogIds.has(logRowId(r))) return;
+    if (_archivedLogIds.has(logRowId(r))) return;
     const already = unansweredList.some(u => u.q.trim() === q);
     if (!already) {
       unansweredList.unshift({ id: nextId++, q, addedAt: r.ts ? r.ts.slice(0,10) : nowStr(), status: '未回答', answered: false });
@@ -1705,7 +1708,7 @@ const FAQ_ADMIN_MARKUP = `
 // ═══════════════════════════════════════════════
 //  初期化
 // ═══════════════════════════════════════════════
-function saveAiGasToken() {
+async function saveAiGasToken() {
   const url = (document.getElementById('ai-gas-url')?.value || '').trim();
   const val = (document.getElementById('ai-gas-token')?.value || '').trim();
   try {
@@ -1713,9 +1716,26 @@ function saveAiGasToken() {
     else localStorage.removeItem('miwa_faq_ai_url');
     localStorage.setItem('miwa_faq_ai_token', val);
   } catch(e) {}
-  alert(val ? 'AI設定を保存しました。一括取り込みをお試しください。' : 'トークンをクリアしました。');
+  // クラウドに保存（全端末共有）
+  let cloudOk = false;
+  try {
+    if (window.CLOUD_API_URL) {
+      const res = await fetch(window.CLOUD_API_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          sheet: 'FAQ設定', action: 'replaceAll',
+          rows: [{ ai_gas_url: url, ai_gas_token: val, updatedAt: new Date().toISOString() }]
+        })
+      }).then(r => r.json());
+      cloudOk = !!(res && res.ok);
+    }
+  } catch(e) {}
+  alert(cloudOk
+    ? 'AI設定を全端末に共有しました。'
+    : (val ? 'AI設定を保存しました（スプレッドシート連携設定後に全端末共有）。' : 'トークンをクリアしました。'));
 }
-function initAiGasTokenUI() {
+async function initAiGasTokenUI() {
   const urlEl = document.getElementById('ai-gas-url');
   const tokEl = document.getElementById('ai-gas-token');
   try {
@@ -1723,6 +1743,25 @@ function initAiGasTokenUI() {
     const t = localStorage.getItem('miwa_faq_ai_token');
     if (urlEl && u) urlEl.value = u;
     if (tokEl && t) tokEl.value = t;
+  } catch(e) {}
+  // クラウドから最新設定を取得して上書き
+  try {
+    if (window.CLOUD_API_URL) {
+      const data = await fetch(window.CLOUD_API_URL + '?sheet=FAQ設定&t=' + Date.now(),
+        { redirect: 'follow' }).then(r => r.json());
+      const rows = Array.isArray(data) ? data : (data && data.rows || []);
+      if (rows.length > 0) {
+        const s = rows[0];
+        if (s.ai_gas_url) {
+          try { localStorage.setItem('miwa_faq_ai_url', s.ai_gas_url); } catch(e) {}
+          if (urlEl) urlEl.value = s.ai_gas_url;
+        }
+        if (s.ai_gas_token) {
+          try { localStorage.setItem('miwa_faq_ai_token', s.ai_gas_token); } catch(e) {}
+          if (tokEl) tokEl.value = s.ai_gas_token;
+        }
+      }
+    }
   } catch(e) {}
 }
 
