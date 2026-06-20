@@ -153,9 +153,11 @@ async function syncKBFromCloud() {
       _cldPost('bulk_replace_kb', { items: knowledgeBase });
     }
     if (Array.isArray(uaData)) {
-      unansweredList = uaData.map(item => ({
-        ...item, answered: item.status === '回答済み',
-      }));
+      unansweredList = uaData
+        .filter(item => !_suppressedUAQuestions.has((item.q || '').trim()))
+        .map(item => ({
+          ...item, answered: item.status === '回答済み',
+        }));
     }
     persistFaq();
     _cldSt = 'ok'; _cldBadge();
@@ -355,13 +357,19 @@ function deleteUA(id) {
   if (!confirm('この質問を未回答リストから削除しますか？')) return;
   const item = unansweredList.find(u => u.id === id);
   if (item) {
-    // 対応するfaqLogエントリも不要マーク（リロード後に再追加されるのを防ぐ）
+    const q = (item.q || '').trim();
+    // 質問テキストで永続抑制（ts不一致でも再追加されない）
+    _suppressedUAQuestions.add(q);
+    saveSuppressedUAQuestions();
+    // 対応するfaqLogエントリも不要マーク
     faqLog.forEach(r => {
-      if ((r.q || '').trim() === (item.q || '').trim() && !r.answered) {
+      if ((r.q || '').trim() === q && !r.answered) {
         _needlessLogIds.add(logRowId(r));
       }
     });
     saveNeedlessLogIds();
+    // クラウドからも削除（次回同期時に戻らないように）
+    _cldPost('delete_ua', { id: item.id, q: q });
   }
   unansweredList = unansweredList.filter(u => u.id !== id);
   persistFaq(); renderUnanswered(); renderFaqLog(); updateStats();
@@ -1108,6 +1116,16 @@ function saveArchivedLogIds() {
   try { localStorage.setItem(FAQ_LOG_ARCHIVE_KEY, JSON.stringify([..._archivedLogIds])); } catch(e) {}
 }
 function logRowId(r) { return String(r.ts || '') + '_' + String(r.q || '').slice(0, 20); }
+
+// ─── 未回答リストの永続抑制（削除した質問を再追加しない） ───
+const FAQ_UA_SUPPRESSED_KEY = 'miwa.faq.ua.suppressed.v1';
+let _suppressedUAQuestions = new Set();
+function loadSuppressedUAQuestions() {
+  try { const s = localStorage.getItem(FAQ_UA_SUPPRESSED_KEY); if (s) _suppressedUAQuestions = new Set(JSON.parse(s)); } catch(e) {}
+}
+function saveSuppressedUAQuestions() {
+  try { localStorage.setItem(FAQ_UA_SUPPRESSED_KEY, JSON.stringify([..._suppressedUAQuestions])); } catch(e) {}
+}
 function toggleArchiveLog(rowId) {
   if (_archivedLogIds.has(rowId)) _archivedLogIds.delete(rowId);
   else _archivedLogIds.add(rowId);
@@ -1159,6 +1177,7 @@ function autoAddUnansweredToList(logs) {
     // 不要・アーカイブ済みはスキップ（リロード後に戻るバグの主因）
     if (_needlessLogIds.has(logRowId(r))) return;
     if (_archivedLogIds.has(logRowId(r))) return;
+    if (_suppressedUAQuestions.has(q)) return; // 手動削除された質問は再追加しない
     const already = unansweredList.some(u => u.q.trim() === q);
     if (!already) {
       unansweredList.unshift({ id: nextId++, q, addedAt: r.ts ? r.ts.slice(0,10) : nowStr(), status: '未回答', answered: false });
@@ -1792,6 +1811,7 @@ function initFaqAdmin() {
   loadArchivedLogIds();
   loadNeedlessLogIds();
   loadSeenLogIds();
+  loadSuppressedUAQuestions();
   // キャッシュからログを先に表示（初回読み込み時に白画にならないよう）
   const _cachedLog = localStorage.getItem('miwa.faq.log.cache.v1');
   if (_cachedLog) { try { faqLog = JSON.parse(_cachedLog); faqLogSource = 'local'; } catch(e) {} }
