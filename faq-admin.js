@@ -353,8 +353,18 @@ function approveAnswer(id) {
 
 function deleteUA(id) {
   if (!confirm('この質問を未回答リストから削除しますか？')) return;
+  const item = unansweredList.find(u => u.id === id);
+  if (item) {
+    // 対応するfaqLogエントリも不要マーク（リロード後に再追加されるのを防ぐ）
+    faqLog.forEach(r => {
+      if ((r.q || '').trim() === (item.q || '').trim() && !r.answered) {
+        _needlessLogIds.add(logRowId(r));
+      }
+    });
+    saveNeedlessLogIds();
+  }
   unansweredList = unansweredList.filter(u => u.id !== id);
-  persistFaq(); renderUnanswered(); updateStats();
+  persistFaq(); renderUnanswered(); renderFaqLog(); updateStats();
 }
 
 // 未回答を手動で1件追加（管理画面の手入力用）
