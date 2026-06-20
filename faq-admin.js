@@ -293,7 +293,9 @@ function renderUnanswered() {
         ${!item.answered ? `
           <button class="btn btn-sm btn-success" onclick="toggleUAForm(${item.id})">回答して知識化</button>
           <button class="btn btn-sm btn-outline" onclick="deleteUA(${item.id})" style="color:#dc2626;border-color:#fecaca;margin-left:4px">🗑 削除</button>
-        ` : ''}
+        ` : `
+          <button class="btn btn-sm btn-outline" onclick="deleteUA(${item.id})" style="color:#dc2626;border-color:#fecaca">🗑 削除</button>
+        `}
       </div>
       <div class="ua-answer-form" id="ua-form-${item.id}">
         <div id="ua-drop-${item.id}"
