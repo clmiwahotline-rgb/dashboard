@@ -283,8 +283,11 @@ const MFaq = ({ registerHeader, registerFab }) => {
     return matchCat && matchSearch;
   });
 
-  React.useEffect(() => {
-    const sub = syncState === "ok" ? "FAQシステム同期済み"
+  const handleRefresh = React.useCallback(async () => {
+    await Promise.all([syncFaq(), fetchLog()]);
+  }, [syncFaq, fetchLog]);
+
+  React.useEffect(() => { === "ok" ? "FAQシステム同期済み"
       : syncState === "loading" ? "🔄 同期中…"
       : syncState === "error" ? "⚠ 接続エラー" : "";
     registerHeader && registerHeader({ title: "FAQ管理", sub });
@@ -329,16 +332,22 @@ const MFaq = ({ registerHeader, registerFab }) => {
         </div>
       </div>
 
-      {/* タブ */}
-      <div className="m-chips" style={{ marginBottom: 12 }}>
-        <button className={`m-chip ${tab === "unanswered" ? "active" : ""}`} onClick={() => setTab("unanswered")}>
-          未回答{unanswered.length > 0 && <span className="m-pr-tabn">{unanswered.length}</span>}
-        </button>
-        <button className={`m-chip ${tab === "log" ? "active" : ""}`} onClick={() => setTab("log")}>
-          質問ログ
-        </button>
-        <button className={`m-chip ${tab === "kb" ? "active" : ""}`} onClick={() => setTab("kb")}>
-          知識ベース{kb.length > 0 && <span className="m-pr-tabn">{kb.length}</span>}
+      {/* タブ + 更新ボタン */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <div className="m-chips" style={{ flex: 1, margin: 0 }}>
+          <button className={`m-chip ${tab === "unanswered" ? "active" : ""}`} onClick={() => setTab("unanswered")}>
+            未回答{unanswered.length > 0 && <span className="m-pr-tabn">{unanswered.length}</span>}
+          </button>
+          <button className={`m-chip ${tab === "log" ? "active" : ""}`} onClick={() => setTab("log")}>
+            質問ログ
+          </button>
+          <button className={`m-chip ${tab === "kb" ? "active" : ""}`} onClick={() => setTab("kb")}>
+            知識ベース{kb.length > 0 && <span className="m-pr-tabn">{kb.length}</span>}
+          </button>
+        </div>
+        <button onClick={handleRefresh} disabled={syncState === "loading" || logLoading}
+          style={{ flexShrink: 0, padding: "7px 10px", borderRadius: 10, border: "1.5px solid var(--line)", background: "var(--surface)", color: "var(--brand)", fontSize: 13, fontWeight: 700, cursor: syncState === "loading" || logLoading ? "default" : "pointer", opacity: syncState === "loading" || logLoading ? 0.5 : 1 }}>
+          {syncState === "loading" || logLoading ? "⏳" : "🔄"}
         </button>
       </div>
 
