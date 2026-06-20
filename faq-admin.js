@@ -243,6 +243,23 @@ async function callAIRaw(systemPrompt, userContent, maxTokens) {
 }
 
 // ═══════════════════════════════════════════════
+//  ページネーション
+// ═══════════════════════════════════════════════
+function renderPagination(page, total, totalPages, setFn) {
+  if (totalPages <= 1) return '';
+  const start = page * PAGE_SIZE + 1;
+  const end = Math.min((page + 1) * PAGE_SIZE, total);
+  return `<div class="faq-pagination">
+    <button class="btn btn-sm btn-outline" onclick="${setFn}(${page - 1})" ${page === 0 ? 'disabled' : ''}>&larr; 前へ</button>
+    <span class="faq-page-info">${start}〜${end} / 全${total}件</span>
+    <button class="btn btn-sm btn-outline" onclick="${setFn}(${page + 1})" ${page >= totalPages - 1 ? 'disabled' : ''}>次へ &rarr;</button>
+  </div>`;
+}
+function setFaqLogPage(n) { _logPage = n; renderFaqLog(); }
+function setUAPage(n)     { _uaPage  = n; renderUnanswered(); }
+function setKBPage(n)     { _kbPage  = n; renderKB(); }
+
+// ═══════════════════════════════════════════════
 //  未回答リスト
 // ═══════════════════════════════════════════════
 function renderUnanswered() {
@@ -262,7 +279,11 @@ function renderUnanswered() {
     badge.style.display = pending.length > 0 ? 'inline-flex' : 'none';
   }
 
-  list.innerHTML = unansweredList.map(item => `
+  const totalUAPages = Math.ceil(unansweredList.length / PAGE_SIZE);
+  if (_uaPage >= totalUAPages) _uaPage = Math.max(0, totalUAPages - 1);
+  const pagedUA = unansweredList.slice(_uaPage * PAGE_SIZE, (_uaPage + 1) * PAGE_SIZE);
+
+  list.innerHTML = pagedUA.map(item => `
     <div class="ua-item ${item.answered ? 'ua-answered' : ''}" id="ua-${item.id}">
       <div class="ua-item-head">
         <div class="ua-item-info">
@@ -294,7 +315,7 @@ function renderUnanswered() {
         </div>
       </div>
     </div>
-  `).join('');
+  `).join('') + renderPagination(_uaPage, unansweredList.length, totalUAPages, 'setUAPage');
 }
 
 function toggleUAForm(id) {
@@ -712,7 +733,10 @@ function clearImport() {
 //  知識ベース管理
 // ═══════════════════════════════════════════════
 let kbFilter = 'all'; // all | approved | unapproved
-function setKbFilter(f) { kbFilter = f; renderKB(); }
+const PAGE_SIZE = 7;
+let _logPage = 0, _uaPage = 0, _kbPage = 0;
+function isAdmin() { return !!(window.MiwaAuth && window.MiwaAuth.isAdmin && window.MiwaAuth.isAdmin()); }
+function setKbFilter(f) { kbFilter = f; _kbPage = 0; renderKB(); }
 function renderKB() {
   const list = document.getElementById('kb-list');
   if (!list) return;
@@ -737,7 +761,11 @@ function renderKB() {
     return;
   }
 
-  list.innerHTML = items.map(item => {
+  const totalKBPages = Math.ceil(items.length / PAGE_SIZE);
+  if (_kbPage >= totalKBPages) _kbPage = Math.max(0, totalKBPages - 1);
+  const pagedKB = items.slice(_kbPage * PAGE_SIZE, (_kbPage + 1) * PAGE_SIZE);
+
+  list.innerHTML = pagedKB.map(item => {
     const approvedBadge = item.approved
       ? '<span style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px">✅ 承認済み</span>'
       : '';
@@ -789,7 +817,7 @@ function renderKB() {
         (isEditing ? editHtml : viewHtml) +
       '</div>' +
     '</div>';
-  }).join('');
+  }).join('') + renderPagination(_kbPage, items.length, totalKBPages, 'setKBPage');
 }
 
 function toggleKB(id) {
@@ -1137,9 +1165,9 @@ function logTime(ts) {
   return d.toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-function setFaqLogFilter(f) { faqLogFilter = f; renderFaqLog(); }
+function setFaqLogFilter(f) { faqLogFilter = f; _logPage = 0; renderFaqLog(); }
 
-function onFaqLogSearch(v) { faqLogSearch = (v || '').toLowerCase(); renderFaqLog(); }
+function onFaqLogSearch(v) { faqLogSearch = (v || '').toLowerCase(); _logPage = 0; renderFaqLog(); }
 
 function renderFaqLog() {
   const list = document.getElementById('faqlog-list');
@@ -1199,7 +1227,11 @@ function renderFaqLog() {
   }
   if (rows.length === 0) { list.innerHTML = '<div class="kb-empty">該当する記録がありません</div>'; return; }
 
-  list.innerHTML = rows.map((r) => {
+  const totalLogPages = Math.ceil(rows.length / PAGE_SIZE);
+  if (_logPage >= totalLogPages) _logPage = Math.max(0, totalLogPages - 1);
+  const pagedRows = rows.slice(_logPage * PAGE_SIZE, (_logPage + 1) * PAGE_SIZE);
+
+  list.innerHTML = pagedRows.map((r) => {
     const ans = isAnswered(r);
     const rid = logRowId(r);
     const isArchived2 = _archivedLogIds.has(rid);
@@ -1218,7 +1250,7 @@ function renderFaqLog() {
       ${r.a ? `<div class="log-a" onclick="this.classList.toggle('open')"><span class="log-a-label">AI回答</span> ${aPreview}${String(r.a||'').length > 90 ? '…' : ''}
         <div class="log-a-full">${mdToHtml(r.a)}</div></div>` : ''}
     </div>`;
-  }).join('');
+  }).join('') + renderPagination(_logPage, rows.length, totalLogPages, 'setFaqLogPage');
 }
 
 async function refreshFaqLogRemote() {
@@ -1608,7 +1640,7 @@ const FAQ_ADMIN_MARKUP = `
   </div>
 
   <!-- AI GAS トークン設定 -->
-  <div class="card" style="margin-top:16px">
+  <div class="card faq-admin-only" style="margin-top:16px">
     <div class="card-head">
       <span>🤖</span>
       <h2>AI設定（一括取り込み用）</h2>
@@ -1635,7 +1667,7 @@ const FAQ_ADMIN_MARKUP = `
   </div>
 
   <!-- クラウド設定 -->
-  <div class="card" style="margin-top:16px">
+  <div class="card faq-admin-only" style="margin-top:16px">
     <div class="card-head">
       <span>☁️</span>
       <h2>Googleスプレッドシート連携</h2>
@@ -1719,6 +1751,10 @@ function initFaqAdmin() {
   setTimeout(() => { initCloudUI(); syncKBFromCloud(); }, 100);
   // 60秒ごとに質問ログを自動更新
   setInterval(() => refreshFaqLogRemote(), 60000);
+  // 管理者専用セクションの表示制御
+  if (!isAdmin()) {
+    document.querySelectorAll('.faq-admin-only').forEach(el => { el.style.display = 'none'; });
+  }
 }
 
 // グローバル公開（jsx 側 / inline onclick から参照）
