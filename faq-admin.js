@@ -115,7 +115,7 @@ async function _cldPost(action, extra) {
     });
     const data = await res.json();
     if (data && data.error === 'unauthorized') throw new Error('認証エラー：トークンを確認してください');
-    if (data && data.error) throw new Error(data.error);
+    if (data && data.error) throw new Error(data.message || String(data.error));
     _cldSt = 'ok'; _cldBadge();
     return data;
   } catch(e) {
