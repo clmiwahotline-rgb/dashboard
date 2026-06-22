@@ -148,12 +148,27 @@ async function syncKBFromCloud() {
       cloudGet('未回答'),
     ]);
     if (Array.isArray(kbData) && kbData.length > 0) {
-      knowledgeBase = kbData.map(item => ({
-        ...item,
-        images: (() => { const v = item.images; if (Array.isArray(v)) return v.filter(Boolean); if (typeof v === 'string') { try { const p = JSON.parse(v); if (Array.isArray(p)) return p.filter(s => s && typeof s === 'string' && /^https?:\/\//.test(s)); } catch(e){} return v.split(',').map(s=>s.trim()).filter(s => s && /^https?:\/\//.test(s)); } return []; })(),
-        enabled: item.enabled !== false,
-        approved: item.approved === true || item.approved === 'true' || item.approved === 'TRUE' || item.approved === 1 || item.approved === '1',
-      }));
+      // ローカルの承認状態を退避（クラウド同期で上書きされないよう保護）
+      const localApproved = {};
+      (knowledgeBase || []).forEach(function(item) {
+        if (item && item.approved) localApproved[String(item.id || '')] = true;
+      });
+      knowledgeBase = kbData.map(function(item) {
+        const id = String(item.id || '');
+        const v = item.images;
+        const imgs = Array.isArray(v) ? v.filter(Boolean)
+          : typeof v === 'string' ? (function(){
+              try { const p = JSON.parse(v); if (Array.isArray(p)) return p.filter(function(s){ return s && /^https?:\/\//.test(s); }); } catch(e){}
+              return v.split(',').map(function(s){return s.trim();}).filter(function(s){ return s && /^https?:\/\//.test(s); });
+            })()
+          : [];
+        const cloudApproved = item.approved === true || item.approved === 'true' || item.approved === 'TRUE' || item.approved === 1 || item.approved === '1';
+        const obj = Object.assign({}, item);
+        obj.images = imgs;
+        obj.enabled = item.enabled !== false;
+        obj.approved = cloudApproved || !!localApproved[id];
+        return obj;
+      });
     } else if (knowledgeBase.length > 0 && typeof cloudReplaceAll === 'function') {
       console.log('[FAQ] クラウドKBが空のためローカルをプッシュ:', knowledgeBase.length, '件');
       cloudReplaceAll('知識ベース', knowledgeBase).catch(() => {});
@@ -2257,13 +2272,6 @@ function pushLogStateToCloud() {
 }
 
 function initFaqAdmin() {
-  // ★ スプレッドシート書き込み禁止モード（OKが出るまで）
-  // cloudReplaceAll を無効化（cloudGet は正常動作）
-  setTimeout(function() {
-    if (typeof cloudReplaceAll === 'function') {
-      window.cloudReplaceAll = function() { return Promise.resolve({ ok: true, readonly: true }); };
-    }
-  }, 50);
   loadFaq();
   loadFaqDocs();
   loadWebSources();

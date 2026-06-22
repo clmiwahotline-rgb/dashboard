@@ -13,7 +13,11 @@ const FaqAdminPage = () => {
   React.useEffect(() => {
     // dangerouslySetInnerHTML で挿入したマークアップに対し、
     // 既存ロジックの初期化を実行（renderKB / renderUnanswered など）
-    if (window.initFaqAdmin) window.initFaqAdmin();
+    try {
+      if (window.initFaqAdmin) window.initFaqAdmin();
+    } catch(err) {
+      console.warn('[FAQ] initFaqAdmin:', err);
+    }
   }, []);
 
   return (
