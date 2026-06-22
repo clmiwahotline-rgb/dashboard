@@ -869,7 +869,7 @@ function toggleKB(id) {
 
 function deleteKB(id) {
   if (!confirm('この知識を削除しますか？')) return;
-  knowledgeBase = knowledgeBase.filter(k => k.id !== id);
+  knowledgeBase = knowledgeBase.filter(k => Number(k.id) !== Number(id) && k.id !== id);
   if (editingKBId === id) editingKBId = null;
   persistFaq();
   renderKB();
@@ -877,6 +877,7 @@ function deleteKB(id) {
 }
 
 function editKB(id) {
+  id = Number(id) || id;
   editingKBId = id;
   // 開いていなければ開く
   const body = document.getElementById('kb-body-' + id);
@@ -909,7 +910,8 @@ function saveEditKB(id) {
 }
 
 function approveKB(id) {
-  const item = knowledgeBase.find(k => k.id === id);
+  id = Number(id) || id;
+  const item = knowledgeBase.find(k => Number(k.id) === Number(id) || k.id === id);
   if (!item) return;
   item.approved = !item.approved;
   if (item.approved) item.approvedAt = nowStr();
