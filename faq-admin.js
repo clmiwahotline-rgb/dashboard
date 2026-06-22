@@ -17,18 +17,17 @@ const FAQ_LS_KEY = 'miwa.faq.kb.v1';
 const FAQ_CLOUD_KEY = 'miwa.faq.cloud.v1'; // { gasUrl, token, enabled }
 
 // ── クラウド設定の読み書き ──
-const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
+const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbyvBTM4ZijS0hDjKBVjczQywjXYOZJnszLqgqfTZhsNdfd-GSPQp-LYlRxfCMedkg8/exec';
 // 全端末で共通利用する書き込み用トークン（GASのスクリプトプロパティ AUTH_TOKEN と一致させる）。
 // これをコードに埋め込むことで、各端末でのクラウド設定が不要になる。
 const DEFAULT_KB_TOKEN = 'miwa2026sec';
 function loadCloudCfg() {
-  // クラウド同期は常時ON・GAS URL とトークンはコード埋め込みを既定値とする。
-  // localStorage に保存があってもURL/トークンが欠けていれば既定値で補完し、enabled は常にtrue。
+  // GAS URL は常にコード埋め込みの DEFAULT_KB_GAS を使う（localStorage に古いURLが残っても無視）
+  // token のみ localStorage から補完する
   let cfg = { gasUrl: DEFAULT_KB_GAS, token: DEFAULT_KB_TOKEN, enabled: true };
   try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) {
     const saved = JSON.parse(s);
-    if (saved.gasUrl) cfg.gasUrl = saved.gasUrl;
-    if (saved.token)  cfg.token  = saved.token;
+    if (saved.token) cfg.token = saved.token;
   }} catch(e) {}
   return cfg;
 }
@@ -1187,14 +1186,27 @@ function saveWebSources() {
 // GAS経由でページ本文を取得
 async function gasFetchUrl(url) {
   const cfg = loadCloudCfg();
-  if (!cfg.gasUrl) throw new Error('共有データGASのURLが未設定です');
-  const res = await fetch(cfg.gasUrl, {
-    method: 'POST', redirect: 'follow',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'fetchUrl', url, maxLen: FAQ_WEB_MAXLEN }),
-  }).then(r => r.json());
-  if (!res || res.error) throw new Error((res && res.message) || '取得に失敗しました');
-  return res; // {ok,title,text,len,truncated}
+  if (!cfg.gasUrl) throw new Error('共有データGASのURLが未設定です（Googleスプレッドシート連携カードでURL確認）');
+  console.log('[gasFetchUrl] GAS末尾:', cfg.gasUrl.slice(-40), '| URL:', url);
+  let rawText = '';
+  try {
+    const resp = await fetch(cfg.gasUrl, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'fetchUrl', url, maxLen: FAQ_WEB_MAXLEN, token: cfg.token }),
+    });
+    rawText = await resp.text();
+    const res = JSON.parse(rawText);
+    if (!res || res.error) throw new Error(res?.message || 'GASがエラーを返しました');
+    return res; // {ok,title,text,len,truncated}
+  } catch (e) {
+    // JSON.parse失敗 or fetchエラー
+    const hint = rawText ? `\nGAS応答: ${rawText.slice(0, 200)}` : '';
+    const urlHint = `\n▶ 呼び出しGAS(末尾40): ...${cfg.gasUrl.slice(-40)}`;
+    const msg = e.message || String(e);
+    console.error('[gasFetchUrl] 失敗:', msg, rawText);
+    throw new Error(msg + hint + urlHint);
+  }
 }
 
 // 取得結果を faqDocs に反映（無ければ追加・あれば内容更新）
@@ -1411,7 +1423,7 @@ function renderWebSources() {
             <span>📝 ${Number(s.contentLen || 0).toLocaleString()}文字</span>
             ${s.truncated ? '<span style="color:#b45309">⚠️ 上限まで取得</span>' : ''}
           </div>
-          ${s.error ? `<div style="font-size:11.5px;color:#dc2626;margin-top:5px">⚠️ ${escHtml(s.error)}</div>` : ''}
+          ${s.error && !s.contentLen ? `<div style="font-size:11.5px;color:#dc2626;margin-top:5px">⚠️ ${escHtml(s.error)}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
           <button class="btn btn-sync btn-sm web-refresh" onclick="refreshWebSource(${s.id})" title="今すぐ再取得"><svg class="sync-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 更新</button>
