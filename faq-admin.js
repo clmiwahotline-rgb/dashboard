@@ -150,7 +150,7 @@ async function syncKBFromCloud() {
           ? item.images.split(',').filter(Boolean)
           : (Array.isArray(item.images) ? item.images : []),
         enabled: item.enabled !== false,
-        approved: item.approved === true || item.approved === 'true',
+        approved: item.approved === true || item.approved === 'true' || item.approved === 'TRUE' || item.approved === 1 || item.approved === '1',
       }));
     } else if (knowledgeBase.length > 0 && cfg.token) {
       // クラウドが空だがローカルにデータあり → 自動でクラウドへ送信
