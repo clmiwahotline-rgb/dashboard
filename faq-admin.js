@@ -17,7 +17,7 @@ const FAQ_LS_KEY = 'miwa.faq.kb.v1';
 const FAQ_CLOUD_KEY = 'miwa.faq.cloud.v1'; // { gasUrl, token, enabled }
 
 // ── クラウド設定の読み書き ──
-const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbyvBTM4ZijS0hDjKBVjczQywjXYOZJnszLqgqfTZhsNdfd-GSPQp-LYlRxfCMedkg8/exec';
+const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbwQMEFeVHd6NEpEGNo6K1CySZUrSH3OwI6-ESz4G78WIfjyH3sCCLwSeIaemPh6tbIq/exec';
 // 全端末で共通利用する書き込み用トークン（GASのスクリプトプロパティ AUTH_TOKEN と一致させる）。
 // これをコードに埋め込むことで、各端末でのクラウド設定が不要になる。
 const DEFAULT_KB_TOKEN = 'miwa2026sec';
@@ -147,8 +147,6 @@ async function syncKBFromCloud() {
       cloudGet('知識ベース'),
       cloudGet('未回答'),
     ]);
-    console.log('[FAQ] syncKB kbData:', kbData, '| uaData:', uaData);
-    if (kbData && kbData[0]) console.log('[FAQ] KB最初の1件:', JSON.stringify(kbData[0]));
     if (Array.isArray(kbData) && kbData.length > 0) {
       knowledgeBase = kbData.map(item => ({
         ...item,
@@ -1651,8 +1649,7 @@ async function refreshFaqLogRemote() {
         action: 'getFaqLog',
         idToken: (window.MiwaAuth && window.MiwaAuth.idToken && window.MiwaAuth.idToken()) || ''
       })
-    }).then(r => r.json()).catch(err => { console.error('[FAQ] getFaqLog fetch失敗:', err); return null; });
-    console.log('[FAQ] getFaqLog res:', res);
+    }).then(r => r.json()).catch(() => null);
     if (res && res.ok && Array.isArray(res.logs)) {
       // GASログとローカルログをマージ（重複はtsで除去）
       const localLogs = loadLocalLog();
@@ -2260,6 +2257,13 @@ function pushLogStateToCloud() {
 }
 
 function initFaqAdmin() {
+  // ★ スプレッドシート書き込み禁止モード（OKが出るまで）
+  // cloudReplaceAll を無効化（cloudGet は正常動作）
+  setTimeout(function() {
+    if (typeof cloudReplaceAll === 'function') {
+      window.cloudReplaceAll = function() { return Promise.resolve({ ok: true, readonly: true }); };
+    }
+  }, 50);
   loadFaq();
   loadFaqDocs();
   loadWebSources();
