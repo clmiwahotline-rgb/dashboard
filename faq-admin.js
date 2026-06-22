@@ -1679,10 +1679,19 @@ async function refreshFaqLogRemote() {
       })
     }).then(r => r.json()).catch(() => null);
     if (res && res.ok && Array.isArray(res.logs)) {
-      faqLog = res.logs;
-      // 次回読み込み用にキャッシュ保存
+      // GASログとローカルログをマージ（重複はtsで除去）
+      const localLogs = loadLocalLog();
+      const gasLogs = res.logs;
+      const seen = new Set(gasLogs.map(r => r.ts + '|' + (r.q || '')));
+      const merged = [...gasLogs];
+      localLogs.forEach(r => {
+        const key = r.ts + '|' + (r.q || '');
+        if (!seen.has(key)) { seen.add(key); merged.push(r); }
+      });
+      merged.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+      faqLog = merged;
       try { localStorage.setItem('miwa.faq.log.cache.v1', JSON.stringify(faqLog)); } catch(e) {}
-      faqLogSource = 'gas';
+      faqLogSource = gasLogs.length > 0 ? 'gas' : 'local';
       okRemote = true;
     }
   } catch (e) {}
