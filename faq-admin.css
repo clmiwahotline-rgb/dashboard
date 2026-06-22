@@ -309,3 +309,23 @@
 }
 .faq-admin .faq-pagination .btn { min-width: 72px; }
 .faq-admin .faq-pagination .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ─── Sync / Refresh button ─── */
+.faq-admin .btn-sync {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: none; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: #fff; font-weight: 600; cursor: pointer;
+  box-shadow: 0 1px 6px rgba(79,70,229,.22);
+  transition: box-shadow .15s, transform .12s, opacity .15s;
+  white-space: nowrap; line-height: 1.2;
+}
+.faq-admin .btn-sync:hover:not(:disabled) {
+  box-shadow: 0 3px 12px rgba(79,70,229,.35); transform: translateY(-1px);
+}
+.faq-admin .btn-sync:active:not(:disabled) {
+  transform: translateY(0); box-shadow: 0 1px 4px rgba(79,70,229,.2);
+}
+.faq-admin .btn-sync:disabled { opacity: .5; cursor: not-allowed; }
+.faq-admin .btn-sync .sync-icon { transition: transform .35s ease; flex-shrink: 0; }
+.faq-admin .btn-sync:hover:not(:disabled) .sync-icon { transform: rotate(200deg); }

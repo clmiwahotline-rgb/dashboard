@@ -1084,19 +1084,341 @@ function renderDocs() {
     list.innerHTML=`<div class="kb-empty">資料がありません。<br><span style="font-size:12px">就業規則・研修資料・マニュアルなどを追加してください。<br>スタッフFAQで質問すると、登録した資料からキーワード検索してAIに参考として渡します。</span></div>`;
     return;
   }
-  list.innerHTML=faqDocs.map(doc=>`
-    <div draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${doc.id}')" title="未回答の回答欄にドラッグして内容を挿入できます" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff;cursor:grab">
+  list.innerHTML=[...faqDocs].sort((a,b)=>b.id-a.id).map(doc=>{
+    if(_docEditState[doc.id]){
+      return `<div style="border:2px solid var(--primary,#2563eb);border-radius:10px;padding:14px;margin-bottom:8px;background:#f0f6ff">
+        <div style="font-size:12px;font-weight:700;color:var(--primary,#2563eb);margin-bottom:10px">✏️ 編集中</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input class="form-input" id="dedit-title-${doc.id}" value="${escHtml(doc.title)}" placeholder="タイトル" style="flex:2">
+          <input class="form-input" id="dedit-cat-${doc.id}" value="${escHtml(doc.category)}" placeholder="カテゴリ" style="flex:1">
+        </div>
+        <textarea class="form-textarea" id="dedit-content-${doc.id}" style="min-height:180px;font-size:12px;font-family:inherit">${escHtml(doc.content)}</textarea>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-primary btn-sm" onclick="saveDocEdit(${doc.id})">💾 保存</button>
+          <button class="btn btn-outline btn-sm" onclick="closeDocEdit(${doc.id})">キャンセル</button>
+        </div>
+      </div>`;
+    }
+    const isExp=!!_docExpanded[doc.id];
+    return `<div data-docid="${doc.id}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${doc.id}')" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff">
       <div style="display:flex;align-items:flex-start;gap:10px">
-        <div style="flex:1;min-width:0">
+        <div style="flex:1;min-width:0;cursor:pointer" onclick="toggleDocExpand(${doc.id})">
           <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:3px">${escHtml(doc.title)}</div>
           <div style="font-size:11.5px;color:var(--text-muted);display:flex;gap:10px;flex-wrap:wrap">
             <span>📁 ${escHtml(doc.category)}</span>
             <span>📅 ${escHtml(doc.addedAt)}</span>
             <span>📝 ${doc.content.length.toLocaleString()}文字</span>
+            ${doc.sourceUrl?`<a href="${escHtml(doc.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary,#2563eb);font-size:11px;text-decoration:none">🔗 出典</a>`:''}
           </div>
-          <div style="font-size:12px;color:var(--text-sub);margin-top:5px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escHtml(doc.content.slice(0,150))}${doc.content.length>150?'…':''}</div>
+          <div style="font-size:12px;color:var(--text-sub);margin-top:5px;${isExp?'white-space:pre-wrap':'overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical'}">${escHtml(isExp?doc.content:doc.content.slice(0,150))}${!isExp&&doc.content.length>150?'…':''}</div>
+          <div style="font-size:11px;margin-top:4px;color:${isExp?'var(--text-muted)':'var(--primary,#2563eb)'}">${isExp?'▲ 折りたたむ':'▼ 全文表示'}</div>
         </div>
-        <button onclick="deleteDoc(${doc.id})" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;flex-shrink:0;margin-top:2px">🗑</button>
+        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+          <button onclick="openDocEdit(${doc.id})" class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:none" title="編集">✏️</button>
+          <button onclick="deleteDoc(${doc.id})" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" title="削除">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// 知識資料ストック：展開・編集状態
+const _docExpanded = {};
+const _docEditState = {};
+function toggleDocExpand(id) { _docExpanded[id] = !_docExpanded[id]; renderDocs(); }
+function openDocEdit(id) { _docEditState[id] = true; delete _docExpanded[id]; renderDocs(); }
+function closeDocEdit(id) { delete _docEditState[id]; renderDocs(); }
+function saveDocEdit(id) {
+  const doc = faqDocs.find(d => d.id === id);
+  if (!doc) return;
+  const title   = (document.getElementById(`dedit-title-${id}`)?.value   || '').trim();
+  const cat     = (document.getElementById(`dedit-cat-${id}`)?.value     || '').trim();
+  const content = (document.getElementById(`dedit-content-${id}`)?.value || '').trim();
+  if (!title)   { alert('タイトルを入力してください'); return; }
+  if (!content) { alert('内容を入力してください');    return; }
+  doc.title = title; doc.category = cat || '未分類'; doc.content = content;
+  doc.addedAt = new Date().toISOString().slice(0, 10);
+  delete _docEditState[id];
+  saveFaqDocs(); renderDocs();
+}
+
+// ═══════════════════════════════════════════════
+//  WEBサイト取り込み（指定URLの本文を知識資料ストックに保存）
+//  ・本文はGAS経由で取得（ブラウザのCORS制限を回避）。取得自体はAI課金ゼロ。
+//  ・取得した本文は faqDocs（知識資料ストック）に source:'web' で保存し、
+//    質問時のキーワード検索で参照される（KBには入れない）。
+//  ・週1自動更新＋手動更新。本文ハッシュが変わらなければ何もしない。
+//  ・AI仕分け（知識ベース化）は各ソースの「AIで知識化」ボタン押下時のみ。
+// ═══════════════════════════════════════════════
+const FAQ_WEB_KEY = 'miwa.faq.websrc.v1';
+const FAQ_WEB_AUTO_KEY = 'miwa.faq.websrc.lastauto.v1';
+const FAQ_WEB_MAXLEN = 50000;            // 1ページあたり保存する最大文字数
+const FAQ_WEB_AUTO_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7日
+let webSources = [];
+
+function _webHash(str) {
+  let h = 5381; for (let i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) | 0; }
+  return String(h >>> 0);
+}
+function loadWebSources() {
+  try { const s = localStorage.getItem(FAQ_WEB_KEY); if (s) webSources = JSON.parse(s); } catch (e) { webSources = []; }
+  setTimeout(() => {
+    if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
+      cloudGet('FAQウェブソース').then(remote => {
+        if (Array.isArray(remote) && remote.length) {
+          webSources = remote;
+          try { localStorage.setItem(FAQ_WEB_KEY, JSON.stringify(webSources)); } catch (e) {}
+          if (typeof renderWebSources === 'function') renderWebSources();
+        } else if (webSources.length > 0 && typeof cloudReplaceAll === 'function') {
+          cloudReplaceAll('FAQウェブソース', webSources).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+  }, 2200);
+  return webSources;
+}
+function saveWebSources() {
+  try { localStorage.setItem(FAQ_WEB_KEY, JSON.stringify(webSources)); } catch (e) {}
+  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
+    cloudReplaceAll('FAQウェブソース', webSources).catch(e => console.warn('WEBソースのクラウド同期失敗:', e));
+  }
+}
+
+// GAS経由でページ本文を取得
+async function gasFetchUrl(url) {
+  const cfg = loadCloudCfg();
+  if (!cfg.gasUrl) throw new Error('共有データGASのURLが未設定です');
+  const res = await fetch(cfg.gasUrl, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'fetchUrl', url, maxLen: FAQ_WEB_MAXLEN }),
+  }).then(r => r.json());
+  if (!res || res.error) throw new Error((res && res.message) || '取得に失敗しました');
+  return res; // {ok,title,text,len,truncated}
+}
+
+// 取得結果を faqDocs に反映（無ければ追加・あれば内容更新）
+function _upsertWebDoc(src, fetched) {
+  const title = src.title || fetched.title || src.url;
+  const category = src.category || 'WEBサイト';
+  const content = `【出典URL】${src.url}\n\n${fetched.text}`;
+  let doc = faqDocs.find(d => d.id === src.docId);
+  if (doc) {
+    doc.title = title; doc.category = category; doc.content = content;
+    doc.source = 'web'; doc.sourceUrl = src.url; doc.addedAt = new Date().toISOString().slice(0, 10);
+  } else {
+    doc = { id: Date.now() + Math.floor(Math.random() * 1000), title, category, content,
+            source: 'web', sourceUrl: src.url, addedAt: new Date().toISOString().slice(0, 10) };
+    faqDocs.push(doc); src.docId = doc.id;
+  }
+  saveFaqDocs();
+  return doc;
+}
+
+async function addWebSource() {
+  const urlEl = document.getElementById('web-url');
+  const catEl = document.getElementById('web-cat');
+  const url = (urlEl?.value || '').trim();
+  const category = (catEl?.value || '').trim();
+  if (!/^https?:\/\//i.test(url)) { alert('http(s):// で始まるURLを入力してください'); return; }
+  if (webSources.some(s => s.url === url)) { alert('このURLは既に登録されています'); return; }
+  const btn = document.getElementById('web-add-btn');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 取得中…'; }
+  try {
+    const fetched = await gasFetchUrl(url);
+    const src = { id: Date.now(), url, title: fetched.title || url, category: category || 'WEBサイト',
+                  lastFetched: new Date().toISOString(), hash: _webHash(fetched.text),
+                  contentLen: fetched.len, truncated: !!fetched.truncated, error: '', docId: null };
+    _upsertWebDoc(src, fetched);
+    webSources.push(src);
+    saveWebSources();
+    if (urlEl) urlEl.value = ''; if (catEl) catEl.value = '';
+    const form = document.getElementById('web-form'); if (form) form.style.display = 'none';
+    renderWebSources(); renderDocs();
+  } catch (e) {
+    alert('取り込みに失敗しました：\n' + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
+// 1件を再取得（手動・自動共通）。changedを返す。silent=trueで自動時のアラート抑制。
+async function refreshWebSource(id, silent) {
+  const src = webSources.find(s => s.id === id);
+  if (!src) return false;
+  const card = document.querySelector(`[data-websrc="${id}"] .web-refresh`);
+  if (card) { card.disabled = true; card.textContent = '⏳'; }
+  let changed = false;
+  try {
+    const fetched = await gasFetchUrl(src.url);
+    const newHash = _webHash(fetched.text);
+    src.lastFetched = new Date().toISOString();
+    src.error = '';
+    src.truncated = !!fetched.truncated;
+    if (newHash !== src.hash) {
+      src.hash = newHash; src.contentLen = fetched.len;
+      if (fetched.title) src.title = fetched.title;
+      _upsertWebDoc(src, fetched);
+      changed = true;
+    }
+    saveWebSources();
+  } catch (e) {
+    src.error = e.message || String(e);
+    saveWebSources();
+    if (!silent) alert('更新に失敗しました：\n' + src.error);
+  }
+  renderWebSources();
+  if (changed) renderDocs();
+  if (!silent && !src.error) {
+    // 軽いフィードバック
+    const note = document.getElementById('web-note');
+    if (note) { note.textContent = changed ? '✅ 内容が更新されました' : '変更はありませんでした'; setTimeout(() => { note.textContent = ''; }, 4000); }
+  }
+  return changed;
+}
+
+async function refreshAllWebSources(silent) {
+  if (!webSources.length) { if (!silent) alert('登録されたWEBサイトがありません'); return; }
+  const btn = document.getElementById('web-refresh-all');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 更新中…'; }
+  let changedCount = 0;
+  for (const s of webSources.slice()) {
+    const ch = await refreshWebSource(s.id, true);
+    if (ch) changedCount++;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = orig; }
+  const note = document.getElementById('web-note');
+  if (note && !silent) { note.textContent = `✅ 更新完了（${changedCount}件に変更あり）`; setTimeout(() => { note.textContent = ''; }, 5000); }
+  try { localStorage.setItem(FAQ_WEB_AUTO_KEY, String(Date.now())); } catch (e) {}
+}
+
+// 週1自動更新（本文の再取得のみ・AIは呼ばない）
+function maybeAutoRefreshWeb() {
+  if (!webSources.length) return;
+  let last = 0;
+  try { last = Number(localStorage.getItem(FAQ_WEB_AUTO_KEY)) || 0; } catch (e) {}
+  if (Date.now() - last >= FAQ_WEB_AUTO_INTERVAL) {
+    console.log('[FAQ] WEBソースの週次自動更新を実行');
+    refreshAllWebSources(true);
+  }
+}
+
+function deleteWebSource(id) {
+  const src = webSources.find(s => s.id === id);
+  if (!src) return;
+  if (!confirm('このWEBサイトを削除しますか？\n（取り込んだ資料も一緒に削除されます）')) return;
+  if (src.docId) { faqDocs = faqDocs.filter(d => d.id !== src.docId); saveFaqDocs(); }
+  webSources = webSources.filter(s => s.id !== id);
+  saveWebSources();
+  renderWebSources(); renderDocs();
+}
+
+// サイト全体をクロールして全ページを知識資料ストックに取り込む
+async function crawlAndImportSite(srcId) {
+  const src = webSources.find(s => s.id === srcId);
+  if (!src) return;
+  if (!confirm(`「${src.title || src.url}」のサイト全体を取り込みます。\n（最大50ページ。既存の同URLページは上書き）`)) return;
+  const cfg = loadCloudCfg();
+  if (!cfg.gasUrl) { alert('共有データGASのURLが未設定です'); return; }
+  const btn  = document.querySelector(`[data-websrc="${srcId}"] .web-crawl`);
+  const note = document.getElementById('web-note');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ リンク取得中…'; }
+  try {
+    const linksRes = await fetch(cfg.gasUrl, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'crawlSite', url: src.url, maxPages: 50 }),
+    }).then(r => r.json());
+    if (!linksRes || linksRes.error) throw new Error((linksRes && linksRes.message) || 'リンク取得失敗');
+    const links = linksRes.links || [];
+    if (!links.length) throw new Error('ページリンクが見つかりませんでした');
+    let ok = 0;
+    for (let i = 0; i < links.length; i++) {
+      const url = links[i];
+      if (btn)  btn.textContent  = `⏳ ${i+1}/${links.length} 取得中…`;
+      if (note) note.textContent = `${i+1}/${links.length} ページ取得中…`;
+      try {
+        const fetched = await gasFetchUrl(url);
+        const content = `【出典URL】${url}\n\n${fetched.text}`;
+        const existing = faqDocs.find(d => d.sourceUrl === url && d.source === 'web');
+        if (existing) {
+          existing.title = fetched.title || url;
+          existing.content = content;
+          existing.addedAt = new Date().toISOString().slice(0, 10);
+        } else {
+          faqDocs.push({ id: Date.now() + i * 17, title: fetched.title || url,
+            category: src.category || 'WEBサイト', content,
+            source: 'web', sourceUrl: url, addedAt: new Date().toISOString().slice(0, 10) });
+        }
+        ok++; saveFaqDocs();
+      } catch(e) { console.warn('[crawl] skip:', url, e.message); }
+    }
+    src.lastFetched = new Date().toISOString();
+    src.contentLen  = faqDocs.filter(d => d.source === 'web' && d.sourceUrl?.startsWith(src.url))
+                             .reduce((s, d) => s + (d.content?.length || 0), 0);
+    saveWebSources(); renderDocs(); renderWebSources();
+    if (note) { note.textContent = `✅ ${ok}ページ取り込み完了`; setTimeout(() => { note.textContent = ''; }, 6000); }
+  } catch(e) {
+    alert('取り込みに失敗しました：\n' + (e.message || e));
+    if (note) note.textContent = '';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🌐 全ページ取込'; }
+  }
+}
+
+// このサイトの本文をAIで仕分け（知識ベース候補化）。手動時のみAI課金が発生。
+function aiSortWebSource(id) {
+  const src = webSources.find(s => s.id === id);
+  if (!src) return;
+  const doc = faqDocs.find(d => d.id === src.docId);
+  if (!doc || !doc.content) { alert('本文がありません。先に取得してください'); return; }
+  const ta = document.getElementById('import-src');
+  if (ta) {
+    ta.value = doc.content;
+    ta.scrollIntoView ? null : null; // scrollIntoViewは使わない
+    const card = ta.closest('.card');
+    if (card) window.scrollTo({ top: card.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
+    if (typeof bulkSort === 'function') bulkSort();
+  }
+}
+
+function toggleWebForm() {
+  const f = document.getElementById('web-form');
+  if (f) f.style.display = f.style.display === 'none' ? '' : 'none';
+}
+
+function renderWebSources() {
+  const list = document.getElementById('websrc-list');
+  if (!list) return;
+  const cnt = document.getElementById('websrc-count');
+  if (cnt) cnt.textContent = `${webSources.length}件`;
+  if (!webSources.length) {
+    list.innerHTML = `<div class="kb-empty">登録されたWEBサイトがありません。<br><span style="font-size:12px">公式サイトやお役立ちページのURLを追加すると、本文を知識資料として取り込みます。<br>週1回 自動更新され、いつでも手動更新もできます。</span></div>`;
+    return;
+  }
+  const fmt = (iso) => { try { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; } catch (e) { return '-'; } };
+  list.innerHTML = [...webSources].sort((a,b)=>b.id-a.id).map(s => `
+    <div data-websrc="${s.id}" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:3px">${escHtml(s.title || s.url)}</div>
+          <a href="${escHtml(s.url)}" target="_blank" rel="noopener" style="font-size:11.5px;color:var(--brand,#2563eb);word-break:break-all;text-decoration:none">${escHtml(s.url)}</a>
+          <div style="font-size:11.5px;color:var(--text-muted);display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">
+            <span>📁 ${escHtml(s.category || 'WEBサイト')}</span>
+            <span>🔄 ${fmt(s.lastFetched)}</span>
+            <span>📝 ${Number(s.contentLen || 0).toLocaleString()}文字</span>
+            ${s.truncated ? '<span style="color:#b45309">⚠️ 上限まで取得</span>' : ''}
+          </div>
+          ${s.error ? `<div style="font-size:11.5px;color:#dc2626;margin-top:5px">⚠️ ${escHtml(s.error)}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+          <button class="btn btn-sync btn-sm web-refresh" onclick="refreshWebSource(${s.id})" title="今すぐ再取得"><svg class="sync-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 更新</button>
+          <button class="btn btn-sm web-crawl" onclick="crawlAndImportSite(${s.id})" title="サイト全ページを一括取り込み" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0">🌐 全ページ取込</button>
+          <button class="btn btn-sm faq-admin-only" onclick="aiSortWebSource(${s.id})" title="本文をAIで知識ベース候補に分解" style="background:#f5f3ff;color:#7c3aed;border:none">🪄 AIで知識化</button>
+          <button class="btn btn-sm" onclick="deleteWebSource(${s.id})" style="background:#fee2e2;color:#dc2626;border:none">🗑</button>
+        </div>
       </div>
     </div>`).join('');
 }
@@ -1493,6 +1815,29 @@ function initChatFontSize() {
   setChatFontSize(px);
 }
 
+// カードの折りたたみトグル（ボタン・リンク等の内部クリックは無視）
+function toggleCardCollapse(headEl, event) {
+  if (event && event.target.closest('button,a,input,select,textarea')) return;
+  const body = headEl.parentElement.querySelector('.card-body');
+  if (!body) return;
+  const isHidden = body.style.display === 'none';
+  // アコーディオン：他の折りたたみカードを閉じる
+  if (isHidden) {
+    document.querySelectorAll('.card-head[onclick]').forEach(h => {
+      if (h === headEl) return;
+      const b = h.parentElement.querySelector('.card-body');
+      const ic = h.querySelector('.card-toggle-icon');
+      if (b && b.style.display !== 'none') {
+        b.style.display = 'none';
+        if (ic) ic.textContent = '▸';
+      }
+    });
+  }
+  const icon = headEl.querySelector('.card-toggle-icon');
+  body.style.display = isHidden ? '' : 'none';
+  if (icon) icon.textContent = isHidden ? '▾' : '▸';
+}
+
 // ═══════════════════════════════════════════════
 //  管理画面マークアップ（miwa_faq_demo の #tab-admin を移植）
 // ═══════════════════════════════════════════════
@@ -1521,7 +1866,7 @@ const FAQ_ADMIN_MARKUP = `
       <span id="faqlog-count" class="log-count">0件</span>
       <span style="flex:1"></span>
       <span id="faqlog-source" style="font-size:12px;color:var(--text-muted)">この端末の記録のみ</span>
-      <button class="btn btn-outline btn-sm" id="faqlog-refresh" onclick="refreshFaqLogRemote()" style="margin-left:8px">🔄 全端末から取得</button>
+      <button class="btn btn-sync btn-sm" id="faqlog-refresh" onclick="refreshFaqLogRemote()" style="margin-left:8px"><svg class="sync-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 全端末から取得</button>
     </div>
     <div class="card-body">
       <p style="font-size:13px;color:var(--text-sub);margin-bottom:10px">スタッフFAQに届いた質問と、AIがどう回答したかの記録です。未回答（答えが無かった質問）はここで把握し、上の未回答リスト／知識ベースに反映できます。</p>
@@ -1564,13 +1909,14 @@ const FAQ_ADMIN_MARKUP = `
 
   <!-- 資料から一括取り込み -->
   <div class="card" style="margin-bottom:16px">
-    <div class="card-head">
+    <div class="card-head" onclick="toggleCardCollapse(this,event)" style="cursor:pointer">
       <span>📥</span>
       <h2>資料から一括取り込み</h2>
       <span style="flex:1"></span>
       <span style="font-size:12px;color:var(--text-muted)">AIが仕分け→確認して追加</span>
+      <span class="card-toggle-icon" style="font-size:12px;color:var(--text-muted);margin-left:8px">▸</span>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="display:none">
       <p style="font-size:13px;color:var(--text-sub);margin-bottom:10px">就業規則・研修資料・マニュアルなどを貼り付けて「AIで仕分け」を押すと、自動で知識候補に分解します。<strong>長文も自動でチャンク分割して処理します。</strong>確認・修正してから知識ベースに追加してください。</p>
       <textarea class="form-textarea" id="import-src" placeholder="例：毛100%のセーターはネットに入れて洗う。タンブル乾燥不可。裏返して洗うのがおすすめ。乾燥機は避けてスチームでうかしながらアイロン。毛玉は引っぱらず毛玉取り器で…" style="min-height:90px"></textarea>
       <div class="form-row" style="margin-top:10px">
@@ -1580,15 +1926,45 @@ const FAQ_ADMIN_MARKUP = `
       <div id="import-result" style="margin-top:16px"></div>
     </div>
   </div>
+  <!-- WEBサイト取り込み -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head" onclick="toggleCardCollapse(this,event)" style="cursor:pointer">
+      <span>🌐</span>
+      <h2>WEBサイトから取り込み</h2>
+      <span id="websrc-count" class="log-count">0件</span>
+      <span id="web-note" style="font-size:12px;color:var(--success,#16a34a);margin-left:10px"></span>
+      <span style="flex:1"></span>
+      <button class="btn btn-sync btn-sm" id="web-refresh-all" onclick="refreshAllWebSources()"><svg class="sync-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> すべて更新</button>
+      <button class="btn btn-primary btn-sm" onclick="toggleWebForm()">＋ サイトを追加</button>
+      <span class="card-toggle-icon" style="font-size:12px;color:var(--text-muted);margin-left:8px">▸</span>
+    </div>
+    <div class="card-body" style="display:none">
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px">公式サイトやお役立ちページのURLを登録すると、本文を取得して<b>知識資料ストック</b>に保存し、スタッフFAQの回答参考に使います。<b>週1回 自動更新</b>（内容に変化が無ければ何もしません）。AIでの知識ベース化は各サイトの「🪄 AIで知識化」を押したときだけ実行します。</p>
+      <!-- 追加フォーム -->
+      <div id="web-form" style="display:none;background:var(--surface-1,#f7f9fd);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+        <div class="form-row" style="margin-bottom:10px">
+          <input class="form-input" id="web-url" placeholder="https://example.com/page" style="flex:2">
+          <input class="form-input" id="web-cat" placeholder="カテゴリ（例：公式サイト）" style="flex:1">
+        </div>
+        <div class="form-row" style="margin-top:4px">
+          <button class="btn btn-primary btn-sm" id="web-add-btn" onclick="addWebSource()">📥 取り込む</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleWebForm()">キャンセル</button>
+        </div>
+      </div>
+      <div id="websrc-list"><div class="kb-empty">登録されたWEBサイトがありません</div></div>
+    </div>
+  </div>
+
   <!-- 資料ストック -->
   <div class="card" style="margin-bottom:16px">
-    <div class="card-head">
+    <div class="card-head" onclick="toggleCardCollapse(this,event)" style="cursor:pointer">
       <span>📚</span>
       <h2>知識資料ストック</h2>
       <span id="doc-count" class="log-count">0件</span>
       <button class="btn btn-primary btn-sm" onclick="toggleDocForm()" style="margin-left:auto">＋ 資料を追加</button>
+      <span class="card-toggle-icon" style="font-size:12px;color:var(--text-muted);margin-left:8px">▸</span>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="display:none">
       <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px">就業規則・研修資料・マニュアルなどをそのまま登録。質問時にキーワードで該当箇所を抽出し、AIの回答参考に渡します。</p>
       <!-- 追加フォーム -->
       <div id="doc-form" style="display:none;background:var(--surface-1,#f7f9fd);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
@@ -1608,13 +1984,14 @@ const FAQ_ADMIN_MARKUP = `
 
   <!-- 知識ベース管理 -->
   <div class="card" style="margin-bottom:16px">
-    <div class="card-head">
+    <div class="card-head" onclick="toggleCardCollapse(this,event)" style="cursor:pointer">
       <span>📚</span>
       <h2>知識ベース</h2>
       <span style="flex:1"></span>
       <button class="btn btn-sm btn-primary" onclick="toggleAddForm()">＋ 追加</button>
+      <span class="card-toggle-icon" style="font-size:12px;color:var(--text-muted);margin-left:8px">▸</span>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="display:none">
       <div id="add-form-wrap" style="display:none">
         <div class="kb-add-form">
           <label>質問・キーワード</label>
@@ -1659,13 +2036,14 @@ const FAQ_ADMIN_MARKUP = `
 
   <!-- 表示設定 -->
   <div class="card">
-    <div class="card-head">
+    <div class="card-head" onclick="toggleCardCollapse(this,event)" style="cursor:pointer">
       <span>🔤</span>
       <h2>表示設定</h2>
       <span style="flex:1"></span>
       <span style="font-size:12px;color:var(--text-muted)">スタッフFAQチャットの文字サイズ</span>
+      <span class="card-toggle-icon" style="font-size:12px;color:var(--text-muted);margin-left:8px">▸</span>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="display:none">
       <div class="fs-options" id="fs-options">
         <button class="fs-btn" data-fs="14" onclick="setChatFontSize(14)">小</button>
         <button class="fs-btn" data-fs="15" onclick="setChatFontSize(15)">標準</button>
@@ -1689,11 +2067,12 @@ const FAQ_ADMIN_MARKUP = `
 
   <!-- AI GAS トークン設定 -->
   <div class="card faq-admin-only" style="margin-top:16px">
-    <div class="card-head">
+    <div class="card-head" onclick="toggleCardCollapse(this,event)" style="cursor:pointer">
       <span>🤖</span>
       <h2>AI設定（一括取り込み用）</h2>
+      <span class="card-toggle-icon" style="font-size:12px;color:var(--text-muted);margin-left:auto">▸</span>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="display:none">
       <p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;line-height:1.7">
         「資料からAI一括取り込み」で使うAIプロキシGASのURLとトークンを設定します。<br>
         <span style="font-size:12px;color:var(--text-muted)">GASスクリプトの <code>AUTH_TOKEN</code> に設定した値を入力してください</span>
@@ -1716,14 +2095,15 @@ const FAQ_ADMIN_MARKUP = `
 
   <!-- クラウド設定 -->
   <div class="card faq-admin-only" style="margin-top:16px">
-    <div class="card-head">
+    <div class="card-head" onclick="toggleCardCollapse(this,event)" style="cursor:pointer">
       <span>☁️</span>
       <h2>Googleスプレッドシート連携</h2>
       <span style="flex:1"></span>
-      <button class="btn btn-outline btn-sm" onclick="forceSyncFromCloud()">🔄 取得</button>
-      <button class="btn btn-outline btn-sm" onclick="forcePushToCloud()" style="margin-left:6px">⬆️ 全件送信</button>
+      <button class="btn btn-sync btn-sm" onclick="forceSyncFromCloud()"><svg class="sync-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 取得</button>
+      <button class="btn btn-sync btn-sm" onclick="forcePushToCloud()" style="margin-left:6px;background:linear-gradient(135deg,#059669,#0d9488)"><svg class="sync-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="12 5 12 19"/><polyline points="19 12 12 5 5 12"/></svg> 全件送信</button>
+      <span class="card-toggle-icon" style="font-size:12px;color:var(--text-muted);margin-left:8px">▸</span>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="display:none">
       <p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;line-height:1.7">
         GASウェブアプリのURLを設定すると、知識ベース・未回答リストが全店舗で共有されます。<br>
         <span style="font-size:12px;color:var(--text-muted)">スクリプト: <code>gas/faq-knowledge-base.gs</code> をコピペしてデプロイしてください</span>
@@ -1859,8 +2239,10 @@ function pushLogStateToCloud() {
 function initFaqAdmin() {
   loadFaq();
   loadFaqDocs();
+  loadWebSources();
   initAiGasTokenUI();
   renderDocs();
+  renderWebSources();
   faqLog = loadLocalLog();
   faqLogSource = 'local';
   updateStats();
@@ -1880,6 +2262,8 @@ function initFaqAdmin() {
   setTimeout(() => refreshFaqLogRemote(), 500);
   // クラウドUI初期化と同期
   setTimeout(() => { initCloudUI(); syncKBFromCloud(); loadLogStateFromCloud(); }, 100);
+  // WEBソースの週次自動更新（ロード後、クラウド同期が落ち着いてから判定）
+  setTimeout(() => maybeAutoRefreshWeb(), 8000);
   // 60秒ごとに質問ログを自動更新
   setInterval(() => refreshFaqLogRemote(), 60000);
   // 管理者専用セクションの表示制御
