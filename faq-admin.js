@@ -147,6 +147,7 @@ async function syncKBFromCloud() {
       cloudGet('知識ベース'),
       cloudGet('未回答'),
     ]);
+    console.log('[FAQ] syncKB kbData:', kbData, '| uaData:', uaData);
     if (Array.isArray(kbData) && kbData.length > 0) {
       knowledgeBase = kbData.map(item => ({
         ...item,
