@@ -1650,7 +1650,8 @@ async function refreshFaqLogRemote() {
         action: 'getFaqLog',
         idToken: (window.MiwaAuth && window.MiwaAuth.idToken && window.MiwaAuth.idToken()) || ''
       })
-    }).then(r => r.json()).catch(() => null);
+    }).then(r => r.json()).catch(err => { console.error('[FAQ] getFaqLog fetch失敗:', err); return null; });
+    console.log('[FAQ] getFaqLog res:', res);
     if (res && res.ok && Array.isArray(res.logs)) {
       // GASログとローカルログをマージ（重複はtsで除去）
       const localLogs = loadLocalLog();
