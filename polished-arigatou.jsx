@@ -151,6 +151,11 @@ const cardKeyOf = (card) => {
 };
 
 // ── コメント入力モーダル（新規・編集 共通）──────────
+// レイアウトはインラインstyleで自己完結させ、HTMLキャッシュ(<style>)に依存しない
+const AG_MODAL_LABEL = { display: "block", fontSize: 12, fontWeight: 700, color: "var(--ink-mute)", marginBottom: 5 };
+const AG_MODAL_NAME = { display: "block", width: "100%", boxSizing: "border-box", height: 36, padding: "0 11px", borderRadius: 9, border: "1px solid var(--line-strong)", background: "var(--card)", color: "var(--ink)", fontSize: 13.5, fontFamily: "inherit" };
+const AG_MODAL_TEXT = { display: "block", width: "100%", boxSizing: "border-box", minHeight: 140, padding: "10px 11px", borderRadius: 9, border: "1px solid var(--line-strong)", background: "var(--card)", color: "var(--ink)", fontSize: 13.5, lineHeight: 1.6, fontFamily: "inherit", resize: "vertical" };
+const AG_MODAL_HINT = { fontSize: 11, color: "var(--ink-faint)", marginTop: 6, textAlign: "right" };
 const CommentModal = ({ open, isEdit, initialWho, initialText, onClose, onSave }) => {
   const [who, setWho] = React.useState(initialWho || "");
   const [text, setText] = React.useState(initialText || "");
@@ -168,14 +173,14 @@ const CommentModal = ({ open, isEdit, initialWho, initialText, onClose, onSave }
           <button className="modal-close" onClick={onClose} aria-label="閉じる">×</button>
         </div>
         <div className="modal-body">
-          <label className="ag-modal-label">名前（任意）</label>
-          <input className="ag-modal-name" placeholder="名前" value={who} onChange={(e) => setWho(e.target.value)} />
-          <label className="ag-modal-label" style={{ marginTop: 12 }}>コメント</label>
-          <textarea className="ag-modal-text" placeholder="コメントを入力…（Enter で改行）" value={text}
+          <label className="ag-modal-label" style={AG_MODAL_LABEL}>名前（任意）</label>
+          <input className="ag-modal-name" style={AG_MODAL_NAME} placeholder="名前" value={who} onChange={(e) => setWho(e.target.value)} />
+          <label className="ag-modal-label" style={{ ...AG_MODAL_LABEL, marginTop: 12 }}>コメント</label>
+          <textarea className="ag-modal-text" style={AG_MODAL_TEXT} placeholder="コメントを入力…（Enter で改行）" value={text}
                     autoFocus
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") save(); }} />
-          <div className="ag-modal-hint">⌘ / Ctrl + Enter で保存</div>
+          <div className="ag-modal-hint" style={AG_MODAL_HINT}>⌘ / Ctrl + Enter で保存</div>
         </div>
         <div className="modal-foot">
           <button className="btn" onClick={onClose}>キャンセル</button>
