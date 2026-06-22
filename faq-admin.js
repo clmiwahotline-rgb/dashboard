@@ -164,13 +164,12 @@ function _cldMsg(text, ms) {
 }
 
 async function syncKBFromCloud() {
-  const cfg = loadCloudCfg();
-  if (!cfg.enabled || !cfg.gasUrl) return;
+  if (typeof cloudEnabled !== 'function' || !cloudEnabled() || typeof cloudGet !== 'function') return;
   _cldSt = 'syncing'; _cldBadge();
   try {
     const [kbData, uaData] = await Promise.all([
-      fetch(cfg.gasUrl + '?action=get_kb').then(r => r.json()),
-      fetch(cfg.gasUrl + '?action=get_ua').then(r => r.json()),
+      cloudGet('FAQ知識ベース'),
+      cloudGet('FAQ未回答'),
     ]);
     if (Array.isArray(kbData) && kbData.length > 0) {
       knowledgeBase = kbData.map(item => ({
@@ -181,23 +180,20 @@ async function syncKBFromCloud() {
         enabled: item.enabled !== false,
         approved: item.approved === true || item.approved === 'true' || item.approved === 'TRUE' || item.approved === 1 || item.approved === '1',
       }));
-    } else if (knowledgeBase.length > 0 && cfg.token) {
-      // クラウドが空だがローカルにデータあり → 自動でクラウドへ送信
+    } else if (knowledgeBase.length > 0 && typeof cloudReplaceAll === 'function') {
       console.log('[FAQ] クラウドKBが空のためローカルをプッシュ:', knowledgeBase.length, '件');
-      _cldPost('bulk_replace_kb', { items: knowledgeBase });
+      cloudReplaceAll('FAQ知識ベース', knowledgeBase).catch(() => {});
     }
-    if (Array.isArray(uaData)) {
+    if (Array.isArray(uaData) && uaData.length > 0) {
       unansweredList = uaData
         .filter(item => !_suppressedUAQuestions.has((item.q || '').trim()))
-        .map(item => ({
-          ...item, answered: item.status === '回答済み',
-        }));
+        .map(item => ({ ...item, answered: item.status === '回答済み' }));
     }
-    persistFaq();
+    try { localStorage.setItem(FAQ_LS_KEY, JSON.stringify({ knowledgeBase, unansweredList, nextId, statsAnswered })); } catch(e) {}
     _cldSt = 'ok'; _cldBadge();
     updateStats(); renderKB(); renderUnanswered();
     _cldMsg(`✅ クラウドから取得しました（知識 ${knowledgeBase.length} 件）`);
-  } catch(e) { _cldSt = 'error'; _cldBadge(); }
+  } catch(e) { _cldSt = 'error'; _cldBadge(); console.warn('syncKBFromCloud:', e); }
 }
 
 async function forceSyncFromCloud() { await syncKBFromCloud(); }
@@ -206,8 +202,11 @@ async function forcePushToCloud() {
   const cfg = loadCloudCfg();
   if (!cfg.enabled || !cfg.gasUrl || !cfg.token) { alert('GAS URL とトークンを設定してください'); return; }
   if (!confirm(`知識ベース ${knowledgeBase.length} 件をクラウドへ全件送信しますか？\n（スプレッドシートの既存データは上書きされます）`)) return;
-  const res = await _cldPost('bulk_replace_kb', { items: knowledgeBase });
-  if (res && res.ok) _cldMsg(`✅ ${knowledgeBase.length} 件を送信しました`);
+  try {
+    await cloudReplaceAll('FAQ知識ベース', knowledgeBase);
+    await cloudReplaceAll('FAQ未回答', unansweredList);
+    _cldMsg(`✅ ${knowledgeBase.length} 件を送信しました`);
+  } catch(e) { alert('送信失敗: ' + e.message); }
 }
 
 function saveCloudSettingsFromUI() {
@@ -385,7 +384,6 @@ function approveAnswer(id) {
   renderUnanswered();
   renderKB();
   updateStats();
-  _cldPost('answer_ua', { ua_id: id, item: newKb });
 
   const el = document.getElementById(`ua-${id}`);
   if (el) el.style.background = '#ecfdf5';
@@ -777,8 +775,6 @@ function commitImport() {
   // クラウドへ一括添加
   const cloudNewItems = toAdd.filter(c => c.decision !== 'discard' && c.decision !== 'overwrite').map(c => knowledgeBase[knowledgeBase.length - toAdd.filter(x => x.decision !== 'discard').indexOf(c) - 1]).filter(Boolean);
   const cloudUpdItems = toAdd.filter(c => c.decision === 'overwrite' && c.dup);
-  if (cloudNewItems.length) _cldPost('bulk_add_kb', { items: cloudNewItems });
-  cloudUpdItems.forEach(c => { const t = knowledgeBase.find(k => k.id === c.dup.item.id); if(t) _cldPost('update_kb', { item: t }); });
 }
 
 function clearImport() {
@@ -891,7 +887,6 @@ function deleteKB(id) {
   persistFaq();
   renderKB();
   updateStats();
-  _cldPost('delete_kb', { id });
 }
 
 function editKB(id) {
@@ -924,7 +919,6 @@ function saveEditKB(id) {
   persistFaq();
   renderKB();
   updateStats();
-  _cldPost('update_kb', { item });
 }
 
 function approveKB(id) {
@@ -935,7 +929,6 @@ function approveKB(id) {
   else delete item.approvedAt;
   persistFaq();
   renderKB();
-  _cldPost('update_kb', { item });
 }
 
 let addFormOpen = false;
@@ -1042,7 +1035,6 @@ function addKB() {
   persistFaq();
   renderKB();
   updateStats();
-  _cldPost('add_kb', { item: addedKb });
 }
 
 // ═══════════════════════════════════════════════
