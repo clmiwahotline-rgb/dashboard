@@ -18,14 +18,19 @@ const FAQ_CLOUD_KEY = 'miwa.faq.cloud.v1'; // { gasUrl, token, enabled }
 
 // ── クラウド設定の読み書き ──
 const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbzWq4dsfENPZuZ9eGGum5Glg2pDcLf10bL8dJNvJgr66cgUOHAFGWPJNmkRUl3CpAml/exec';
+// 全端末で共通利用する書き込み用トークン（GASのスクリプトプロパティ AUTH_TOKEN と一致させる）。
+// これをコードに埋め込むことで、各端末でのクラウド設定が不要になる。
+const DEFAULT_KB_TOKEN = 'miwa2026sec';
 function loadCloudCfg() {
+  // クラウド同期は常時ON・GAS URL とトークンはコード埋め込みを既定値とする。
+  // localStorage に保存があってもURL/トークンが欠けていれば既定値で補完し、enabled は常にtrue。
+  let cfg = { gasUrl: DEFAULT_KB_GAS, token: DEFAULT_KB_TOKEN, enabled: true };
   try { const s = localStorage.getItem(FAQ_CLOUD_KEY); if (s) {
-    const cfg = JSON.parse(s);
-    if (!cfg.gasUrl) cfg.gasUrl = DEFAULT_KB_GAS;
-    if (!cfg.hasOwnProperty('enabled')) cfg.enabled = true;
-    return cfg;
+    const saved = JSON.parse(s);
+    if (saved.gasUrl) cfg.gasUrl = saved.gasUrl;
+    if (saved.token)  cfg.token  = saved.token;
   }} catch(e) {}
-  return { gasUrl: DEFAULT_KB_GAS, token: '', enabled: true };
+  return cfg;
 }
 function saveCloudCfg(cfg) {
   try { localStorage.setItem(FAQ_CLOUD_KEY, JSON.stringify(cfg)); } catch(e) {}
@@ -1119,6 +1124,7 @@ function loadArchivedLogIds() {
 }
 function saveArchivedLogIds() {
   try { localStorage.setItem(FAQ_LOG_ARCHIVE_KEY, JSON.stringify([..._archivedLogIds])); } catch(e) {}
+  pushLogStateToCloud();
 }
 function logRowId(r) { return String(r.ts || '') + '_' + String(r.q || '').slice(0, 20); }
 
@@ -1130,6 +1136,7 @@ function loadSuppressedUAQuestions() {
 }
 function saveSuppressedUAQuestions() {
   try { localStorage.setItem(FAQ_UA_SUPPRESSED_KEY, JSON.stringify([..._suppressedUAQuestions])); } catch(e) {}
+  pushLogStateToCloud();
 }
 function toggleArchiveLog(rowId) {
   if (_archivedLogIds.has(rowId)) _archivedLogIds.delete(rowId);
@@ -1146,6 +1153,7 @@ function loadNeedlessLogIds() {
 }
 function saveNeedlessLogIds() {
   try { localStorage.setItem(FAQ_LOG_NEEDLESS_KEY, JSON.stringify([..._needlessLogIds])); } catch(e) {}
+  pushLogStateToCloud();
 }
 function toggleNeedlessLog(rowId, q) {
   if (_needlessLogIds.has(rowId)) {
@@ -1802,6 +1810,52 @@ async function initAiGasTokenUI() {
   } catch(e) {}
 }
 
+// ═══════════════════════════════════════════════
+//  質問ログの状態（アーカイブ／不要／未回答抑制）を全端末共有
+//  共有クラウド（polished-cloud.jsx）の専用シートに保存。
+//  行: { kind:'archive'|'needless'|'suppressed', value }
+// ═══════════════════════════════════════════════
+const FAQ_LOGSTATE_SHEET = 'FAQログ状態';
+let _pushLogStateTimer = null;
+
+async function loadLogStateFromCloud() {
+  if (typeof cloudEnabled !== 'function' || !cloudEnabled() || typeof cloudGet !== 'function') return;
+  try {
+    const rows = await cloudGet(FAQ_LOGSTATE_SHEET);
+    if (!Array.isArray(rows)) return;
+    const arch = new Set(), need = new Set(), supp = new Set();
+    rows.forEach(r => {
+      const kind = String(r.kind || ''); const val = String(r.value || '');
+      if (!val) return;
+      if (kind === 'archive') arch.add(val);
+      else if (kind === 'needless') need.add(val);
+      else if (kind === 'suppressed') supp.add(val);
+    });
+    // ローカルとクラウドを結合（初回同期でどちらの状態も失わない）
+    _archivedLogIds = new Set([..._archivedLogIds, ...arch]);
+    _needlessLogIds = new Set([..._needlessLogIds, ...need]);
+    _suppressedUAQuestions = new Set([..._suppressedUAQuestions, ...supp]);
+    try { localStorage.setItem(FAQ_LOG_ARCHIVE_KEY, JSON.stringify([..._archivedLogIds])); } catch(e) {}
+    try { localStorage.setItem(FAQ_LOG_NEEDLESS_KEY, JSON.stringify([..._needlessLogIds])); } catch(e) {}
+    try { localStorage.setItem(FAQ_UA_SUPPRESSED_KEY, JSON.stringify([..._suppressedUAQuestions])); } catch(e) {}
+    if (typeof renderFaqLog === 'function') renderFaqLog();
+    if (typeof renderUnanswered === 'function') renderUnanswered();
+  } catch(e) {}
+}
+
+function pushLogStateToCloud() {
+  if (typeof cloudEnabled !== 'function' || !cloudEnabled() || typeof cloudReplaceAll !== 'function') return;
+  // 連続トグルをまとめて1回だけ送信（デバウンス）
+  if (_pushLogStateTimer) clearTimeout(_pushLogStateTimer);
+  _pushLogStateTimer = setTimeout(() => {
+    const rows = [];
+    _archivedLogIds.forEach(v => rows.push({ kind: 'archive', value: String(v) }));
+    _needlessLogIds.forEach(v => rows.push({ kind: 'needless', value: String(v) }));
+    _suppressedUAQuestions.forEach(v => rows.push({ kind: 'suppressed', value: String(v) }));
+    cloudReplaceAll(FAQ_LOGSTATE_SHEET, rows).catch(() => {});
+  }, 800);
+}
+
 function initFaqAdmin() {
   loadFaq();
   loadFaqDocs();
@@ -1825,7 +1879,7 @@ function initFaqAdmin() {
   // 初回ロード時に最新ログを取得
   setTimeout(() => refreshFaqLogRemote(), 500);
   // クラウドUI初期化と同期
-  setTimeout(() => { initCloudUI(); syncKBFromCloud(); }, 100);
+  setTimeout(() => { initCloudUI(); syncKBFromCloud(); loadLogStateFromCloud(); }, 100);
   // 60秒ごとに質問ログを自動更新
   setInterval(() => refreshFaqLogRemote(), 60000);
   // 管理者専用セクションの表示制御

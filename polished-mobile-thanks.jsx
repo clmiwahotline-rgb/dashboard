@@ -25,11 +25,37 @@ const mFmtJst = (d) => {
 
 const M_THX_SEED = [];
 
-const MThxCard = ({ card, comments, onAdd }) => {
+// コメント入力ボトムシート（新規・編集 共通）
+const MThxCommentSheet = ({ isEdit, initialWho, initialText, onClose, onSave }) => {
+  const [who, setWho] = React.useState(initialWho || "");
+  const [text, setText] = React.useState(initialText || "");
+  const save = () => { const t = text.trim(); if (!t) return; onSave({ who: who.trim(), text: t }); };
+  return ReactDOM.createPortal((
+    <div className="m-sheet-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="m-sheet">
+        <div className="m-sheet-grab"></div>
+        <div className="m-sheet-head">
+          <div className="m-sheet-title">{isEdit ? "コメントを編集" : "コメントする"}</div>
+          <button className="m-sheet-close" onClick={onClose} aria-label="閉じる">×</button>
+        </div>
+        <div className="m-sheet-body">
+          <label className="m-thx-field-label">名前（任意）</label>
+          <input className="m-thx-field-name" placeholder="名前" value={who} onChange={(e) => setWho(e.target.value)} />
+          <label className="m-thx-field-label" style={{ marginTop: 14 }}>コメント</label>
+          <textarea className="m-thx-field-text" placeholder="コメントを入力…（改行できます）" value={text} autoFocus onChange={(e) => setText(e.target.value)} />
+        </div>
+        <div className="m-sheet-foot">
+          <button className="m-btn m-btn-ghost" onClick={onClose}>キャンセル</button>
+          <button className="m-btn m-btn-primary" onClick={save} disabled={!text.trim()} style={!text.trim() ? { opacity: .5 } : null}>{isEdit ? "保存" : "投稿"}</button>
+        </div>
+      </div>
+    </div>
+  ), document.body);
+};
+
+const MThxCard = ({ card, comments, onAdd, onEdit, onDel }) => {
   const cfg = mKindCfg(card.kind);
-  const [who, setWho] = React.useState("");
-  const [text, setText] = React.useState("");
-  const submit = () => { if (!text.trim()) return; onAdd({ who: who.trim(), text: text.trim() }); setText(""); };
+  const [sheet, setSheet] = React.useState(null); // null | { id?, who, text }
   return (
     <div className="m-thx">
       <div className="m-thx-head">
@@ -43,14 +69,24 @@ const MThxCard = ({ card, comments, onAdd }) => {
       <div className="m-thx-text">{card.content}</div>
       {comments.length > 0 && (
         <div className="m-thx-cmts">
-          {comments.map((c) => <div key={c.id} className="m-thx-cmt"><b>{c.who || "匿名"}</b>　{c.text}</div>)}
+          {comments.map((c) => (
+            <div key={c.id} className="m-thx-cmt" onClick={() => setSheet({ id: c.id, who: c.who || "", text: c.text })}>
+              <span className="m-thx-cmt-body"><b>{c.who || "匿名"}</b>　{c.text}</span>
+              <button className="m-thx-cmt-del" onClick={(e) => { e.stopPropagation(); onDel(c.id); }} aria-label="削除">×</button>
+            </div>
+          ))}
         </div>
       )}
-      <div className="m-thx-cmtform">
-        <input style={{ flex: "0 0 78px" }} placeholder="名前" value={who} onChange={(e) => setWho(e.target.value)} />
-        <input placeholder="コメントを追加…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
-        <button onClick={submit} disabled={!text.trim()}>追加</button>
-      </div>
+      <button className="m-thx-cmt-open" onClick={() => setSheet({ who: "", text: "" })}>💬 コメントする</button>
+      {sheet && (
+        <MThxCommentSheet
+          isEdit={!!sheet.id}
+          initialWho={sheet.who}
+          initialText={sheet.text}
+          onClose={() => setSheet(null)}
+          onSave={(p) => { if (sheet.id) onEdit(sheet.id, p); else onAdd(p); setSheet(null); }}
+        />
+      )}
     </div>
   );
 };
@@ -90,6 +126,14 @@ const MThanks = ({ registerHeader, registerFab }) => {
     setComments((p) => [...p, note]);
     if (cloudOn) cloudAdd(M_COMMENT_SHEET, note);
   };
+  const editComment = (id, patch) => {
+    setComments((p) => p.map((x) => x.id === id ? { ...x, ...patch } : x));
+    if (cloudOn) cloudUpdate(M_COMMENT_SHEET, id, patch);
+  };
+  const delComment = (id) => {
+    setComments((p) => p.filter((x) => x.id !== id));
+    if (cloudOn) cloudDelete(M_COMMENT_SHEET, id);
+  };
 
   const kinds = ["all", ...Object.keys(M_KIND)];
   const filtered = rows.filter((r) => kind === "all" ? true : r.kind === kind);
@@ -105,7 +149,7 @@ const MThanks = ({ registerHeader, registerFab }) => {
       </div>
       {loading && rows.length === 0 ? <div className="m-loading"><div className="m-spinner"></div>読み込み中…</div>
         : sorted.length === 0 ? <div className="m-empty" style={{ marginTop: 30 }}>カードがありません</div>
-        : sorted.map((card, i) => { const ck = mCardKey(card); return <MThxCard key={ck + "_" + i} card={card} comments={byKey[ck] || []} onAdd={(c) => addComment(ck, c)} />; })}
+        : sorted.map((card, i) => { const ck = mCardKey(card); return <MThxCard key={ck + "_" + i} card={card} comments={byKey[ck] || []} onAdd={(c) => addComment(ck, c)} onEdit={editComment} onDel={delComment} />; })}
       <div style={{ height: 12 }}></div>
     </div>
   );

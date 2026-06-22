@@ -150,19 +150,48 @@ const cardKeyOf = (card) => {
   return "k" + (h >>> 0).toString(36);
 };
 
+// ── コメント入力モーダル（新規・編集 共通）──────────
+const CommentModal = ({ open, isEdit, initialWho, initialText, onClose, onSave }) => {
+  const [who, setWho] = React.useState(initialWho || "");
+  const [text, setText] = React.useState(initialText || "");
+  React.useEffect(() => { if (open) { setWho(initialWho || ""); setText(initialText || ""); } }, [open]);
+  if (!open) return null;
+  const save = () => { const t = text.trim(); if (!t) return; onSave({ who: who.trim(), text: t }); };
+  return ReactDOM.createPortal((
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 460 }}>
+        <div className="modal-head">
+          <div>
+            <h2>{isEdit ? "コメントを編集" : "コメントする"}</h2>
+            <div className="sub">改行して複数行で書けます</div>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="閉じる">×</button>
+        </div>
+        <div className="modal-body">
+          <label className="ag-modal-label">名前（任意）</label>
+          <input className="ag-modal-name" placeholder="名前" value={who} onChange={(e) => setWho(e.target.value)} />
+          <label className="ag-modal-label" style={{ marginTop: 12 }}>コメント</label>
+          <textarea className="ag-modal-text" placeholder="コメントを入力…（Enter で改行）" value={text}
+                    autoFocus
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") save(); }} />
+          <div className="ag-modal-hint">⌘ / Ctrl + Enter で保存</div>
+        </div>
+        <div className="modal-foot">
+          <button className="btn" onClick={onClose}>キャンセル</button>
+          <button className="btn btn-primary" onClick={save} disabled={!text.trim()}>{isEdit ? "保存" : "投稿"}</button>
+        </div>
+      </div>
+    </div>
+  ), document.body);
+};
+
 // ── Individual card ───────────────────────────────────
-const ThankCard = ({ card, storeColorMap, comments = [], onAddComment, onDelComment }) => {
+const ThankCard = ({ card, storeColorMap, comments = [], onAddComment, onEditComment, onDelComment }) => {
   const cfg = kindCfg(card.kind);
   const dateStr = fmtJst(card.date);
-  const [who, setWho] = React.useState("");
-  const [text, setText] = React.useState("");
   const [copied, setCopied] = React.useState(false);
-  const submit = () => {
-    const t = text.trim();
-    if (!t) return;
-    onAddComment({ who: who.trim(), text: t });
-    setText("");
-  };
+  const [modal, setModal] = React.useState(null); // null | { id?, who, text }
   const copyCard = async () => {
     const lines = [
       `【${card.store || "不明"}】${card.kind ? "（" + card.kind + "）" : ""}`,
@@ -209,26 +238,35 @@ const ThankCard = ({ card, storeColorMap, comments = [], onAddComment, onDelComm
             {comments.map((c) => (
               <div key={c.id} className="ag-cmt">
                 <span className="ag-cmt-ico" aria-hidden="true">💬</span>
-                <span className="ag-cmt-txt">{c.who ? <b>{c.who}：</b> : null}{c.text}</span>
+                <button className="ag-cmt-txt" onClick={() => setModal({ id: c.id, who: c.who || "", text: c.text })} title="タップして編集">
+                  {c.who ? <b>{c.who}：</b> : null}{c.text}
+                </button>
                 <button className="ag-cmt-del" onClick={() => onDelComment(c.id)} aria-label="コメント削除">×</button>
               </div>
             ))}
           </div>
         )}
-        <div className="ag-cmt-form">
-          <input className="ag-cmt-name" placeholder="名前(任意)" value={who} onChange={(e) => setWho(e.target.value)} />
-          <input className="ag-cmt-input" placeholder="コメントを追加…" value={text}
-                 onChange={(e) => setText(e.target.value)}
-                 onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
-          <button className="ag-cmt-add" onClick={submit} disabled={!text.trim()}>追加</button>
-        </div>
+        <button className="ag-cmt-open" onClick={() => setModal({ who: "", text: "" })}>💬 コメントする</button>
       </div>
+
+      <CommentModal
+        open={!!modal}
+        isEdit={!!(modal && modal.id)}
+        initialWho={modal ? modal.who : ""}
+        initialText={modal ? modal.text : ""}
+        onClose={() => setModal(null)}
+        onSave={(payload) => {
+          if (modal && modal.id) onEditComment(modal.id, payload);
+          else onAddComment(payload);
+          setModal(null);
+        }}
+      />
     </div>
   );
 };
 
 // ── Card list with filters ────────────────────────────
-const CardList = ({ data, commentsByKey = {}, onAddComment, onDelComment }) => {
+const CardList = ({ data, commentsByKey = {}, onAddComment, onEditComment, onDelComment }) => {
   const [activeStore, setActiveStore] = React.useState("all");
   const [activeKind,  setActiveKind]  = React.useState("all");
   const [search, setSearch]           = React.useState("");
@@ -288,6 +326,7 @@ const CardList = ({ data, commentsByKey = {}, onAddComment, onDelComment }) => {
               <ThankCard key={ck + "_" + i} card={card} storeColorMap={storeColorMap}
                 comments={commentsByKey[ck] || []}
                 onAddComment={(c) => onAddComment(ck, c)}
+                onEditComment={onEditComment}
                 onDelComment={onDelComment} />
             );
           })}
@@ -499,6 +538,10 @@ const ArigatouPage = () => {
     setComments((prev) => prev.filter((x) => x.id !== id));
     if (cloudOn) cloudDelete(COMMENT_SHEET, id);
   };
+  const editComment = (id, patch) => {
+    setComments((prev) => prev.map((x) => x.id === id ? { ...x, ...patch } : x));
+    if (cloudOn) cloudUpdate(COMMENT_SHEET, id, patch).then((r) => { if (r && !r.ok) setToast("⚠ コメントのクラウド更新に失敗"); });
+  };
 
   React.useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
@@ -612,7 +655,7 @@ const ArigatouPage = () => {
             <div className="card-head">
               <h3 className="card-title">📋 個別カード一覧</h3>
             </div>
-            <CardList data={rows} commentsByKey={commentsByKey} onAddComment={addComment} onDelComment={delComment} />
+            <CardList data={rows} commentsByKey={commentsByKey} onAddComment={addComment} onEditComment={editComment} onDelComment={delComment} />
           </div>
 
           {/* AI Report */}
