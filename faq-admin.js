@@ -89,31 +89,7 @@ function loadFaq() {
     nextId = 100;
     statsAnswered = 0;
   }
-  // クラウドから最新を取得（全端末共有）
-  setTimeout(() => {
-    if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
-      cloudGet('FAQ知識ベース').then(remote => {
-        if (Array.isArray(remote) && remote.length) {
-          knowledgeBase = remote;
-          const maxId = remote.reduce((m, r) => Math.max(m, Number(r.id) || 0), 0);
-          if (maxId >= nextId) nextId = maxId + 1;
-          try { localStorage.setItem(FAQ_LS_KEY, JSON.stringify({ knowledgeBase, unansweredList, nextId, statsAnswered })); } catch (e) {}
-          if (typeof renderKb === 'function') renderKb();
-          console.log('[FAQ] 知識ベースをクラウドから同期:', knowledgeBase.length, '件');
-        } else if (knowledgeBase.length > 0 && typeof cloudReplaceAll === 'function') {
-          cloudReplaceAll('FAQ知識ベース', knowledgeBase).catch(() => {});
-        }
-      }).catch(() => {});
-      // 未回答リストも同期
-      cloudGet('FAQ未回答').then(remote => {
-        if (Array.isArray(remote) && remote.length) {
-          unansweredList = remote;
-          try { localStorage.setItem(FAQ_LS_KEY, JSON.stringify({ knowledgeBase, unansweredList, nextId, statsAnswered })); } catch (e) {}
-          if (typeof renderLog === 'function') renderLog();
-        }
-      }).catch(() => {});
-    }
-  }, 800);
+  // クラウド同期は syncKBFromCloud()（initFaqAdmin内）が担当するためここでは不要
 }
 
 // ═══════════════════════════════════════════════
@@ -174,9 +150,7 @@ async function syncKBFromCloud() {
     if (Array.isArray(kbData) && kbData.length > 0) {
       knowledgeBase = kbData.map(item => ({
         ...item,
-        images: typeof item.images === 'string'
-          ? item.images.split(',').filter(Boolean)
-          : (Array.isArray(item.images) ? item.images : []),
+        images: (() => { const v = item.images; if (Array.isArray(v)) return v.filter(Boolean); if (typeof v === 'string') { try { const p = JSON.parse(v); if (Array.isArray(p)) return p.filter(s => s && typeof s === 'string' && /^https?:\/\//.test(s)); } catch(e){} return v.split(',').map(s=>s.trim()).filter(s => s && /^https?:\/\//.test(s)); } return []; })(),
         enabled: item.enabled !== false,
         approved: item.approved === true || item.approved === 'true' || item.approved === 'TRUE' || item.approved === 1 || item.approved === '1',
       }));
@@ -404,8 +378,6 @@ function deleteUA(id) {
       }
     });
     saveNeedlessLogIds();
-    // クラウドからも削除（次回同期時に戻らないように）
-    _cldPost('delete_ua', { id: item.id, q: q });
   }
   unansweredList = unansweredList.filter(u => u.id !== id);
   persistFaq(); renderUnanswered(); renderFaqLog(); updateStats();
@@ -423,7 +395,7 @@ function addUnansweredManual() {
   persistFaq();
   renderUnanswered();
   updateStats();
-  _cldPost('add_ua', { q });
+  // persistFaq()内のcloudReplaceAllで未回答リストが同期される
 }
 
 // ── 長文チャンク分割 ──────────────────────────────────────────
