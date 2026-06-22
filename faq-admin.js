@@ -68,6 +68,11 @@ function persistFaq() {
       knowledgeBase, unansweredList, nextId, statsAnswered
     }));
   } catch (e) {}
+  // クラウドにも同期（全端末共有）
+  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
+    cloudReplaceAll('FAQ知識ベース', knowledgeBase).catch(e => console.warn('FAQ知識ベースクラウド同期失敗:', e));
+    cloudReplaceAll('FAQ未回答', unansweredList).catch(e => console.warn('FAQ未回答クラウド同期失敗:', e));
+  }
 }
 function loadFaq() {
   let loaded = null;
@@ -84,6 +89,31 @@ function loadFaq() {
     nextId = 100;
     statsAnswered = 0;
   }
+  // クラウドから最新を取得（全端末共有）
+  setTimeout(() => {
+    if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
+      cloudGet('FAQ知識ベース').then(remote => {
+        if (Array.isArray(remote) && remote.length) {
+          knowledgeBase = remote;
+          const maxId = remote.reduce((m, r) => Math.max(m, Number(r.id) || 0), 0);
+          if (maxId >= nextId) nextId = maxId + 1;
+          try { localStorage.setItem(FAQ_LS_KEY, JSON.stringify({ knowledgeBase, unansweredList, nextId, statsAnswered })); } catch (e) {}
+          if (typeof renderKb === 'function') renderKb();
+          console.log('[FAQ] 知識ベースをクラウドから同期:', knowledgeBase.length, '件');
+        } else if (knowledgeBase.length > 0 && typeof cloudReplaceAll === 'function') {
+          cloudReplaceAll('FAQ知識ベース', knowledgeBase).catch(() => {});
+        }
+      }).catch(() => {});
+      // 未回答リストも同期
+      cloudGet('FAQ未回答').then(remote => {
+        if (Array.isArray(remote) && remote.length) {
+          unansweredList = remote;
+          try { localStorage.setItem(FAQ_LS_KEY, JSON.stringify({ knowledgeBase, unansweredList, nextId, statsAnswered })); } catch (e) {}
+          if (typeof renderLog === 'function') renderLog();
+        }
+      }).catch(() => {});
+    }
+  }, 800);
 }
 
 // ═══════════════════════════════════════════════
@@ -1165,7 +1195,8 @@ function loadWebSources() {
     if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
       cloudGet('FAQウェブソース').then(remote => {
         if (Array.isArray(remote) && remote.length) {
-          webSources = remote;
+          // スプレッドシート経由で文字列化されたidを数値に戻す
+          webSources = remote.map(s => Object.assign({}, s, { id: Number(s.id) }));
           try { localStorage.setItem(FAQ_WEB_KEY, JSON.stringify(webSources)); } catch (e) {}
           if (typeof renderWebSources === 'function') renderWebSources();
         } else if (webSources.length > 0 && typeof cloudReplaceAll === 'function') {
@@ -1257,7 +1288,8 @@ async function addWebSource() {
 
 // 1件を再取得（手動・自動共通）。changedを返す。silent=trueで自動時のアラート抑制。
 async function refreshWebSource(id, silent) {
-  const src = webSources.find(s => s.id === id);
+  id = Number(id);
+  const src = webSources.find(s => Number(s.id) === id);
   if (!src) return false;
   const card = document.querySelector(`[data-websrc="${id}"] .web-refresh`);
   if (card) { card.disabled = true; card.textContent = '⏳'; }
@@ -1318,7 +1350,8 @@ function maybeAutoRefreshWeb() {
 }
 
 function deleteWebSource(id) {
-  const src = webSources.find(s => s.id === id);
+  id = Number(id);
+  const src = webSources.find(s => Number(s.id) === id);
   if (!src) return;
   if (!confirm('このWEBサイトを削除しますか？\n（取り込んだ資料も一緒に削除されます）')) return;
   if (src.docId) { faqDocs = faqDocs.filter(d => d.id !== src.docId); saveFaqDocs(); }
@@ -1329,7 +1362,8 @@ function deleteWebSource(id) {
 
 // サイト全体をクロールして全ページを知識資料ストックに取り込む
 async function crawlAndImportSite(srcId) {
-  const src = webSources.find(s => s.id === srcId);
+  srcId = Number(srcId);
+  const src = webSources.find(s => Number(s.id) === srcId);
   if (!src) return;
   if (!confirm(`「${src.title || src.url}」のサイト全体を取り込みます。\n（最大50ページ。既存の同URLページは上書き）`)) return;
   const cfg = loadCloudCfg();
@@ -1382,7 +1416,8 @@ async function crawlAndImportSite(srcId) {
 
 // このサイトの本文をAIで仕分け（知識ベース候補化）。手動時のみAI課金が発生。
 function aiSortWebSource(id) {
-  const src = webSources.find(s => s.id === id);
+  id = Number(id);
+  const src = webSources.find(s => Number(s.id) === id);
   if (!src) return;
   const doc = faqDocs.find(d => d.id === src.docId);
   if (!doc || !doc.content) { alert('本文がありません。先に取得してください'); return; }
