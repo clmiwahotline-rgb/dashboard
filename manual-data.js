@@ -4,7 +4,7 @@ window.MANUAL = {
     title: "みわダッシュボード v.3",
     subtitle: "機能説明書 / 操作マニュアル",
     org: "クリーニングみわ",
-    version: "v3.00",
+    version: "v3.01",
     date: "2026年6月",
     url: "https://statuesque-beignet-f1be04.netlify.app/",
   },

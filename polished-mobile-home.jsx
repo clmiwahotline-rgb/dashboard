@@ -266,15 +266,15 @@ const MHome = ({ go }) => {
 
       <div className="m-stat-grid">
         <MStat cap="未解決クレーム" icon="⚠️" val={unresolved.length} unit="件" foot={unresolved.length ? "要対応" : "なし"} tone={unresolved.length ? "danger" : "accent"} onClick={() => go("claims")} />
-        <MStat cap="車両の期限" icon="🚚" val={vehAlerts.length} unit="件" foot={vehAlerts.length ? "確認が必要" : "余裕あり"} tone={vehAlerts.length ? "warn" : "accent"} onClick={() => location.href = encodeURIComponent("車両管理.html") + "?view=pc"} />
-        <MStat cap="今月フィードバック" icon="💬" val={fbMonth} unit="件" foot={`累計 ${fb.length} 件`} onClick={() => location.href = encodeURIComponent("フィードバック.html") + "?view=pc"} />
+        <MStat cap="車両の期限" icon="🚚" val={vehAlerts.length} unit="件" foot={vehAlerts.length ? "確認が必要" : "余裕あり"} tone={vehAlerts.length ? "warn" : "accent"} onClick={() => go("vehicle")} />
+        <MStat cap="今月フィードバック" icon="💬" val={fbMonth} unit="件" foot={`累計 ${fb.length} 件`} onClick={() => go("feedback")} />
         <MStat cap="今週のありがとう" icon="🙏" val={thxWeek} unit="件" foot="直近7日間" tone="accent" onClick={() => go("thanks")} />
-        <MStat cap="工場生産性" icon="🏭" val={facProd ? facProd.toFixed(1) : "—"} unit="点/h" foot={facLatest ? `${(facLatest.date || "").slice(5).replace("-", "/")} 最新` : "—"} onClick={() => location.href = encodeURIComponent("工場報告.html") + "?view=pc"} />
-        <MStat cap="シミ抜き除去率" icon="🧴" val={stRate != null ? stRate.toFixed(1) : "—"} unit="%" foot={`直近30日 ${stProc}件`} tone="accent" onClick={() => location.href = encodeURIComponent("シミ抜き報告.html") + "?view=pc"} />
+        <MStat cap="工場生産性" icon="🏭" val={facProd ? facProd.toFixed(1) : "—"} unit="点/h" foot={facLatest ? `${(facLatest.date || "").slice(5).replace("-", "/")} 最新` : "—"} onClick={() => go("factory")} />
+        <MStat cap="シミ抜き除去率" icon="🧴" val={stRate != null ? stRate.toFixed(1) : "—"} unit="%" foot={`直近30日 ${stProc}件`} tone="accent" onClick={() => go("stain")} />
       </div>
 
       {/* 共有ボード：本日分は全件＋過去の未確認 */}
-      <div className="m-sec-title">📌 共有ボード<a className="m-card-link" onClick={() => location.href = encodeURIComponent("共有ボード.html") + "?view=pc"} style={{ marginLeft: "auto", cursor: "pointer" }}>すべて ›</a></div>
+      <div className="m-sec-title">📌 共有ボード<a className="m-card-link" onClick={() => go("board")} style={{ marginLeft: "auto", cursor: "pointer" }}>すべて ›</a></div>
       <div className="m-card">
         <div className="m-card-body">
           {visibleBoard.length === 0 ? <div className="m-empty">新しい投稿はありません（すべて確認済み）</div> : visibleBoard.map((p) => {
