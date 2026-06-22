@@ -70,8 +70,8 @@ function persistFaq() {
   } catch (e) {}
   // クラウドにも同期（全端末共有）
   if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
-    cloudReplaceAll('FAQ知識ベース', knowledgeBase).catch(e => console.warn('FAQ知識ベースクラウド同期失敗:', e));
-    cloudReplaceAll('FAQ未回答', unansweredList).catch(e => console.warn('FAQ未回答クラウド同期失敗:', e));
+    cloudReplaceAll('知識ベース', knowledgeBase).catch(e => console.warn('FAQ知識ベースクラウド同期失敗:', e));
+    cloudReplaceAll('未回答', unansweredList).catch(e => console.warn('FAQ未回答クラウド同期失敗:', e));
   }
 }
 function loadFaq() {
@@ -144,8 +144,8 @@ async function syncKBFromCloud() {
   _cldSt = 'syncing'; _cldBadge();
   try {
     const [kbData, uaData] = await Promise.all([
-      cloudGet('FAQ知識ベース'),
-      cloudGet('FAQ未回答'),
+      cloudGet('知識ベース'),
+      cloudGet('未回答'),
     ]);
     if (Array.isArray(kbData) && kbData.length > 0) {
       knowledgeBase = kbData.map(item => ({
@@ -156,7 +156,7 @@ async function syncKBFromCloud() {
       }));
     } else if (knowledgeBase.length > 0 && typeof cloudReplaceAll === 'function') {
       console.log('[FAQ] クラウドKBが空のためローカルをプッシュ:', knowledgeBase.length, '件');
-      cloudReplaceAll('FAQ知識ベース', knowledgeBase).catch(() => {});
+      cloudReplaceAll('知識ベース', knowledgeBase).catch(() => {});
     }
     if (Array.isArray(uaData) && uaData.length > 0) {
       unansweredList = uaData
@@ -177,8 +177,8 @@ async function forcePushToCloud() {
   if (!cfg.enabled || !cfg.gasUrl || !cfg.token) { alert('GAS URL とトークンを設定してください'); return; }
   if (!confirm(`知識ベース ${knowledgeBase.length} 件をクラウドへ全件送信しますか？\n（スプレッドシートの既存データは上書きされます）`)) return;
   try {
-    await cloudReplaceAll('FAQ知識ベース', knowledgeBase);
-    await cloudReplaceAll('FAQ未回答', unansweredList);
+    await cloudReplaceAll('知識ベース', knowledgeBase);
+    await cloudReplaceAll('未回答', unansweredList);
     _cldMsg(`✅ ${knowledgeBase.length} 件を送信しました`);
   } catch(e) { alert('送信失敗: ' + e.message); }
 }
