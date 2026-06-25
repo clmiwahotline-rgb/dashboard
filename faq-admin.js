@@ -10,6 +10,7 @@
 // ═══════════════════════════════════════════════
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjgqVJNFNnNwNyzc8DsskESrfvoSSTgpK6T2twFPTVyDrhnR2NhNy_CLiajfB1pC_OA/exec';
 
+
 // ═══════════════════════════════════════════════
 //  データストア（暫定：localStorage。後日スプレッドシート化）
 // ═══════════════════════════════════════════════
@@ -21,6 +22,9 @@ const DEFAULT_KB_GAS = 'https://script.google.com/macros/s/AKfycbwQMEFeVHd6NEpEG
 // 全端末で共通利用する書き込み用トークン（GASのスクリプトプロパティ AUTH_TOKEN と一致させる）。
 // これをコードに埋め込むことで、各端末でのクラウド設定が不要になる。
 const DEFAULT_KB_TOKEN = 'miwa2026sec';
+
+// クラウド初回同期完了フラグ（false の間は persistFaq からクラウド書き込みしない）
+let _cloudSyncReady = false;
 function loadCloudCfg() {
   // GAS URL は常にコード埋め込みの DEFAULT_KB_GAS を使う（localStorage に古いURLが残っても無視）
   // token のみ localStorage から補完する
@@ -33,6 +37,49 @@ function loadCloudCfg() {
 }
 function saveCloudCfg(cfg) {
   try { localStorage.setItem(FAQ_CLOUD_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+//  FAQ専用クラウド関数（FAQ知識ベース管理APIを使用）
+//  polished-cloud.jsx の cloudGet/cloudReplaceAll とは別物
+// ═══════════════════════════════════════════════
+function faqCloudEnabled() { return !!DEFAULT_KB_GAS; }
+
+async function faqCloudGet(sheet) {
+  if (!DEFAULT_KB_GAS) return null;
+  const url = DEFAULT_KB_GAS + (DEFAULT_KB_GAS.includes('?') ? '&' : '?')
+    + 'sheet=' + encodeURIComponent(sheet) + '&t=' + Date.now();
+  let data = null;
+  try {
+    const res = await fetch(url, { redirect: 'follow' });
+    data = await res.json();
+  } catch(e) {
+    // JSONPフォールバック（CORS/リダイレクト対応）
+    try {
+      data = await new Promise((resolve, reject) => {
+        const cb = '__faqcg' + Date.now();
+        const s = document.createElement('script');
+        s.src = url + '&callback=' + cb;
+        window[cb] = d => { delete window[cb]; document.head.removeChild(s); resolve(d); };
+        s.onerror = () => reject(new Error('JSONP failed'));
+        document.head.appendChild(s);
+        setTimeout(() => reject(new Error('timeout')), 8000);
+      });
+    } catch(e2) { return null; }
+  }
+  return Array.isArray(data) ? data : (data && data.rows ? data.rows : null);
+}
+
+async function faqCloudReplaceAll(sheet, rows) {
+  if (!DEFAULT_KB_GAS) return { ok: false };
+  try {
+    const res = await fetch(DEFAULT_KB_GAS, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ sheet, action: 'replaceAll', rows, token: DEFAULT_KB_TOKEN })
+    });
+    return await res.json();
+  } catch(e) { return { ok: false, error: String(e) }; }
 }
 
 const FAQ_KB_SEED = [
@@ -69,9 +116,12 @@ function persistFaq() {
     }));
   } catch (e) {}
   // クラウドにも同期（全端末共有）
-  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
-    cloudReplaceAll('知識ベース', knowledgeBase).catch(e => console.warn('FAQ知識ベースクラウド同期失敗:', e));
-    cloudReplaceAll('未回答', unansweredList).catch(e => console.warn('FAQ未回答クラウド同期失敗:', e));
+  // _cloudSyncReady が true になるまで（初回同期完了前）は空データで上書きしない
+  if (faqCloudEnabled() && _cloudSyncReady) {
+    if (knowledgeBase.length > 0) {
+      faqCloudReplaceAll('知識ベース', knowledgeBase).catch(e => console.warn('FAQ知識ベースクラウド同期失敗:', e));
+    }
+    faqCloudReplaceAll('未回答', unansweredList).catch(e => console.warn('FAQ未回答クラウド同期失敗:', e));
   }
 }
 function loadFaq() {
@@ -140,12 +190,12 @@ function _cldMsg(text, ms) {
 }
 
 async function syncKBFromCloud() {
-  if (typeof cloudEnabled !== 'function' || !cloudEnabled() || typeof cloudGet !== 'function') return;
+  if (!faqCloudEnabled()) return;
   _cldSt = 'syncing'; _cldBadge();
   try {
     const [kbData, uaData] = await Promise.all([
-      cloudGet('知識ベース'),
-      cloudGet('未回答'),
+      faqCloudGet('知識ベース'),
+      faqCloudGet('未回答'),
     ]);
     if (Array.isArray(kbData) && kbData.length > 0) {
       // ローカルの承認状態を退避（クラウド同期で上書きされないよう保護）
@@ -169,9 +219,7 @@ async function syncKBFromCloud() {
         obj.approved = cloudApproved || !!localApproved[id];
         return obj;
       });
-    } else if (knowledgeBase.length > 0 && typeof cloudReplaceAll === 'function') {
-      console.log('[FAQ] クラウドKBが空のためローカルをプッシュ:', knowledgeBase.length, '件');
-      cloudReplaceAll('知識ベース', knowledgeBase).catch(() => {});
+    // クラウドKBが空の場合は自動プッシュしない
     }
     if (Array.isArray(uaData) && uaData.length > 0) {
       unansweredList = uaData
@@ -183,6 +231,9 @@ async function syncKBFromCloud() {
     updateStats(); renderKB(); renderUnanswered();
     _cldMsg(`✅ クラウドから取得しました（知識 ${knowledgeBase.length} 件）`);
   } catch(e) { _cldSt = 'error'; _cldBadge(); console.warn('syncKBFromCloud:', e); }
+  // 初回同期完了 → 以降は persistFaq からのクラウド書き込みを許可
+  _cloudSyncReady = true;
+  console.log('[FAQ] クラウド同期完了。persistFaqのクラウド書き込みを有効化');
 }
 
 async function forceSyncFromCloud() { await syncKBFromCloud(); }
@@ -192,8 +243,8 @@ async function forcePushToCloud() {
   if (!cfg.enabled || !cfg.gasUrl || !cfg.token) { alert('GAS URL とトークンを設定してください'); return; }
   if (!confirm(`知識ベース ${knowledgeBase.length} 件をクラウドへ全件送信しますか？\n（スプレッドシートの既存データは上書きされます）`)) return;
   try {
-    await cloudReplaceAll('知識ベース', knowledgeBase);
-    await cloudReplaceAll('未回答', unansweredList);
+    await faqCloudReplaceAll('知識ベース', knowledgeBase);
+    await faqCloudReplaceAll('未回答', unansweredList);
     _cldMsg(`✅ ${knowledgeBase.length} 件を送信しました`);
   } catch(e) { alert('送信失敗: ' + e.message); }
 }
@@ -380,7 +431,8 @@ function approveAnswer(id) {
 
 function deleteUA(id) {
   if (!confirm('この質問を未回答リストから削除しますか？')) return;
-  const item = unansweredList.find(u => u.id === id);
+  // id は string / number 混在の可能性があるため String() で統一比較
+  const item = unansweredList.find(u => String(u.id) === String(id));
   if (item) {
     const q = (item.q || '').trim();
     // 質問テキストで永続抑制（ts不一致でも再追加されない）
@@ -394,7 +446,7 @@ function deleteUA(id) {
     });
     saveNeedlessLogIds();
   }
-  unansweredList = unansweredList.filter(u => u.id !== id);
+  unansweredList = unansweredList.filter(u => String(u.id) !== String(id));
   persistFaq(); renderUnanswered(); renderFaqLog(); updateStats();
 }
 
@@ -932,8 +984,7 @@ async function uploadFaqFile(inputEl) {
   const file = inputEl.files && inputEl.files[0];
   if (!file) return;
   const cfg = loadCloudCfg();
-  if (!cfg.gasUrl) { alert('クラウド設定のGAS URLが未設定です（FAQ設定→クラウドKB設定）'); inputEl.value=''; return; }
-  if (!cfg.token) { alert('アップロードにはトークン設定が必要です（FAQ設定→クラウドKB設定のトークン）'); inputEl.value=''; return; }
+  if (!DEFAULT_KB_GAS) { alert('FAQ知識ベース管理APIのURLが未設定です'); inputEl.value=''; return; }
   const MAXMB = 15;
   if (file.size > MAXMB*1024*1024) { alert('ファイルが大きすぎます（最大'+MAXMB+'MB）'); inputEl.value=''; return; }
   const statusEl = document.getElementById('upload-status');
@@ -946,9 +997,9 @@ async function uploadFaqFile(inputEl) {
       fr.readAsDataURL(file);
     });
     const base64 = String(dataUrl).split(',')[1];
-    const res = await fetch(cfg.gasUrl, {
-      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'uploadFile', name:file.name, mimeType:file.type, data:base64, token:cfg.token })
+    const res = await fetch(DEFAULT_KB_GAS, {
+      method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'uploadFile', name:file.name, mimeType:file.type, data:base64 })
     });
     const data = await res.json();
     if (!data || !data.ok) throw new Error((data && (data.error||data.message)) || '失敗');
@@ -1036,18 +1087,15 @@ function loadFaqDocs() {
   try { const s=localStorage.getItem(FAQ_DOCS_KEY); if(s) faqDocs=JSON.parse(s); } catch(e){ faqDocs=[]; }
   // polished-cloud.jsx はBabelで非同期ロードされるため、少し待ってから同期
   setTimeout(() => {
-    if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
-      cloudGet('FAQ資料').then(remote => {
+    if (faqCloudEnabled()) {
+      faqCloudGet('FAQ資料').then(remote => {
         if (Array.isArray(remote) && remote.length) {
           // クラウドにデータあり → ローカルを上書き
           faqDocs = remote;
           try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
           if (typeof renderDocs === 'function') renderDocs();
           console.log('[FAQ] 知識資料をクラウドから同期:', faqDocs.length, '件');
-        } else if (faqDocs.length > 0 && typeof cloudReplaceAll === 'function') {
-          // クラウドが空でローカルにデータあり → 自動でクラウドへ送信
-          console.log('[FAQ] クラウド資料が空のためローカルをプッシュ:', faqDocs.length, '件');
-          cloudReplaceAll('FAQ資料', faqDocs).catch(() => {});
+        // クラウドが空の場合は自動プッシュしない（手動で「クラウドへ送信」ボタンを使うこと）
         }
       }).catch(() => {});
     }
@@ -1057,8 +1105,8 @@ function loadFaqDocs() {
 function saveFaqDocs() {
   try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
   // クラウドにも同期（全端末共有）
-  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
-    cloudReplaceAll('FAQ資料', faqDocs).catch(e => console.warn('FAQ資料クラウド同期失敗:', e));
+  if (faqCloudEnabled()) {
+    faqCloudReplaceAll('FAQ資料', faqDocs).catch(e => console.warn('FAQ資料クラウド同期失敗:', e));
   }
 }
 function addDoc() {
@@ -1085,7 +1133,12 @@ function toggleDocForm() {
   const f=document.getElementById('doc-form');
   if(f) f.style.display = f.style.display==='none'?'':'none';
 }
+const DOC_PAGE_SIZE = 7;
+let _docPage = 0;
+function setDocPage(n) { _docPage = n; renderDocs(); }
+
 function renderDocs() {
+  if (!Array.isArray(faqDocs)) faqDocs = [];
   const list=document.getElementById('doc-list');
   if(!list) return;
   const cnt=document.getElementById('doc-count');
@@ -1094,7 +1147,12 @@ function renderDocs() {
     list.innerHTML=`<div class="kb-empty">資料がありません。<br><span style="font-size:12px">就業規則・研修資料・マニュアルなどを追加してください。<br>スタッフFAQで質問すると、登録した資料からキーワード検索してAIに参考として渡します。</span></div>`;
     return;
   }
-  list.innerHTML=[...faqDocs].sort((a,b)=>b.id-a.id).map(doc=>{
+  const sorted = [...faqDocs].sort((a,b) => Number(b.id) - Number(a.id));
+  const total = sorted.length;
+  const maxPage = Math.max(0, Math.ceil(total / DOC_PAGE_SIZE) - 1);
+  if (_docPage > maxPage) _docPage = maxPage;
+  const page = sorted.slice(_docPage * DOC_PAGE_SIZE, (_docPage + 1) * DOC_PAGE_SIZE);
+  list.innerHTML = page.map(doc=>{
     if(_docEditState[doc.id]){
       return `<div style="border:2px solid var(--primary,#2563eb);border-radius:10px;padding:14px;margin-bottom:8px;background:#f0f6ff">
         <div style="font-size:12px;font-weight:700;color:var(--primary,#2563eb);margin-bottom:10px">✏️ 編集中</div>
@@ -1130,6 +1188,16 @@ function renderDocs() {
       </div>
     </div>`;
   }).join('');
+  // ページネーション
+  if (total > DOC_PAGE_SIZE) {
+    const start = _docPage * DOC_PAGE_SIZE + 1;
+    const end = Math.min((_docPage + 1) * DOC_PAGE_SIZE, total);
+    list.innerHTML += `<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;font-size:13px;color:var(--text-muted)">
+      <button class="btn btn-sm btn-outline" onclick="setDocPage(${_docPage - 1})" ${_docPage === 0 ? 'disabled' : ''}>← 前へ</button>
+      <span>${start}〜${end} / 全${total}件</span>
+      <button class="btn btn-sm btn-outline" onclick="setDocPage(${_docPage + 1})" ${_docPage >= maxPage ? 'disabled' : ''}>次へ →</button>
+    </div>`;
+  }
 }
 
 // 知識資料ストック：展開・編集状態
@@ -1173,15 +1241,14 @@ function _webHash(str) {
 function loadWebSources() {
   try { const s = localStorage.getItem(FAQ_WEB_KEY); if (s) webSources = JSON.parse(s); } catch (e) { webSources = []; }
   setTimeout(() => {
-    if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudGet === 'function') {
-      cloudGet('FAQウェブソース').then(remote => {
+    if (faqCloudEnabled()) {
+      faqCloudGet('FAQウェブソース').then(remote => {
         if (Array.isArray(remote) && remote.length) {
           // スプレッドシート経由で文字列化されたidを数値に戻す
           webSources = remote.map(s => Object.assign({}, s, { id: Number(s.id) }));
           try { localStorage.setItem(FAQ_WEB_KEY, JSON.stringify(webSources)); } catch (e) {}
           if (typeof renderWebSources === 'function') renderWebSources();
-        } else if (webSources.length > 0 && typeof cloudReplaceAll === 'function') {
-          cloudReplaceAll('FAQウェブソース', webSources).catch(() => {});
+        // クラウドが空の場合は自動プッシュしない（手動で更新ボタンを使うこと）
         }
       }).catch(() => {});
     }
@@ -1190,22 +1257,23 @@ function loadWebSources() {
 }
 function saveWebSources() {
   try { localStorage.setItem(FAQ_WEB_KEY, JSON.stringify(webSources)); } catch (e) {}
-  if (typeof cloudEnabled === 'function' && cloudEnabled() && typeof cloudReplaceAll === 'function') {
-    cloudReplaceAll('FAQウェブソース', webSources).catch(e => console.warn('WEBソースのクラウド同期失敗:', e));
+  if (faqCloudEnabled()) {
+    faqCloudReplaceAll('FAQウェブソース', webSources).catch(e => console.warn('WEBソースのクラウド同期失敗:', e));
   }
 }
 
 // GAS経由でページ本文を取得
 async function gasFetchUrl(url) {
-  const cfg = loadCloudCfg();
-  if (!cfg.gasUrl) throw new Error('共有データGASのURLが未設定です（Googleスプレッドシート連携カードでURL確認）');
-  console.log('[gasFetchUrl] GAS末尾:', cfg.gasUrl.slice(-40), '| URL:', url);
+  // fetch/crawl はFAQ知識ベース管理APIを使用（cfg.gasUrlの古いURLは使わない）
+  const gasUrl = DEFAULT_KB_GAS;
+  if (!gasUrl) throw new Error('FAQ知識ベース管理APIのURLが未設定です');
+  console.log('[gasFetchUrl] URL:', url);
   let rawText = '';
   try {
-    const resp = await fetch(cfg.gasUrl, {
+    const resp = await fetch(gasUrl, {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'fetchUrl', url, maxLen: FAQ_WEB_MAXLEN, token: cfg.token }),
+      body: JSON.stringify({ action: 'fetchUrl', url, maxLen: FAQ_WEB_MAXLEN }),
     });
     rawText = await resp.text();
     const res = JSON.parse(rawText);
@@ -1214,7 +1282,7 @@ async function gasFetchUrl(url) {
   } catch (e) {
     // JSON.parse失敗 or fetchエラー
     const hint = rawText ? `\nGAS応答: ${rawText.slice(0, 200)}` : '';
-    const urlHint = `\n▶ 呼び出しGAS(末尾40): ...${cfg.gasUrl.slice(-40)}`;
+    const urlHint = `\n▶ GAS(FAQ知識ベース管理API)末尾40: ...${gasUrl.slice(-40)}`;
     const msg = e.message || String(e);
     console.error('[gasFetchUrl] 失敗:', msg, rawText);
     throw new Error(msg + hint + urlHint);
@@ -1347,13 +1415,14 @@ async function crawlAndImportSite(srcId) {
   const src = webSources.find(s => Number(s.id) === srcId);
   if (!src) return;
   if (!confirm(`「${src.title || src.url}」のサイト全体を取り込みます。\n（最大50ページ。既存の同URLページは上書き）`)) return;
-  const cfg = loadCloudCfg();
-  if (!cfg.gasUrl) { alert('共有データGASのURLが未設定です'); return; }
+  // crawlSite もFAQ知識ベース管理APIを使用
+  const crawlGasUrl = DEFAULT_KB_GAS;
+  if (!crawlGasUrl) { alert('FAQ知識ベース管理APIのURLが未設定です'); return; }
   const btn  = document.querySelector(`[data-websrc="${srcId}"] .web-crawl`);
   const note = document.getElementById('web-note');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ リンク取得中…'; }
   try {
-    const linksRes = await fetch(cfg.gasUrl, {
+    const linksRes = await fetch(crawlGasUrl, {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'crawlSite', url: src.url, maxPages: 50 }),
@@ -1489,8 +1558,23 @@ function saveSuppressedUAQuestions() {
   pushLogStateToCloud();
 }
 function toggleArchiveLog(rowId) {
-  if (_archivedLogIds.has(rowId)) _archivedLogIds.delete(rowId);
-  else _archivedLogIds.add(rowId);
+  if (_archivedLogIds.has(rowId)) {
+    _archivedLogIds.delete(rowId);
+  } else {
+    _archivedLogIds.add(rowId);
+    // アーカイブ時は未回答リストからも削除
+    const r = faqLog.find(lr => logRowId(lr) === rowId);
+    if (r) {
+      const q = (r.q || '').trim();
+      if (q) {
+        _suppressedUAQuestions.add(q);
+        const before = unansweredList.length;
+        unansweredList = unansweredList.filter(u => u.q.trim() !== q);
+        saveSuppressedUAQuestions();
+        if (unansweredList.length !== before) { persistFaq(); renderUnanswered(); updateStats(); }
+      }
+    }
+  }
   saveArchivedLogIds();
   renderFaqLog();
 }
@@ -1657,9 +1741,8 @@ async function refreshFaqLogRemote() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 取得中...'; }
   let okRemote = false;
   try {
-    const sharedGasUrl = loadCloudCfg().gasUrl;
-    if (!sharedGasUrl) throw new Error('共有データGAS URLが未設定です（FAQ設定→クラウドKB設定）');
-    const res = await fetch(sharedGasUrl, {
+    if (!DEFAULT_KB_GAS) throw new Error('FAQ知識ベース管理APIのURLが未設定です');
+    const res = await fetch(DEFAULT_KB_GAS, {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -2181,8 +2264,8 @@ async function saveAiGasToken() {
   // クラウドに保存（全端末共有）
   let cloudOk = false;
   try {
-    if (window.CLOUD_API_URL) {
-      const res = await fetch(window.CLOUD_API_URL, {
+    if (DEFAULT_KB_GAS) {
+      const res = await fetch(DEFAULT_KB_GAS, {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -2208,8 +2291,8 @@ async function initAiGasTokenUI() {
   } catch(e) {}
   // クラウドから最新設定を取得して上書き
   try {
-    if (window.CLOUD_API_URL) {
-      const data = await fetch(window.CLOUD_API_URL + '?sheet=FAQ設定&t=' + Date.now(),
+    if (DEFAULT_KB_GAS) {
+      const data = await fetch(DEFAULT_KB_GAS + '?sheet=FAQ設定&t=' + Date.now(),
         { redirect: 'follow' }).then(r => r.json());
       const rows = Array.isArray(data) ? data : (data && data.rows || []);
       if (rows.length > 0) {
@@ -2236,9 +2319,9 @@ const FAQ_LOGSTATE_SHEET = 'FAQログ状態';
 let _pushLogStateTimer = null;
 
 async function loadLogStateFromCloud() {
-  if (typeof cloudEnabled !== 'function' || !cloudEnabled() || typeof cloudGet !== 'function') return;
+  if (!faqCloudEnabled()) return;
   try {
-    const rows = await cloudGet(FAQ_LOGSTATE_SHEET);
+    const rows = await faqCloudGet(FAQ_LOGSTATE_SHEET);
     if (!Array.isArray(rows)) return;
     const arch = new Set(), need = new Set(), supp = new Set();
     rows.forEach(r => {
@@ -2261,7 +2344,7 @@ async function loadLogStateFromCloud() {
 }
 
 function pushLogStateToCloud() {
-  if (typeof cloudEnabled !== 'function' || !cloudEnabled() || typeof cloudReplaceAll !== 'function') return;
+  if (!faqCloudEnabled()) return;
   // 連続トグルをまとめて1回だけ送信（デバウンス）
   if (_pushLogStateTimer) clearTimeout(_pushLogStateTimer);
   _pushLogStateTimer = setTimeout(() => {
@@ -2269,7 +2352,7 @@ function pushLogStateToCloud() {
     _archivedLogIds.forEach(v => rows.push({ kind: 'archive', value: String(v) }));
     _needlessLogIds.forEach(v => rows.push({ kind: 'needless', value: String(v) }));
     _suppressedUAQuestions.forEach(v => rows.push({ kind: 'suppressed', value: String(v) }));
-    cloudReplaceAll(FAQ_LOGSTATE_SHEET, rows).catch(() => {});
+    faqCloudReplaceAll(FAQ_LOGSTATE_SHEET, rows).catch(() => {});
   }, 800);
 }
 
@@ -2297,8 +2380,8 @@ function initFaqAdmin() {
   renderFaqLog();
   // 初回ロード時に最新ログを取得
   setTimeout(() => refreshFaqLogRemote(), 500);
-  // クラウドUI初期化と同期
-  setTimeout(() => { initCloudUI(); syncKBFromCloud(); loadLogStateFromCloud(); }, 100);
+  // クラウドUI初期化と同期（すぐ実行・cloudGet待機はsyncKBFromCloud内で対応）
+  setTimeout(() => { initCloudUI(); syncKBFromCloud(); loadLogStateFromCloud(); }, 0);
   // WEBソースの週次自動更新（ロード後、クラウド同期が落ち着いてから判定）
   setTimeout(() => maybeAutoRefreshWeb(), 8000);
   // 60秒ごとに質問ログを自動更新
