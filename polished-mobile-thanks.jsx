@@ -55,7 +55,8 @@ const MThxCommentSheet = ({ isEdit, initialWho, initialText, onClose, onSave }) 
 
 const MThxCard = ({ card, comments, onAdd, onEdit, onDel }) => {
   const cfg = mKindCfg(card.kind);
-  const [sheet, setSheet] = React.useState(null); // null | { id?, who, text }
+  const [sheet, setSheet] = React.useState(null);
+  const [cmtsOpen, setCmtsOpen] = React.useState(false);
   return (
     <div className="m-thx">
       <div className="m-thx-head">
@@ -68,11 +69,24 @@ const MThxCard = ({ card, comments, onAdd, onEdit, onDel }) => {
       </div>
       <div className="m-thx-text">{card.content}</div>
       {comments.length > 0 && (
+        <button className="m-thx-cmts-toggle" onClick={() => setCmtsOpen(v => !v)}>
+          💬 コメントを{cmtsOpen ? '閉じる' : '見る'}
+          <span className="m-thx-cmts-n">{comments.length}件</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+            style={{ transition: "transform .2s", transform: cmtsOpen ? "rotate(180deg)" : "none", flexShrink: 0, marginLeft: "auto" }}>
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+      )}
+      {cmtsOpen && (
         <div className="m-thx-cmts">
           {comments.map((c) => (
             <div key={c.id} className="m-thx-cmt" onClick={() => setSheet({ id: c.id, who: c.who || "", text: c.text })}>
-              <span className="m-thx-cmt-body"><b>{c.who || "匿名"}</b>　{c.text}</span>
-              <button className="m-thx-cmt-del" onClick={(e) => { e.stopPropagation(); onDel(c.id); }} aria-label="削除">×</button>
+              <div className="m-thx-cmt-header">
+                <span className="m-thx-cmt-who">{c.who || "匿名"}</span>
+                <button className="m-thx-cmt-del" onClick={(e) => { e.stopPropagation(); onDel(c.id); }} aria-label="削除">×</button>
+              </div>
+              <div className="m-thx-cmt-body">{c.text}</div>
             </div>
           ))}
         </div>
@@ -95,6 +109,7 @@ const MThanks = ({ registerHeader, registerFab }) => {
   const [rows, setRows] = React.useState(() => { try { const s = localStorage.getItem("miwa.arigatou.v1"); if (s) return JSON.parse(s); } catch {} return M_THX_SEED; });
   const [comments, setComments] = React.useState(() => { try { return JSON.parse(localStorage.getItem("miwa.arigatou.comments.v1")) || []; } catch { return []; } });
   const [kind, setKind] = React.useState("all");
+  const [month, setMonth] = React.useState("all");
   const [loading, setLoading] = React.useState(true);
   const cloudOn = React.useRef(typeof cloudEnabled === "function" && cloudEnabled()).current;
 
@@ -136,7 +151,26 @@ const MThanks = ({ registerHeader, registerFab }) => {
   };
 
   const kinds = ["all", ...Object.keys(M_KIND)];
-  const filtered = rows.filter((r) => kind === "all" ? true : r.kind === kind);
+  const months = React.useMemo(() => {
+    const seen = new Set();
+    rows.forEach(r => {
+      if (r.date) { const d = new Date(r.date); if (!isNaN(d.getTime())) { seen.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); } }
+    });
+    return [...seen].sort().reverse();
+  }, [rows]);
+  const fmtMonth = (k) => { const [y, m] = k.split('-'); return `${y}年${parseInt(m)}月`; };
+
+  const filtered = rows.filter((r) => {
+    if (kind !== "all" && r.kind !== kind) return false;
+    if (month !== "all") {
+      const d = new Date(r.date);
+      if (!isNaN(d.getTime())) {
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        if (key !== month) return false;
+      }
+    }
+    return true;
+  });
   const sorted = [...filtered].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
 
   return (
@@ -147,6 +181,14 @@ const MThanks = ({ registerHeader, registerFab }) => {
           return <button key={k} className={`m-chip ${kind === k ? "active" : ""}`} onClick={() => setKind(k)}>{k === "all" ? "すべて" : (mKindCfg(k).e + " " + k.replace("お客様からの", ""))} {n}</button>;
         })}
       </div>
+      {months.length > 1 && (
+        <div className="m-chips" style={{ marginTop: 4 }}>
+          <button className={`m-chip ${month === "all" ? "active" : ""}`} onClick={() => setMonth("all")}>📅 すべての月</button>
+          {months.map(m => (
+            <button key={m} className={`m-chip ${month === m ? "active" : ""}`} onClick={() => setMonth(m)}>{fmtMonth(m)}</button>
+          ))}
+        </div>
+      )}
       {loading && rows.length === 0 ? <div className="m-loading"><div className="m-spinner"></div>読み込み中…</div>
         : sorted.length === 0 ? <div className="m-empty" style={{ marginTop: 30 }}>カードがありません</div>
         : sorted.map((card, i) => { const ck = mCardKey(card); return <MThxCard key={ck + "_" + i} card={card} comments={byKey[ck] || []} onAdd={(c) => addComment(ck, c)} onEdit={editComment} onDel={delComment} />; })}
