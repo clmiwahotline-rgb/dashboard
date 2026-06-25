@@ -1,6 +1,12 @@
 // ありがとうカード — メインページ
 
 const DEFAULT_ARIGATOU_GAS = "https://script.google.com/macros/s/AKfycbxCHJ4OB8uYtdEflKyld4h3oitjW2Tr80UihXnVTd_jyUREAWz0qF5ebGzJpUhq2eQh/exec";
+const LIKES_SHEET = "ありがとうリアクション";
+const getDeviceId = () => {
+  let id = ''; try { id = localStorage.getItem("miwa.device.id.v1") || ''; } catch(e) {}
+  if (!id) { id = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); try { localStorage.setItem("miwa.device.id.v1", id); } catch(e) {} }
+  return id;
+};
 
 const KIND_CONFIG = {
   "お客様からのありがとう": { emoji: "🙏", color: "var(--accent)",  bg: "var(--accent-soft)" },
@@ -192,7 +198,7 @@ const CommentModal = ({ open, isEdit, initialWho, initialText, onClose, onSave }
 };
 
 // ── Individual card ───────────────────────────────────
-const ThankCard = ({ card, storeColorMap, comments = [], onAddComment, onEditComment, onDelComment }) => {
+const ThankCard = ({ card, storeColorMap, comments = [], onAddComment, onEditComment, onDelComment, liked = false, likeCount = 0, onLike }) => {
   const cfg = kindCfg(card.kind);
   const dateStr = fmtJst(card.date);
   const [copied, setCopied] = React.useState(false);
@@ -238,11 +244,16 @@ const ThankCard = ({ card, storeColorMap, comments = [], onAddComment, onEditCom
       <div className="ag-content">{card.content || ""}</div>
 
       <div className="ag-comments">
+        <div className="ag-actions">
+          <button className={`ag-like-btn${liked ? " liked" : ""}`} onClick={onLike}>
+            いいね 💚{likeCount > 0 && <span className="ag-like-count">{likeCount}</span>}
+          </button>
+          <button className="ag-cmt-open" onClick={() => setModal({ who: "", text: "" })}>💬 コメントする</button>
+        </div>
         {comments.length > 0 && (
           <div className="ag-cmt-list">
             {comments.map((c) => (
               <div key={c.id} className="ag-cmt">
-                <span className="ag-cmt-ico" aria-hidden="true">💬</span>
                 <button className="ag-cmt-txt" onClick={() => setModal({ id: c.id, who: c.who || "", text: c.text })} title="タップして編集">
                   {c.who ? <b>{c.who}：</b> : null}{c.text}
                 </button>
@@ -251,7 +262,6 @@ const ThankCard = ({ card, storeColorMap, comments = [], onAddComment, onEditCom
             ))}
           </div>
         )}
-        <button className="ag-cmt-open" onClick={() => setModal({ who: "", text: "" })}>💬 コメントする</button>
       </div>
 
       <CommentModal
@@ -271,13 +281,20 @@ const ThankCard = ({ card, storeColorMap, comments = [], onAddComment, onEditCom
 };
 
 // ── Card list with filters ────────────────────────────
-const CardList = ({ data, commentsByKey = {}, onAddComment, onEditComment, onDelComment }) => {
+const CardList = ({ data, commentsByKey = {}, onAddComment, onEditComment, onDelComment, likesByKey = {}, onLike, deviceId = "" }) => {
   const [activeStore, setActiveStore] = React.useState("all");
   const [activeKind,  setActiveKind]  = React.useState("all");
+  const [activeMonth, setActiveMonth] = React.useState("all");
   const [search, setSearch]           = React.useState("");
 
   const stores = React.useMemo(() => [...new Set(data.map(d => d.store).filter(Boolean))].sort(), [data]);
   const kinds  = React.useMemo(() => [...new Set(data.map(d => d.kind).filter(Boolean))].sort(),  [data]);
+  const months = React.useMemo(() => {
+    const seen = new Set();
+    data.forEach(d => { if (d.date) { const dt = new Date(d.date); if (!isNaN(dt.getTime())) seen.add(dt.getFullYear() + "-" + String(dt.getMonth()+1).padStart(2,"0")); } });
+    return [...seen].sort().reverse();
+  }, [data]);
+  const fmtMonth = (k) => { const [y,m] = k.split("-"); return y + "年" + parseInt(m) + "月"; };
 
   const storeColorMap = React.useMemo(() => {
     const map = {};
@@ -288,8 +305,9 @@ const CardList = ({ data, commentsByKey = {}, onAddComment, onEditComment, onDel
   const filtered = data.filter(d => {
     const storeOk  = activeStore === "all" || d.store === activeStore;
     const kindOk   = activeKind  === "all" || d.kind  === activeKind;
+    const monthOk  = activeMonth === "all" || (() => { const dt = new Date(d.date); if (isNaN(dt.getTime())) return true; return dt.getFullYear() + "-" + String(dt.getMonth()+1).padStart(2,"0") === activeMonth; })();
     const searchOk = !search || (d.store + d.kind + d.content).toLowerCase().includes(search.toLowerCase());
-    return storeOk && kindOk && searchOk;
+    return storeOk && kindOk && monthOk && searchOk;
   }).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
   const Pill = ({ label, active, onClick }) => (
@@ -317,6 +335,12 @@ const CardList = ({ data, commentsByKey = {}, onAddComment, onEditComment, onDel
             return <Pill key={k} label={`${cfg.emoji} ${k}`} active={activeKind === k} onClick={() => setActiveKind(k)} />;
           })}
         </div>
+        {months.length > 1 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <Pill label="📅 全月" active={activeMonth === "all"} onClick={() => setActiveMonth("all")} />
+            {months.map(m => <Pill key={m} label={fmtMonth(m)} active={activeMonth === m} onClick={() => setActiveMonth(m)} />)}
+          </div>
+        )}
         <span style={{ fontSize: 11, color: "var(--ink-mute)", marginLeft: "auto" }}>{filtered.length} 件</span>
       </div>
 
@@ -332,7 +356,10 @@ const CardList = ({ data, commentsByKey = {}, onAddComment, onEditComment, onDel
                 comments={commentsByKey[ck] || []}
                 onAddComment={(c) => onAddComment(ck, c)}
                 onEditComment={onEditComment}
-                onDelComment={onDelComment} />
+                onDelComment={onDelComment}
+                liked={!!(likesByKey[ck] || []).find(l => l.deviceId === deviceId)}
+                likeCount={(likesByKey[ck] || []).length}
+                onLike={() => onLike(ck)} />
             );
           })}
         </div>
@@ -512,6 +539,8 @@ const ArigatouPage = () => {
   const COMMENT_SHEET = "ありがとうコメント";
   const cloudOn = React.useRef(typeof cloudEnabled === "function" && cloudEnabled()).current;
   const [comments, setComments] = useArigatouState("miwa.arigatou.comments.v1", () => []);
+  const [likes, setLikes] = useArigatouState("miwa.arigatou.likes.v1", () => []);
+  const deviceId = getDeviceId();
 
   React.useEffect(() => {
     if (!cloudOn) return;
@@ -523,6 +552,35 @@ const ArigatouPage = () => {
     })();
     return () => { cancelled = true; };
   }, [cloudOn]); // eslint-disable-line
+
+  React.useEffect(() => {
+    if (!cloudOn) return;
+    let cancelled = false;
+    (async () => {
+      const remote = await cloudGet(LIKES_SHEET);
+      if (cancelled || remote == null) return;
+      setLikes(remote.map((l) => ({ ...l, ts: Number(l.ts) || 0 })));
+    })();
+    return () => { cancelled = true; };
+  }, [cloudOn]); // eslint-disable-line
+
+  const likesByKey = React.useMemo(() => {
+    const m = {};
+    likes.forEach((l) => { (m[l.cardKey] = m[l.cardKey] || []).push(l); });
+    return m;
+  }, [likes]);
+
+  const toggleLike = (cardKey) => {
+    const myLike = (likesByKey[cardKey] || []).find(l => l.deviceId === deviceId);
+    if (myLike) {
+      setLikes(prev => prev.filter(x => x.id !== myLike.id));
+      if (cloudOn) cloudDelete(LIKES_SHEET, myLike.id);
+    } else {
+      const l = { id: "lk" + Date.now() + Math.random().toString(36).slice(2,5), cardKey, deviceId, ts: Date.now() };
+      setLikes(prev => [...prev, l]);
+      if (cloudOn) cloudAdd(LIKES_SHEET, l);
+    }
+  };
 
   const commentsByKey = React.useMemo(() => {
     const m = {};
@@ -660,7 +718,9 @@ const ArigatouPage = () => {
             <div className="card-head">
               <h3 className="card-title">📋 個別カード一覧</h3>
             </div>
-            <CardList data={rows} commentsByKey={commentsByKey} onAddComment={addComment} onEditComment={editComment} onDelComment={delComment} />
+            <CardList data={rows} commentsByKey={commentsByKey}
+            onAddComment={addComment} onEditComment={editComment} onDelComment={delComment}
+            likesByKey={likesByKey} onLike={toggleLike} deviceId={deviceId} />
           </div>
 
           {/* AI Report */}

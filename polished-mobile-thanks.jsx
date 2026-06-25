@@ -3,6 +3,12 @@
 
 const M_ARIGATOU_GAS = "https://script.google.com/macros/s/AKfycbxCHJ4OB8uYtdEflKyld4h3oitjW2Tr80UihXnVTd_jyUREAWz0qF5ebGzJpUhq2eQh/exec";
 const M_COMMENT_SHEET = "ありがとうコメント";
+const M_LIKES_SHEET = "ありがとうリアクション";
+const mGetDeviceId = () => {
+  let id = ''; try { id = localStorage.getItem("miwa.device.id.v1") || ''; } catch(e) {}
+  if (!id) { id = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); try { localStorage.setItem("miwa.device.id.v1", id); } catch(e) {} }
+  return id;
+};
 
 const M_KIND = {
   "お客様からのありがとう": { e: "🙏", c: "#2a6fdb", b: "#e7f0fd" },
@@ -53,7 +59,7 @@ const MThxCommentSheet = ({ isEdit, initialWho, initialText, onClose, onSave }) 
   ), document.body);
 };
 
-const MThxCard = ({ card, comments, onAdd, onEdit, onDel }) => {
+const MThxCard = ({ card, comments, onAdd, onEdit, onDel, liked = false, likeCount = 0, onLike }) => {
   const cfg = mKindCfg(card.kind);
   const [sheet, setSheet] = React.useState(null);
   const [cmtsOpen, setCmtsOpen] = React.useState(false);
@@ -68,6 +74,11 @@ const MThxCard = ({ card, comments, onAdd, onEdit, onDel }) => {
         <StoreTag name={card.store} />
       </div>
       <div className="m-thx-text">{card.content}</div>
+      <div className="m-thx-actions">
+        <button className={`m-thx-like-btn${liked ? " liked" : ""}`} onClick={onLike}>
+          いいね 💚{likeCount > 0 && <span className="m-thx-like-count">{likeCount}</span>}
+        </button>
+      </div>
       {comments.length > 0 && (
         <button className="m-thx-cmts-toggle" onClick={() => setCmtsOpen(v => !v)}>
           💬 コメントを{cmtsOpen ? '閉じる' : '見る'}
@@ -108,6 +119,8 @@ const MThxCard = ({ card, comments, onAdd, onEdit, onDel }) => {
 const MThanks = ({ registerHeader, registerFab }) => {
   const [rows, setRows] = React.useState(() => { try { const s = localStorage.getItem("miwa.arigatou.v1"); if (s) return JSON.parse(s); } catch {} return M_THX_SEED; });
   const [comments, setComments] = React.useState(() => { try { return JSON.parse(localStorage.getItem("miwa.arigatou.comments.v1")) || []; } catch { return []; } });
+  const [likes, setLikes] = React.useState([]);
+  const deviceId = mGetDeviceId();
   const [kind, setKind] = React.useState("all");
   const [month, setMonth] = React.useState("all");
   const [loading, setLoading] = React.useState(true);
@@ -135,6 +148,19 @@ const MThanks = ({ registerHeader, registerFab }) => {
     return () => { c = true; };
   }, []);
 
+  React.useEffect(() => {
+    if (!cloudOn) return; let c = false;
+    (async () => { const remote = await cloudGet(M_LIKES_SHEET); if (!c && remote != null) setLikes(remote.map((x) => ({ ...x, ts: Number(x.ts) || 0 }))); })();
+    return () => { c = true; };
+  }, []);
+
+  const likesByKey = React.useMemo(() => { const m = {}; likes.forEach((l) => { (m[l.cardKey] = m[l.cardKey] || []).push(l); }); return m; }, [likes]);
+  const toggleLike = (cardKey) => {
+    const myLike = (likesByKey[cardKey] || []).find(l => l.deviceId === deviceId);
+    if (myLike) { setLikes(p => p.filter(x => x.id !== myLike.id)); if (cloudOn) cloudDelete(M_LIKES_SHEET, myLike.id); }
+    else { const l = { id: "lk" + Date.now() + Math.random().toString(36).slice(2,5), cardKey, deviceId, ts: Date.now() }; setLikes(p => [...p, l]); if (cloudOn) cloudAdd(M_LIKES_SHEET, l); }
+  };
+
   const byKey = React.useMemo(() => { const m = {}; comments.forEach((c) => { (m[c.cardKey] = m[c.cardKey] || []).push(c); }); Object.values(m).forEach((a) => a.sort((x, y) => (x.ts || 0) - (y.ts || 0))); return m; }, [comments]);
   const addComment = (cardKey, c) => {
     const note = { id: "ac" + Date.now() + Math.random().toString(36).slice(2, 5), cardKey, who: c.who || "", text: c.text, ts: Date.now() };
@@ -150,7 +176,7 @@ const MThanks = ({ registerHeader, registerFab }) => {
     if (cloudOn) cloudDelete(M_COMMENT_SHEET, id);
   };
 
-  const kinds = ["all", ...Object.keys(M_KIND)];
+  const kinds = React.useMemo(() => [...new Set(rows.map(r => r.kind).filter(Boolean))].sort(), [rows]);
   const months = React.useMemo(() => {
     const seen = new Set();
     rows.forEach(r => {
@@ -176,9 +202,10 @@ const MThanks = ({ registerHeader, registerFab }) => {
   return (
     <div>
       <div className="m-chips">
+        <button className={`m-chip ${kind === "all" ? "active" : ""}`} onClick={() => setKind("all")}>すべて {rows.length}</button>
         {kinds.map((k) => {
-          const n = k === "all" ? rows.length : rows.filter((r) => r.kind === k).length;
-          return <button key={k} className={`m-chip ${kind === k ? "active" : ""}`} onClick={() => setKind(k)}>{k === "all" ? "すべて" : (mKindCfg(k).e + " " + k.replace("お客様からの", ""))} {n}</button>;
+          const n = rows.filter((r) => r.kind === k).length;
+          return <button key={k} className={`m-chip ${kind === k ? "active" : ""}`} onClick={() => setKind(k)}>{mKindCfg(k).e + " " + k.replace("お客様からの", "")} {n}</button>;
         })}
       </div>
       {months.length > 1 && (
@@ -191,7 +218,7 @@ const MThanks = ({ registerHeader, registerFab }) => {
       )}
       {loading && rows.length === 0 ? <div className="m-loading"><div className="m-spinner"></div>読み込み中…</div>
         : sorted.length === 0 ? <div className="m-empty" style={{ marginTop: 30 }}>カードがありません</div>
-        : sorted.map((card, i) => { const ck = mCardKey(card); return <MThxCard key={ck + "_" + i} card={card} comments={byKey[ck] || []} onAdd={(c) => addComment(ck, c)} onEdit={editComment} onDel={delComment} />; })}
+        : sorted.map((card, i) => { const ck = mCardKey(card); return <MThxCard key={ck + "_" + i} card={card} comments={byKey[ck] || []} onAdd={(c) => addComment(ck, c)} onEdit={editComment} onDel={delComment} liked={!!(likesByKey[ck] || []).find(l => l.deviceId === deviceId)} likeCount={(likesByKey[ck] || []).length} onLike={() => toggleLike(ck)} />; })}
       <div style={{ height: 12 }}></div>
     </div>
   );
