@@ -271,11 +271,11 @@ body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background:
 </div>
 
 <div class="pr-tabs" id="pr-tabs">
-  <button class="pr-tab active" data-tab="cleaning" onclick="switchTab('cleaning')">クリーニング料金<span class="pr-tab-badge" id="badge-cleaning">0</span></button>
-  <button class="pr-tab" data-tab="special" onclick="switchTab('special')">特殊品<span class="pr-tab-badge" id="badge-special">0</span></button>
-  <button class="pr-tab" data-tab="reform" onclick="switchTab('reform')">リフォーム<span class="pr-tab-badge" id="badge-reform">0</span></button>
-  <button class="pr-tab" data-tab="function" onclick="switchTab('function')">加工<span class="pr-tab-badge" id="badge-function">0</span></button>
-  <button class="pr-tab" data-tab="sales" onclick="switchTab('sales')">物販<span class="pr-tab-badge" id="badge-sales">0</span></button>
+  <button class="pr-tab active" data-tab="cleaning" onclick="switchTab('cleaning')" style="min-height:44px;padding:12px 16px;">クリーニング料金<span class="pr-tab-badge" id="badge-cleaning">0</span></button>
+  <button class="pr-tab" data-tab="special" onclick="switchTab('special')" style="min-height:44px;padding:12px 16px;">特殊品<span class="pr-tab-badge" id="badge-special">0</span></button>
+  <button class="pr-tab" data-tab="reform" onclick="switchTab('reform')" style="min-height:44px;padding:12px 16px;">リフォーム<span class="pr-tab-badge" id="badge-reform">0</span></button>
+  <button class="pr-tab" data-tab="function" onclick="switchTab('function')" style="min-height:44px;padding:12px 16px;">加工<span class="pr-tab-badge" id="badge-function">0</span></button>
+  <button class="pr-tab" data-tab="sales" onclick="switchTab('sales')" style="min-height:44px;padding:12px 16px;">物販<span class="pr-tab-badge" id="badge-sales">0</span></button>
 </div>
 
 <!-- 非表示管理バー -->
@@ -978,7 +978,7 @@ function renderCategorySection(catName, items, q) {
   const hiddenNote = (!showHidden && hiddenItems.length) ? `<span style="font-size:11px;color:#c2410c;margin-left:6px">️非表示${hiddenItems.length}件</span>` : '';
   return `
   <div class="pr-cat">
-    <div class="pr-cat-head${isOpen?' open':''}" onclick="toggleCat('${id}', this)">
+    <div class="pr-cat-head${isOpen?' open':''}" onclick="toggleCat('${id}', this)" style="min-height:56px;padding:14px 16px;">
       <span class="pr-cat-name">${esc(catName.normalize('NFKC'))}</span>
       <span class="pr-cat-count">${displayItems.length}件${hiddenNote}</span>
       <span class="pr-cat-arr">▾</span>
