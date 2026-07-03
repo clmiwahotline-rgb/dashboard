@@ -24,7 +24,11 @@ const SalesStructuredView = ({ data, mode, store, setMode, setStore }) => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+<<<<<<< HEAD
       <div className="no-print" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+=======
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+>>>>>>> 949c17f8e054c62cc58a13a5399991afd9b0f92e
         <div style={{ display: "flex", gap: 4, background: "var(--bg-2)", borderRadius: 10, padding: 3 }}>
           <button className={`btn btn-sm ${mode !== "store" ? "btn-primary" : "btn-ghost"}`} onClick={() => setMode("all")}>🏢 全社版</button>
           <button className={`btn btn-sm ${mode === "store" ? "btn-primary" : "btn-ghost"}`} onClick={() => setMode("store")}>🏪 店舗別版</button>
@@ -61,9 +65,15 @@ const SalesStructuredView = ({ data, mode, store, setMode, setStore }) => {
                 return (
                   <div key={s.store} className="ai-item" style={{ display: "grid", gridTemplateColumns: "36px 1fr auto auto auto", gap: 12, alignItems: "center", padding: "10px 12px", background: "var(--bg-2)", borderRadius: 10 }}>
                     <div style={{ fontWeight: 800, color: s.rank <= 3 ? "var(--accent)" : "var(--ink-mute)", fontSize: 15 }}>{s.rank}</div>
+<<<<<<< HEAD
                     <div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0, alignItems: "flex-start" }}>
                       <StoreTag name={s.store} />
                       <div style={{ width: 140, height: 8, background: "var(--card-2, #e9edf1)", borderRadius: 4, overflow: "hidden" }}>
+=======
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0 }}>
+                      <StoreTag name={s.store} />
+                      <div style={{ height: 8, background: "var(--card-2, #e9edf1)", borderRadius: 4, overflow: "hidden" }}>
+>>>>>>> 949c17f8e054c62cc58a13a5399991afd9b0f92e
                         <div style={{ width: `${barPct}%`, height: "100%", background: barColor, borderRadius: 4 }}></div>
                       </div>
                     </div>

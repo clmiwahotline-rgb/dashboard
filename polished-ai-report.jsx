@@ -25,7 +25,11 @@ const REPORT_SOURCES = [
 ];
 
 // 会議レポートに束ねるソース（この順に印刷される）
+<<<<<<< HEAD
 const MEETING_IDS = ["sales", "feedback", "claim", "thanks", "stain", "factory"];
+=======
+const MEETING_IDS = ["sales", "feedback", "claim", "thanks", "board", "stain", "factory"];
+>>>>>>> 949c17f8e054c62cc58a13a5399991afd9b0f92e
 const meetingNo = (i) => "①②③④⑤⑥⑦"[i] || `${i + 1}.`;
 
 // シフトのみ従来のプロンプト生成タイプを保持
@@ -437,7 +441,11 @@ ${structuredMarkdown}`;
                     return <option key={m} value={m}>{y}年{parseInt(mo)}月</option>;
                   })}
                 </select>
+<<<<<<< HEAD
                 <span style={{ fontSize: 12.5, color: "var(--ink-mute)" }}>{MEETING_IDS.length}ソース合計 {meetingTotalRows} 件</span>
+=======
+                <span style={{ fontSize: 12.5, color: "var(--ink-mute)" }}>7ソース合計 {meetingTotalRows} 件</span>
+>>>>>>> 949c17f8e054c62cc58a13a5399991afd9b0f92e
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
                   <button className="btn btn-ghost" onClick={() => window.print()} title="この画面のレポートをそのまま印刷・PDF保存">🖨 印刷 / PDF保存</button>
                   <button className="btn btn-ghost" onClick={exportHtml} title="HTMLファイルでダウンロード">HTML保存</button>
