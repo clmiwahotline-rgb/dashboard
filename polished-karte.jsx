@@ -1,6 +1,6 @@
 // カルテ（ハイブランドコース）── メインページ：一覧・検索・詳細・作成/編集
 
-const KarteDetail = ({ karte, onEdit, onDelete, onBack }) => {
+const KarteDetail = ({ karte, onEdit, onDelete, onBack, onOpenPrintSheet }) => {
   const total = window.karteTotal(karte);
   const overdue = karte.deliveryDate && karte.deliveryDate < window.kToday();
   return (
@@ -8,7 +8,8 @@ const KarteDetail = ({ karte, onEdit, onDelete, onBack }) => {
       <div className="card-head no-print">
         <button className="btn btn-ghost" onClick={onBack}>← 一覧へ戻る</button>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost" onClick={() => window.print()}>🖨 印刷</button>
+          <button className="btn btn-ghost" onClick={() => window.print()}>🖨 簡易印刷</button>
+          <button className="btn btn-primary" onClick={onOpenPrintSheet}>🖨 A5両面シート</button>
           <button className="btn btn-ghost" onClick={() => onEdit(karte)}>✎ 編集</button>
           <button className="btn btn-ghost" style={{ color: "#e54863" }} onClick={() => onDelete(karte.id)}>削除</button>
         </div>
@@ -18,7 +19,7 @@ const KarteDetail = ({ karte, onEdit, onDelete, onBack }) => {
         <div>
           <h2 className="kt-detail-name">{karte.customerName}{/様$/.test((karte.customerName || "").trim()) ? "" : " 様"}</h2>
           <div className="kt-detail-sub">
-            <StoreTag name={karte.store} /> ・ タグ {karte.tagNo || "—"} ・ 顧客番号 {karte.customerNo || "—"}
+            <StoreTag name={karte.store} /> ・ タグ {karte.tagNo || "—"} ・ 顧客番号 {karte.customerNo || "—"} ・ カルテNo. {karte.no || "—"}
           </div>
         </div>
         <div className="kt-detail-dates">
@@ -77,9 +78,10 @@ const KarteDetail = ({ karte, onEdit, onDelete, onBack }) => {
           <div className="kt-section-title">採寸</div>
           <div className="kt-measure-view">
             {karte.measurements.map((m) => (
-              <div key={m.id} className="kt-measure-chip"><b>{m.label}</b>{m.value}cm</div>
+              <div key={m.id} className="kt-measure-chip"><b>{m.label}</b>前 {m.before || "—"}cm ／ 後 {m.after || "—"}cm</div>
             ))}
           </div>
+          <div style={{ fontSize: 11, color: "var(--ink-mute)", marginTop: 6 }}>※伸縮２％までは許容範囲とさせて頂きます</div>
         </div>
       )}
 
@@ -109,14 +111,6 @@ const KarteDetail = ({ karte, onEdit, onDelete, onBack }) => {
             </div>
           </div>
         )}
-        <div className="kt-confirm-list">
-          {window.CONFIRM_ITEMS.map((c) => (
-            <div key={c.key} className="kt-check-view">
-              <span className={`kt-check-mark ${karte.confirmations[c.key] ? "on" : ""}`}>{karte.confirmations[c.key] ? "✓" : ""}</span>
-              {c.label}
-            </div>
-          ))}
-        </div>
         {karte.confirmations.note && <div className="kt-detail-block" style={{ marginTop: 8 }}><span className="kt-dl">事前の検品時に気になった点</span>{karte.confirmations.note}</div>}
         {karte.confirmations.advice && <div className="kt-detail-block" style={{ marginTop: 8 }}><span className="kt-dl">クリーニング後のお客様へのアドバイス</span>{karte.confirmations.advice}</div>}
       </div>
@@ -127,18 +121,24 @@ const KarteDetail = ({ karte, onEdit, onDelete, onBack }) => {
 const KarteCard = ({ karte, onOpen }) => {
   const total = window.karteTotal(karte);
   const overdue = karte.deliveryDate && karte.deliveryDate < window.kToday();
+  const diffDays = karte.deliveryDate ? Math.round((new Date(karte.deliveryDate + "T00:00:00") - new Date(window.kToday() + "T00:00:00")) / 86400000) : null;
+  const urgency = overdue ? "over" : (diffDays != null && diffDays <= 1 ? "red" : (diffDays != null && diffDays <= 3 ? "orange" : ""));
+  const itemLine = [karte.item.brand, karte.item.category, karte.item.color].filter(Boolean).join(" ・ ");
   return (
     <div className="kt-card" onClick={() => onOpen(karte)}>
       <div className="kt-card-body">
-        <div className="kt-card-top">
+        <div className="kt-card-row1">
           <StoreTag name={karte.store} />
-          {overdue && <span className="kt-badge-overdue">超過</span>}
+          <span className="kt-card-no">{karte.no || "—"}</span>
         </div>
-        <div className="kt-card-name">{karte.customerName || "（お名前未入力）"}</div>
-        <div className="kt-card-item">{karte.item.brand ? `${karte.item.brand} ・ ` : ""}{karte.item.category}</div>
-        <div className="kt-card-foot">
-          <span>預かり {window.dateSlashK(karte.receivedDate)}</span>
-          <span className="kt-card-total">{window.yenK(total)}</span>
+        <div className="kt-card-row2">
+          <span className="kt-card-name">{karte.customerName ? `${karte.customerName.replace(/\s*様\s*$/, "")}様` : "（お名前未入力）"}</span>
+          <span className="kt-card-tag">タグ {karte.tagNo || "—"}</span>
+        </div>
+        <div className="kt-card-item">{itemLine || "—"}</div>
+        <div className={`kt-card-dates ${urgency ? "kt-card-dates-" + urgency : ""}`}>
+          <span>預かり {window.dateSlashK(karte.receivedDate) || "—"}</span>
+          <span>渡し {window.dateSlashK(karte.deliveryDate) || "—"}{overdue ? "（超過）" : ""}</span>
         </div>
       </div>
     </div>
@@ -171,11 +171,29 @@ const KartePage = () => {
   const openNew = () => { setSelectedId(null); setMode("form"); };
   const openEdit = (k) => { setSelectedId(k.id); setMode("form"); };
   const backToList = () => { setMode("list"); setSelectedId(null); };
+  const openItems = () => setMode("items");
+  const openPrintSheet = () => setMode("print");
   const handleSave = (karte) => { upsertKarte(karte); setSelectedId(karte.id); setMode("detail"); };
   const handleDelete = (id) => {
     if (!confirm("このカルテを削除しますか？")) return;
     removeKarte(id); backToList();
   };
+
+  if (mode === "print" && selected) {
+    return <window.KartePrintSheet karte={selected} onBack={() => setMode("detail")} />;
+  }
+  if (mode === "items") {
+    return (
+      <div className="app">
+        <div className="shell">
+          <AppSidebar active="karte" />
+          <main className="main">
+            <window.KarteItemSettings onBack={backToList} />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -189,6 +207,7 @@ const KartePage = () => {
             </div>
             {mode === "list" && (
               <div className="right">
+                <button className="btn btn-ghost" onClick={openItems}>⚙ アイテム設定</button>
                 <button className="btn btn-primary" onClick={openNew}>＋ 新規カルテ作成</button>
               </div>
             )}
@@ -227,7 +246,7 @@ const KartePage = () => {
           )}
 
           {mode === "detail" && selected && (
-            <KarteDetail karte={selected} onEdit={openEdit} onDelete={handleDelete} onBack={backToList} />
+            <KarteDetail karte={selected} onEdit={openEdit} onDelete={handleDelete} onBack={backToList} onOpenPrintSheet={openPrintSheet} />
           )}
         </main>
       </div>

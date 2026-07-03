@@ -55,6 +55,16 @@ const REQUEST_ITEMS = [
 const kToday = () => new Date().toISOString().slice(0, 10);
 const kNewId = () => "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
+// カルテNo.（作成時に1回だけ発行される連番。機端ローカルのカウンターなので、複数拠点で同時作成すると衝突の可能性はあるが、
+// 現状localStorageのみの保存なのでこの方式とする（クラウド連携時にサーバー発行式への切り替えを検討）
+const KARTE_COUNTER_KEY = "miwa.karte.counter.v1";
+const genKarteNo = () => {
+  let n = 1;
+  try { n = (parseInt(localStorage.getItem(KARTE_COUNTER_KEY), 10) || 0) + 1; } catch (e) {}
+  try { localStorage.setItem(KARTE_COUNTER_KEY, String(n)); } catch (e) {}
+  return "K" + String(n).padStart(5, "0");
+};
+
 const yenK = (n) => "¥" + Math.round(n || 0).toLocaleString("ja-JP");
 const dateSlashK = (s) => {
   if (!s) return "";
@@ -64,6 +74,7 @@ const dateSlashK = (s) => {
 
 const blankKarte = (store) => ({
   id: kNewId(),
+  no: genKarteNo(),
   store: store || KARTE_STORES[0],
   createdAt: Date.now(),
   updatedAt: Date.now(),
@@ -80,11 +91,11 @@ const blankKarte = (store) => ({
   custom: { wash: "", button: "", hanger: "", wrap: "", options: [], stainLimit: "" },
   proposal: "",
   customization: "",
-  item: { category: KARTE_CATEGORIES[0], brand: "", serialNo: "", color: "", purchasePrice: "", purchaseTime: "" },
+  item: { category: KARTE_CATEGORIES[0], brand: "", serialNo: "", color: "", purchasePrice: "", purchaseTime: "", showPurchasePrice: true },
   measurements: [],
   diagramType: "garment",
   pins: [],
-  pricing: { cleaningFee: 0, hasCompensation: false, compensationFee: 0, optionFee: 0 },
+  pricing: { cleaningFee: 0, hasCompensation: false, compensationFee: 0, optionFee: 0, catalogItemId: "", catalogItemName: "" },
   confirmations: { checks: [], colorChange: false, shapeChange: false, stainNotFull: false, customerConfirmed: false, note: "", advice: "" },
 });
 
@@ -187,6 +198,6 @@ const useKarteData = () => {
 Object.assign(window, {
   KARTE_LS_KEY, KARTE_SHEET, KARTE_STORES, KARTE_CATEGORIES, CATEGORY_DIAGRAM, MEASURE_PRESETS, CONFIRM_ITEMS, CONFIRM_CHECK_ITEMS, REQUEST_ITEMS,
   CUSTOMIZE_GROUPS, CUSTOMIZE_OPTIONS, CUSTOMIZE_STANDARD_NOTE,
-  kToday, kNewId, yenK, dateSlashK, blankKarte, karteTotal,
+  kToday, kNewId, genKarteNo, yenK, dateSlashK, blankKarte, karteTotal,
   loadKarteList, saveKarteList, readKarteFile, useKarteData,
 });

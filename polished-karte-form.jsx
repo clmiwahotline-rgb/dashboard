@@ -11,12 +11,20 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
 
   const setCategory = (cat) => {
     const diagram = window.CATEGORY_DIAGRAM[cat] || "garment";
-    setF((p) => ({ ...p, item: { ...p.item, category: cat }, diagramType: diagram, pins: p.diagramType === diagram ? p.pins : [] }));
+    const match = itemCatalog.find((it) => it.name === cat);
+    setF((p) => ({
+      ...p,
+      item: { ...p.item, category: cat },
+      diagramType: diagram,
+      pins: p.diagramType === diagram ? p.pins : [],
+      // アイテム種別とカタログの品名が一致する場合は料金・カタログ紐付けも同期する
+      pricing: match ? { ...p.pricing, catalogItemId: match.id, catalogItemName: match.name, cleaningFee: match.price } : p.pricing,
+    }));
     setView("front");
   };
 
   // ── 採寸 ──
-  const addMeasure = (label) => setF((p) => ({ ...p, measurements: [...p.measurements, { id: window.kNewId(), label: label || "", value: "" }] }));
+  const addMeasure = (label) => setF((p) => ({ ...p, measurements: [...p.measurements, { id: window.kNewId(), label: label || "", before: "", after: "" }] }));
   const updMeasure = (id, k, v) => setF((p) => ({ ...p, measurements: p.measurements.map((m) => m.id === id ? { ...m, [k]: v } : m) }));
   const delMeasure = (id) => setF((p) => ({ ...p, measurements: p.measurements.filter((m) => m.id !== id) }));
 
@@ -28,6 +36,17 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
 
   const total = window.karteTotal(f);
   const canSave = f.customerName.trim() && f.store;
+  const { items: itemCatalog } = window.useItemCatalog();
+
+  const applyCatalogItem = (id) => {
+    const it = itemCatalog.find((x) => x.id === id);
+    setF((p) => ({
+      ...p,
+      // 料金欄から選んだ場合もアイテム種別を同期させる（二つのセレクタが飨離しないように）
+      item: it ? { ...p.item, category: it.name } : p.item,
+      pricing: { ...p.pricing, catalogItemId: id, catalogItemName: it ? it.name : "", cleaningFee: it ? it.price : p.pricing.cleaningFee },
+    }));
+  };
 
   return (
     <div className="card">
@@ -40,6 +59,10 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
       <div className="kt-section">
         <div className="kt-section-title">基本情報</div>
         <div className="form-grid">
+          <div className="field">
+            <label className="field-label">カルテNo.</label>
+            <input className="input" value={f.no || "—"} readOnly disabled style={{ background: "var(--panel-2, #f4f4f4)", color: "var(--ink-mute)" }} />
+          </div>
           <div className="field">
             <label className="field-label">対応店舗</label>
             <select className="select" value={f.store} onChange={(e) => set("store", e.target.value)}>
@@ -165,7 +188,9 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
           <div className="field">
             <label className="field-label">アイテム種別</label>
             <select className="select" value={f.item.category} onChange={(e) => setCategory(e.target.value)}>
-              {window.KARTE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {itemCatalog.length > 0
+                ? itemCatalog.map((it) => <option key={it.id} value={it.name}>{it.name}</option>)
+                : window.KARTE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="field">
@@ -183,6 +208,10 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
           <div className="field">
             <label className="field-label">参考購入価格</label>
             <input className="input" type="number" value={f.item.purchasePrice} onChange={(e) => setItem("purchasePrice", e.target.value)} placeholder="円" />
+            <label className="kt-check" style={{ marginTop: 4 }}>
+              <input type="checkbox" checked={f.item.showPurchasePrice !== false} onChange={(e) => setItem("showPurchasePrice", e.target.checked)} />
+              印刷シートに表示する
+            </label>
           </div>
           <div className="field">
             <label className="field-label">購入時期</label>
@@ -201,16 +230,31 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
         </div>
         {f.measurements.length > 0 && (
           <div className="kt-measure-list">
-            {f.measurements.map((m) => (
+            <div className="kt-measure-header">
+              <span style={{ maxWidth: 140, flex: "0 0 140px" }}>項目名</span>
+              <span style={{ maxWidth: 120, flex: "0 0 120px" }}>クリーニング前</span>
+              <span style={{ maxWidth: 120, flex: "0 0 120px" }}>クリーニング後</span>
+              <span style={{ maxWidth: 70, flex: "0 0 70px" }}>伸縮率</span>
+            </div>
+            {f.measurements.map((m) => {
+              const b = parseFloat(m.before), a = parseFloat(m.after);
+              const rate = (!isNaN(b) && b !== 0 && !isNaN(a)) ? ((a - b) / b * 100) : null;
+              return (
               <div key={m.id} className="kt-measure-row">
                 <input className="input" value={m.label} placeholder="項目名" onChange={(e) => updMeasure(m.id, "label", e.target.value)} style={{ maxWidth: 140 }} />
-                <input className="input" value={m.value} placeholder="実寸（cm）" onChange={(e) => updMeasure(m.id, "value", e.target.value)} style={{ maxWidth: 120 }} />
+                <input className="input" value={m.before} placeholder="実寸（cm）" onChange={(e) => updMeasure(m.id, "before", e.target.value)} style={{ maxWidth: 120 }} />
+                <input className="input" value={m.after} placeholder="実寸（cm）" onChange={(e) => updMeasure(m.id, "after", e.target.value)} style={{ maxWidth: 120 }} />
+                <span className={`kt-shrink-rate ${rate != null && rate <= -2 ? "kt-shrink-over" : ""}`} style={{ minWidth: 70 }}>
+                  {rate != null ? `${rate > 0 ? "+" : ""}${rate.toFixed(1)}%` : "—"}
+                </span>
                 <button type="button" className="kd-pin-x" onClick={() => delMeasure(m.id)}>×</button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
         {!f.measurements.length && <div className="kt-empty-hint">上のボタンから採寸項目を追加してください</div>}
+        <div className="kt-hint7" style={{ marginTop: 8 }}>※伸縮２％までは許容範囲とさせて頂きます</div>
       </div>
 
       {/* シミ・傷の位置 */}
@@ -224,6 +268,13 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
       <div className="kt-section">
         <div className="kt-section-title">料金</div>
         <div className="form-grid">
+          <div className="field full">
+            <label className="field-label">アイテムから選択（任意・選択するとクリーニング料金とアイテム種別に自動反映）</label>
+            <select className="select" value={f.pricing.catalogItemId || ""} onChange={(e) => applyCatalogItem(e.target.value)}>
+              <option value="">— 選択しない —</option>
+              {itemCatalog.map((it) => <option key={it.id} value={it.id}>{it.name}（{window.yenK(it.price)}）</option>)}
+            </select>
+          </div>
           <div className="field">
             <label className="field-label">クリーニング料金</label>
             <input className="input" type="number" value={f.pricing.cleaningFee} onChange={(e) => setPricing("cleaningFee", e.target.value)} />
@@ -270,14 +321,6 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
               </label>
             ))}
           </div>
-        </div>
-        <div className="kt-confirm-list" style={{ marginTop: 12 }}>
-          {window.CONFIRM_ITEMS.map((c) => (
-            <label key={c.key} className="kt-check kt-check-block">
-              <input type="checkbox" checked={!!f.confirmations[c.key]} onChange={(e) => setConfirm(c.key, e.target.checked)} />
-              {c.label}
-            </label>
-          ))}
         </div>
         <div className="field full" style={{ marginTop: 10 }}>
           <label className="field-label">事前の検品時に気になった点</label>

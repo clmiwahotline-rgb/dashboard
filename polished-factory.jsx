@@ -79,6 +79,17 @@ const importFactoryCsv = (text) => {
   return { rows: out, columns: H };
 };
 
+// ── クラウド編集の永続化（みわ共有API・シート「工場報告」）────────
+// CSV/GAS取込はそのまま（読み取り専用のソース）。手動修正した内容だけを
+// reportID をキーに別シートへ保存し、再同期のたびに上書きマージして復元する。
+const FACTORY_EDIT_SHEET = "工場報告";
+const facEditRow = (rec) => ({ id: rec.reportID, date: rec.date, factory: rec.factory, json: JSON.stringify(rec) });
+const mergeFactoryEdits = (rows, editsById) => rows.map((r) => {
+  const e = editsById[r.reportID];
+  if (!e) return r;
+  try { return { ...r, ...JSON.parse(e.json) }; } catch { return r; }
+});
+
 const useFbStateFactory = (key, initial) => {
   const [v, setV] = React.useState(() => {
     try { const s = localStorage.getItem(key); if (s) return JSON.parse(s); } catch {}
@@ -242,7 +253,7 @@ const FactoryEditModal = ({ open, record, onSave, onClose }) => {
                         onChange={(e) => setForm({...form, note: e.target.value})}/>
             </div>
             <div className="field full" style={{ fontSize: 11, color: "var(--ink-mute)", background: "var(--bg-2)", padding: 10, borderRadius: 10 }}>
-              ※ 修正内容はローカルに保存されます。同期時に最新データが反映されます。
+              ※ 修正内容はクラウドに保存され、同期時も上書きされずに復元されます（全端末で共有）。
             </div>
           </div>
         </div>
@@ -284,6 +295,24 @@ const FactoryReportPage = () => {
   const [editRecord, setEditRecord] = React.useState(null);
   const [toast, setToast] = React.useState("");
   const [tableShowCount, setTableShowCount] = React.useState(10);
+  const [cloudOn, setCloudOn] = React.useState(false);
+  const [cloudEdits, setCloudEdits] = React.useState({}); // reportID -> {id,date,factory,json}
+
+  // 起動時：クラウドに保存済みの手動修正を取得（オフライン／未設定時は何もしない）
+  React.useEffect(() => {
+    if (typeof window.cloudGet !== "function") return;
+    let cancelled = false;
+    (async () => {
+      const remote = await window.cloudGet(FACTORY_EDIT_SHEET);
+      if (cancelled || remote == null) return;
+      setCloudOn(true);
+      const byId = {};
+      remote.forEach((r) => { if (r.id) byId[r.id] = r; });
+      setCloudEdits(byId);
+      setRows((prev) => mergeFactoryEdits(prev, byId));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   React.useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
@@ -402,7 +431,7 @@ const FactoryReportPage = () => {
       });
       const data = Object.values(deduped);
       if (!data.length) throw new Error(`データを認識できませんでした。フォームの項目名が変わった可能性があります。設定画面の「受信した列名」をご確認ください`);
-      setRows(data);
+      setRows(mergeFactoryEdits(data, cloudEdits)); // 手動修正済みの行はクラウドの内容で復元
       setLastSync(Date.now());
       setToast(`${data.length} 件を同期しました`);
     } catch (e) {
@@ -411,7 +440,7 @@ const FactoryReportPage = () => {
     } finally {
       setSyncing(false);
     }
-  }, [settings.url, fetchRaw]);
+  }, [settings.url, fetchRaw, cloudEdits]);
 
   // Auto-sync interval
   React.useEffect(() => {
@@ -459,10 +488,13 @@ const FactoryReportPage = () => {
   };
 
   const handleSaveEdit = (updated) => {
-    setRows(rows.map(r => 
+    setRows(rows.map(r =>
       r.reportID === editRecord.reportID ? { ...r, ...updated } : r
     ));
-    setToast("修正を保存しました");
+    const merged = { ...editRecord, ...updated };
+    setCloudEdits((prev) => ({ ...prev, [merged.reportID]: facEditRow(merged) }));
+    if (cloudOn) window.cloudUpdate(FACTORY_EDIT_SHEET, merged.reportID, facEditRow(merged));
+    setToast("修正を保存しました" + (cloudOn ? "（全端末に反映）" : ""));
   };
 
   return (
