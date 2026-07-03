@@ -26,6 +26,7 @@ const Ico = {
   arrowUp: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="m6 14 6-6 6 6"/></svg>,
   arrowDown: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="m6 10 6 6 6-6"/></svg>,
   more: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>,
+  karte: (s) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={s} className="nav-ico"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="9.5" cy="9" r="1.6"/><path d="M13 8h4M13 10h4"/><path d="M7 14h10M7 17h6"/></svg>,
 };
 
 // ── Sparkline ──────────────────────────────────────────────

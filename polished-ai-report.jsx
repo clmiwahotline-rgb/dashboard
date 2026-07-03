@@ -1,25 +1,17 @@
-// AI レポート — separate page for AI-driven analytics across data sources
+// AI レポート — メインページ
+// 売上・シミ抜き・フィードバック・工場・クレーム・車両・ありがとう・共有ボードは
+// 自動計算された構造化ビューを表示（+ 任意で「AIによる考察」を追加生成）。
+// シフトのみ、従来通りプロンプト生成 → Claude 文章化のフローを維持する。
 
-const totalLotPts = (d) => (d.normalLot || 0) + (d.extraLot || 0) + (d.advance || 0) + (d.storage || 0);
-
-// 各ページ＝データソース（お知らせ・業界ニュースは対象外）
 const REPORT_SOURCES = [
-  { id: "sales", label: "売上レポート", icon: "💰", storage: "miwa.sales.v8", dateKey: "date",
-    fmt: (d) => `【${d.store}】${d.date}/売上¥${d.sales}/昨年¥${d.lastYear || 0}/客数${d.customers || 0}/新規${d.newCustomers || 0}/点数${d.items || 0}` },
-  { id: "stain", label: "シミ抜き報告", icon: "📊", storage: "miwa.stain.v1", dateKey: "date",
-    fmt: (d) => `【${d.staff}】${d.date}/${d.processed}件(落ち${d.failed || 0})/金額${d.amount}円(返金${d.refund || 0}円)` },
-  { id: "feedback", label: "フィードバック", icon: "💬", storage: "miwa.feedback.v3", dateKey: "reportDate",
-    fmt: (d) => `【${d.store}・${d.factory || "—"}】${d.reportDate}/${d.item}/区分:${d.type}\n  内容: ${d.content}\n  原因: ${d.cause || "—"}\n  改善: ${d.improvement || "—"}` },
-  { id: "factory", label: "工場報告", icon: "🏭", storage: "miwa.factory.v3", dateKey: "date",
-    fmt: (d) => `【${d.factory}】${d.date}/通常${d.normalLot || 0}・特急${d.extraLot || 0}・前出し${d.advance || 0}・保管${d.storage || 0}(計${totalLotPts(d)})/工数${d.hours || 0}h/生産性${d.hours > 0 ? (totalLotPts(d) / d.hours).toFixed(1) : "—"}点/h/メンバー:${d.members || "—"}` },
-  { id: "claim", label: "クレーム・事故品", icon: "⚠️", storage: "miwa.claim.v1", dateKey: "receivedOn",
-    fmt: (d) => `【${d.store}・${d.type}】受付${d.receivedOn || d.occurredOn || "—"}/品目:${d.item}/状況:${d.status}/弁償¥${d.amount || 0}/担当:${d.staff || "—"}/メーカー:${d.maker || "—"}\n  内容: ${d.detail || "—"}` },
-  { id: "vehicle", label: "車両管理", icon: "🚚", storage: "miwa.vehicle.v1", dateKey: "",
-    fmt: (d) => `【${d.name}・${d.model || ""}】拠点:${d.store || "—"}/担当:${d.staff || "—"}/走行${d.odometer || 0}km/車検${d.inspectionDue || "—"}/点検${d.checkDue || "—"}/保険${d.insuranceDue || "—"}/オイル${d.oilNextDate || "—"}` },
-  { id: "thanks", label: "ありがとうカード", icon: "🙏", storage: "miwa.arigatou.v1", dateKey: "date",
-    fmt: (d) => `【${d.store}】${(d.date || "").slice(0, 10)}/区分:${d.kind}/${d.content}` },
-  { id: "board", label: "共有ボード", icon: "📌", storage: "miwa.board.v1", dateKey: "",
-    fmt: (d) => `【${d.who || "匿名"}・${d.badge || "共有"}】${d.ts ? new Date(d.ts).toLocaleDateString("ja-JP") : ""}/${(d.text || "").replace(/\n/g, " ")}` },
+  { id: "sales", label: "売上レポート", icon: "💰", storage: "miwa.sales.v9", dateKey: "date" },
+  { id: "stain", label: "シミ抜き報告", icon: "📊", storage: "miwa.stain.v1", dateKey: "date" },
+  { id: "feedback", label: "フィードバック", icon: "💬", storage: "miwa.feedback.v3", dateKey: "reportDate" },
+  { id: "factory", label: "工場報告", icon: "🏭", storage: "miwa.factory.v3", dateKey: "date" },
+  { id: "claim", label: "クレーム・事故品", icon: "⚠️", storage: "miwa.claim.v1", dateKey: "receivedOn" },
+  { id: "vehicle", label: "車両管理", icon: "🚚", storage: "miwa.vehicle.v1", dateKey: "" },
+  { id: "thanks", label: "ありがとうカード", icon: "🙏", storage: "miwa.arigatou.v1", dateKey: "date" },
+  { id: "board", label: "共有ボード", icon: "📌", storage: "miwa.board.v1", dateKey: "" },
   { id: "shift", label: "シフト", icon: "🗓️", storage: "__shift", dateKey: "",
     getRows: () => {
       const S = (typeof window !== "undefined") && window.SHIFT_2026_06;
@@ -29,61 +21,21 @@ const REPORT_SOURCES = [
       return out;
     },
     fmt: (d) => `【${d.store}】${d.name}/出勤${d.days || 0}日/${d.hours || 0}h` },
+  { id: "meeting", label: "会議レポート", icon: "📑", storage: null, dateKey: "date" },
 ];
 
-const REPORT_TYPES = {
-  sales: [
-    { id: "summary",  label: "📊 月次まとめ", prompt: "今月の売上・昨対比・店舗別ハイライト・コース別構成を箇条書きでまとめてください。" },
-    { id: "compare",  label: "🏪 店舗比較",   prompt: "店舗ごとの売上・客数・新規・点数構成を比較し、強み弱みを分析してください。" },
-    { id: "insights", label: "💡 インサイト", prompt: "数値の中から経営判断に役立つ気付きを抽出し、来月に向けた打ち手を提案してください。" },
-  ],
-  stain: [
-    { id: "summary",     label: "📊 月次まとめ", prompt: "全体の処理状況・担当者別成績・落ち率と返金率を日本語で箇条書きでまとめてください。" },
-    { id: "followup",    label: "⚠️ フォロー",   prompt: "管理者がフォローアップすべき状況や注意が必要な内容を指摘してください。" },
-    { id: "performance", label: "🏆 成績",       prompt: "担当者のパフォーマンスを分析し、優秀な成績者と改善が必要な者を指摘してください。" },
-  ],
-  feedback: [
-    { id: "trends",  label: "📈 傾向分析", prompt: "店舗別・対応区分別の傾向を分析し、よく出る問題と原因のパターンをまとめてください。" },
-    { id: "improve", label: "💡 改善提案", prompt: "再発防止のために重点的に取り組むべき項目を優先順位付きで提案してください。" },
-    { id: "summary", label: "📊 月次まとめ", prompt: "今月のフィードバック総数・対応区分の内訳・主要な事案を箇条書きでまとめてください。" },
-  ],
-  factory: [
-    { id: "summary",      label: "📊 月次まとめ", prompt: "各工場の生産点数（通常・特急・前出し・保管）・工数・生産性を箇条書きでまとめてください。" },
-    { id: "productivity", label: "📈 生産性",     prompt: "工場別・日別の生産性（点/時）を分析し、効率の高い日・低い日と改善余地を指摘してください。" },
-    { id: "staffing",     label: "👥 人員配置",   prompt: "メンバー構成と処理量の関係を分析し、人員配置の最適化を提案してください。" },
-  ],
-  claim: [
-    { id: "summary", label: "📊 月次まとめ", prompt: "受付件数・種別内訳・対応状況・弁償総額を箇条書きでまとめてください。" },
-    { id: "risk",    label: "⚠️ 要対応",    prompt: "未解決（受付・対応中）の案件を優先度付きで整理し、対応の遅れやリスクを指摘してください。" },
-    { id: "prevent", label: "💡 再発防止",  prompt: "種別・店舗・品目・メーカーの傾向から再発防止策を具体的に提案してください。" },
-  ],
-  vehicle: [
-    { id: "due",     label: "🔧 期限管理", prompt: "車検・法定点検・保険満了・オイル交換の期限が近い車両を緊急度順（超過→間近）に整理し、必要なアクションを示してください。" },
-    { id: "summary", label: "📊 車両一覧", prompt: "保有車両の配備拠点・担当・走行距離・各種期限の状況を箇条書きでまとめてください。" },
-    { id: "cost",    label: "💰 コスト見通し", prompt: "走行距離や各期限の時期から、今後必要となる整備・更新とコストの見通しを示してください。" },
-  ],
-  thanks: [
-    { id: "summary",   label: "📊 月次まとめ", prompt: "ありがとうカードの件数・区分・店舗別の傾向を箇条書きでまとめてください。" },
-    { id: "highlight", label: "🌟 ハイライト", prompt: "特に良い取り組みや、全社で共有・称賛すべき事例を抽出してください。" },
-    { id: "culture",   label: "💡 組織文化",   prompt: "カードの内容から組織の強みと、さらに伸ばすべき点を分析してください。" },
-  ],
-  board: [
-    { id: "summary", label: "📊 まとめ",    prompt: "共有事項の主要トピックを区分別に整理し、要点を箇条書きでまとめてください。" },
-    { id: "action",  label: "✅ 対応事項",  prompt: "対応・確認が必要な共有事項を抽出し、担当と優先度の観点で整理してください。" },
-  ],
-  shift: [
-    { id: "summary", label: "📊 まとめ", prompt: "拠点別の出勤日数・労働時間を集計し、人員の配置状況を箇条書きでまとめてください。" },
-    { id: "balance", label: "⚖️ 負荷の偏り", prompt: "出勤日数・労働時間の偏りや、負荷の高いスタッフ・手薄な拠点を指摘してください。" },
-  ],
-};
+// 会議レポートに束ねるソース（この順に印刷される）
+const MEETING_IDS = ["sales", "feedback", "claim", "thanks", "stain", "factory"];
+const meetingNo = (i) => "①②③④⑤⑥⑦"[i] || `${i + 1}.`;
 
-const fmtAIDate = (d) => d ? new Date(d).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" }) : "—";
+// シフトのみ従来のプロンプト生成タイプを保持
+const SHIFT_REPORT_TYPES = [
+  { id: "summary", label: "📊 まとめ", prompt: "拠点別の出勤日数・労働時間を集計し、人員の配置状況を箇条書きでまとめてください。" },
+  { id: "balance", label: "⚖️ 負荷の偏り", prompt: "出勤日数・労働時間の偏りや、負荷の高いスタッフ・手薄な拠点を指摘してください。" },
+];
 
 const loadSource = (key) => {
-  try {
-    const s = localStorage.getItem(key);
-    return s ? JSON.parse(s) : [];
-  } catch { return []; }
+  try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : []; } catch { return []; }
 };
 const getSourceRows = (src) => {
   if (!src) return [];
@@ -96,21 +48,7 @@ const filterByMonth = (src, rows, month) => {
   return rows.filter((r) => (r[src.dateKey] || "").startsWith(month));
 };
 
-const buildPrompt = (source, type, month, rows) => {
-  const t = REPORT_TYPES[source.id].find((x) => x.id === type);
-  const filtered = filterByMonth(source, rows, month);
-  const summary = filtered.map(source.fmt).join("\n");
-  const monthLabel = (source.dateKey && month) ? `${month.slice(0, 4)}年${parseInt(month.slice(5, 7))}月` : "全期間";
-  return `以下は${monthLabel}の${source.label}データです。
-${t.prompt}
-
-見出し・箇条書きを使い、管理者がそのまま共有できる読みやすい日本語レポートにしてください。
-
-=== データ (${filtered.length} 件) ===
-${summary}`;
-};
-
-// ── 生成結果（Markdown 風）→ 整形 HTML ───────────────────
+// ── Markdown → HTML（AI考察テキスト・レポート全体のエクスポート共通）──
 const mdToHtml = (md) => {
   const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const lines = (md || "").split("\n");
@@ -166,7 +104,7 @@ const buildReportHtml = (title, sub, body) => `<!DOCTYPE html>
     <div class="rp-sub">${sub}</div>
   </div>
   <div class="rp-body">${mdToHtml(body)}</div>
-  <div class="rp-foot">本レポートは AI により自動生成されました。最終判断は管理者がご確認ください。 ・ 出力日時: ${new Date().toLocaleString("ja-JP")}</div>
+  <div class="rp-foot">出力日時: ${new Date().toLocaleString("ja-JP")}</div>
 </body></html>`;
 
 const useAiState = (key, initial) => {
@@ -178,61 +116,141 @@ const useAiState = (key, initial) => {
   return [v, setV];
 };
 
+// 構造化レポート対象ソース（=シフト以外）の compute/markdown 関数マップ
+const D = window.AiReportData;
+const V = window.AiReportViews;
+const STRUCTURED = {
+  sales:    { compute: (rows) => D.computeSales(rows), md: (data, month, ctx) => D.salesMarkdown(data, month, ctx.mode === "store" ? (ctx.store || data.stores[0]?.store) : null),
+              view: (data, ctx) => <V.SalesStructuredView data={data} mode={ctx.mode} store={ctx.store} setMode={ctx.setMode} setStore={ctx.setStore} /> },
+  stain:    { compute: (rows) => D.computeStain(rows), md: (data, month) => D.stainMarkdown(data, month),
+              view: (data) => <V.StainStructuredView data={data} /> },
+  feedback: { compute: (rows) => D.computeFeedback(rows), md: (data, month) => D.feedbackMarkdown(data, month),
+              view: (data) => <V.FeedbackStructuredView data={data} /> },
+  factory:  { compute: (rows) => D.computeFactory(rows), md: (data, month) => D.factoryMarkdown(data, month),
+              view: (data) => <V.FactoryStructuredView data={data} /> },
+  claim:    { compute: (rows) => D.computeClaim(rows), md: (data, month) => D.claimMarkdown(data, month),
+              view: (data) => <V.ClaimStructuredView data={data} /> },
+  vehicle:  { compute: (rows, extra) => D.computeVehicle(rows, extra.fuel || [], extra.maint || []), md: (data) => D.vehicleMarkdown(data),
+              view: (data) => <V.VehicleStructuredView data={data} /> },
+  thanks:   { compute: (rows, extra) => D.computeThanks(rows, extra.comments || []), md: (data, month) => D.thanksMarkdown(data, month),
+              view: (data) => <V.ThanksStructuredView data={data} /> },
+  board:    { compute: (rows) => D.computeBoard(rows), md: (data) => D.boardMarkdown(data),
+              view: (data) => <V.BoardStructuredView data={data} /> },
+};
+
+const fmtAIDate = (d) => d ? new Date(d).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" }) : "—";
+
 // ── Main page ─────────────────────────────────────────
 const AiReportPage = () => {
-  const [source, setSource] = useAiState("miwa.ai.source", "stain");
-  const [type, setType] = useAiState("miwa.ai.type", "summary");
+  const [source, setSource] = useAiState("miwa.ai.source", "sales");
+  const [shiftType, setShiftType] = useAiState("miwa.ai.type", "summary");
   const [month, setMonth] = React.useState(() => new Date().toISOString().slice(0, 7));
-  const [history, setHistory] = useAiState("miwa.ai.history.v1", []);
   const [toast, setToast] = React.useState("");
   const [dark, setDark] = React.useState(false);
   const [generating, setGenerating] = React.useState(false);
   const [generated, setGenerated] = React.useState("");
+  const [salesMode, setSalesMode] = React.useState("all");
+  const [salesStore, setSalesStore] = React.useState("");
 
   React.useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
   }, [dark]);
 
+  const isShift = source === "shift";
+  const isMeeting = source === "meeting";
+
+  // ── 会議レポート：複数ソースを同一月でまとめて集計 ──
+  const meetingSources = React.useMemo(() => MEETING_IDS.map((id) => REPORT_SOURCES.find((s) => s.id === id)), []);
+  const meetingAvailableMonths = React.useMemo(() => {
+    if (!isMeeting) return [];
+    const set = new Set();
+    meetingSources.forEach((src) => {
+      if (!src.dateKey) return;
+      getSourceRows(src).forEach((r) => { const m = (r[src.dateKey] || "").slice(0, 7); if (m) set.add(m); });
+    });
+    return [...set].sort((a, b) => b.localeCompare(a));
+  }, [isMeeting]);
+
+  React.useEffect(() => {
+    if (!isMeeting) return;
+    setMonth((m) => (meetingAvailableMonths.includes(m) ? m : (meetingAvailableMonths[0] || "")));
+  }, [isMeeting, meetingAvailableMonths]);
+
+  const staticSalesCtx = { mode: "all", store: "", setMode: () => {}, setStore: () => {} };
+  const meetingSections = React.useMemo(() => {
+    if (!isMeeting) return [];
+    return MEETING_IDS.map((id, i) => {
+      const src = REPORT_SOURCES.find((s) => s.id === id);
+      const rows = filterByMonth(src, getSourceRows(src), month);
+      const ex = id === "thanks" ? { comments: loadSource("miwa.arigatou.comments.v1") } : {};
+      const data = STRUCTURED[id].compute(rows, ex);
+      const ctx = id === "sales" ? staticSalesCtx : {};
+      const md = STRUCTURED[id].md(data, month, ctx);
+      return { id, no: meetingNo(i), src, rows, data, ctx, md };
+    });
+  }, [isMeeting, month]);
+
   const currentSource = REPORT_SOURCES.find((s) => s.id === source);
-  const sourceRows = React.useMemo(() => getSourceRows(currentSource), [source]);
+  const sourceRows = React.useMemo(() => (isMeeting ? [] : getSourceRows(currentSource)), [source]);
   const availableMonths = React.useMemo(() => {
+    if (isMeeting) return meetingAvailableMonths;
     if (!currentSource.dateKey) return [];
     const set = new Set(sourceRows.map((r) => (r[currentSource.dateKey] || "").slice(0, 7)).filter(Boolean));
     return [...set].sort((a, b) => b.localeCompare(a));
-  }, [sourceRows]);
+  }, [sourceRows, isMeeting, meetingAvailableMonths]);
 
   React.useEffect(() => {
-    // Reset type when source changes if current type isn't valid
-    if (!REPORT_TYPES[source].find((t) => t.id === type)) {
-      setType(REPORT_TYPES[source][0].id);
-    }
-    // 日付を持たないソース（車両・共有ボード・シフト）は全期間に固定
+    setGenerated("");
+    if (isMeeting) return;
     const src = REPORT_SOURCES.find((s) => s.id === source);
     if (!src.dateKey) { setMonth(""); return; }
-    // 選択月にデータが無ければ、データのある最新月（無ければ全期間）へ自動で合わせる
     setMonth((m) => (availableMonths.includes(m) ? m : (availableMonths[0] || "")));
   }, [source]);
 
-  const monthRows = filterByMonth(currentSource, sourceRows, month);
+  const monthRows = isMeeting ? [] : filterByMonth(currentSource, sourceRows, month);
+  const meetingTotalRows = React.useMemo(() => meetingSections.reduce((s, sec) => s + sec.rows.length, 0), [meetingSections]);
 
-  const generate = async () => {
-    if (!monthRows.length) {
-      setToast("対象期間のデータがありません");
-      return;
-    }
-    setGenerating(true);
-    setGenerated("");
-    const prompt = buildPrompt(currentSource, type, month, sourceRows);
+  // 追加データ（車両の給油・整備、ありがとうのコメント）
+  const extra = React.useMemo(() => {
+    if (source === "vehicle") return { fuel: loadSource("miwa.fuel.v1"), maint: loadSource("miwa.maint.v1") };
+    if (source === "thanks") return { comments: loadSource("miwa.arigatou.comments.v1") };
+    return {};
+  }, [source, sourceRows]);
 
+  const structuredDef = (!isShift && !isMeeting) ? STRUCTURED[source] : null;
+  const structuredData = React.useMemo(() => {
+    if (!structuredDef) return null;
+    return structuredDef.compute(monthRows, extra);
+  }, [structuredDef, monthRows, extra]);
+
+  const salesCtx = { mode: salesMode, store: salesStore, setMode: setSalesMode, setStore: setSalesStore };
+  const structuredMarkdown = React.useMemo(() => {
+    if (isMeeting) return meetingSections.map((s) => s.md).join("\n\n");
+    if (!structuredDef || !structuredData) return "";
+    return structuredDef.md(structuredData, month, salesCtx);
+  }, [structuredDef, structuredData, month, salesMode, salesStore, isMeeting, meetingSections]);
+
+  // ── シフト用（従来のプロンプト生成フロー） ──────────
+  const buildShiftPrompt = () => {
+    const t = SHIFT_REPORT_TYPES.find((x) => x.id === shiftType);
+    const summary = monthRows.map(currentSource.fmt).join("\n");
+    return `以下はシフトデータです。
+${t.prompt}
+
+見出し・箇条書きを使い、管理者がそのまま共有できる読みやすい日本語レポートにしてください。
+
+=== データ (${monthRows.length} 件) ===
+${summary}`;
+  };
+
+  const generateShift = async () => {
+    if (!monthRows.length) { setToast("対象データがありません"); return; }
+    setGenerating(true); setGenerated("");
+    const prompt = buildShiftPrompt();
     try {
-      // Use window.claude if available, else fall back to clipboard
       if (window.claude && typeof window.claude.complete === "function") {
         const result = await window.claude.complete(prompt);
         setGenerated(result);
-        setHistory([
-          { id: Date.now(), source, type, month, result, prompt, created: Date.now() },
-          ...history.slice(0, 19),
-        ]);
         setToast("レポートを作成しました");
       } else {
         await navigator.clipboard.writeText(prompt);
@@ -242,17 +260,38 @@ const AiReportPage = () => {
     } catch (e) {
       setGenerated(`エラー: ${e.message || e}\n\n--- プロンプト ---\n${prompt}`);
       setToast("生成に失敗しました");
-    } finally {
-      setGenerating(false);
-    }
+    } finally { setGenerating(false); }
+  };
+
+  // ── 構造化ソース用：AI による考察を追加生成 ──────────
+  const generateInsight = async () => {
+    setGenerating(true);
+    const label = isMeeting ? "会議レポート（売上・フィードバック・クレーム・ありがとうカード・共有ボード・シミ拜き・工場報告）" : currentSource.label;
+    const prompt = `以下は${label}の集計データです。この内容から、経営判断に役立つインサイトや改善提案を、見出し・箇条書きを使って日本語で簡潔にまとめてください。データの再掲は不要です。${isMeeting ? "複数ソースの情報を統合し、経営会議で共有すべき重要トピックを優先してください。" : ""}
+
+=== 集計データ ===
+${structuredMarkdown}`;
+    try {
+      if (window.claude && typeof window.claude.complete === "function") {
+        const result = await window.claude.complete(prompt);
+        setGenerated(result);
+        setToast("AIによる考察を作成しました");
+      } else {
+        await navigator.clipboard.writeText(prompt);
+        setGenerated(`プロンプトをコピーしました。\n\nClaude.ai を開いて貼り付けてください。\n\n--- プロンプト内容 ---\n${prompt}`);
+        setToast("プロンプトをコピーしました");
+      }
+    } catch (e) {
+      setGenerated(`エラー: ${e.message || e}`);
+      setToast("生成に失敗しました");
+    } finally { setGenerating(false); }
   };
 
   const copyPrompt = async () => {
-    const prompt = buildPrompt(currentSource, type, month, sourceRows);
-    await navigator.clipboard.writeText(prompt);
-    setToast("プロンプトをコピーしました");
+    const text = isShift ? buildShiftPrompt() : structuredMarkdown;
+    await navigator.clipboard.writeText(text);
+    setToast("コピーしました");
   };
-
   const copyResult = async () => {
     if (!generated) return;
     await navigator.clipboard.writeText(generated);
@@ -260,32 +299,41 @@ const AiReportPage = () => {
   };
 
   const reportTitle = () => {
-    const t = REPORT_TYPES[source].find((x) => x.id === type);
-    return `${currentSource.label} ・ ${t ? t.label.replace(/^\S+\s/, "") : ""}`;
+    if (isShift) {
+      const t = SHIFT_REPORT_TYPES.find((x) => x.id === shiftType);
+      return `${currentSource.label} ・ ${t ? t.label.replace(/^\S+\s/, "") : ""}`;
+    }
+    if (isMeeting) return "会議レポート";
+    return currentSource.label + (source === "sales" && salesMode === "store" && salesStore ? ` ・ ${salesStore}` : "");
   };
-  const reportSub = () => `${(currentSource.dateKey && month) ? `${month.slice(0, 4)}年${parseInt(month.slice(5, 7))}月` : "全期間"} ・ 対象 ${monthRows.length} 件`;
+  const reportSub = () => isMeeting
+    ? `${month ? `${month.slice(0, 4)}年${parseInt(month.slice(5, 7))}月` : "全期間"} ・ 全${MEETING_IDS.length}ソース合計 ${meetingTotalRows} 件`
+    : `${(currentSource.dateKey && month) ? `${month.slice(0, 4)}年${parseInt(month.slice(5, 7))}月` : "全期間"} ・ 対象 ${monthRows.length} 件`;
+
+  const exportBody = () => {
+    if (isShift) return generated;
+    return structuredMarkdown + (generated ? `\n\n## AIによる考察\n\n${generated}` : "");
+  };
   const exportPdf = () => {
-    if (!generated) return;
+    const body = exportBody();
+    if (!body) return;
     const w = window.open("", "_blank");
     if (!w) { setToast("ポップアップを許可してください"); return; }
-    w.document.write(buildReportHtml(reportTitle(), reportSub(), generated));
+    w.document.write(buildReportHtml(reportTitle(), reportSub(), body));
     w.document.close(); w.focus();
     setTimeout(() => { try { w.print(); } catch {} }, 600);
   };
   const exportHtml = () => {
-    if (!generated) return;
-    const blob = new Blob([buildReportHtml(reportTitle(), reportSub(), generated)], { type: "text/html;charset=utf-8" });
+    const body = exportBody();
+    if (!body) return;
+    const blob = new Blob([buildReportHtml(reportTitle(), reportSub(), body)], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `AIレポート_${currentSource.label}_${(currentSource.dateKey && month) ? month : "全期間"}.html`;
+    a.download = `AIレポート_${currentSource.label}_${(isMeeting || (currentSource.dateKey && month)) ? (month || "全期間") : "全期間"}.html`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setToast("HTMLを保存しました");
-  };
-
-  const deleteHistory = (id) => {
-    setHistory(history.filter((h) => h.id !== id));
   };
 
   return (
@@ -293,145 +341,191 @@ const AiReportPage = () => {
       <div className="shell">
         <AppSidebar active="ai-report" />
         <main className="main">
-          {/* Greeting */}
           <div className="greet">
             <div>
               <h1>✨ AI レポート</h1>
-              <div className="sub">各データソースを Claude で分析し、レポートを自動生成します</div>
+              <div className="sub">各データソースを自動集計。必要に応じて AI による考察も追加できます</div>
             </div>
-            <div className="right">
-            </div>
+            <div className="right"></div>
           </div>
 
           {/* Source picker */}
-          <div className="card">
+          <div className="card no-print">
             <div className="card-head">
               <h3 className="card-title">1. データソース</h3>
               <span className="card-sub">SOURCE</span>
             </div>
             <div className="ai-source-grid">
               {REPORT_SOURCES.map((s) => {
-                const count = getSourceRows(s).length;
+                const count = s.id === "meeting" ? MEETING_IDS.length : getSourceRows(s).length;
                 return (
                   <button key={s.id}
                           className={`ai-source-card ${source === s.id ? "active" : ""}`}
                           onClick={() => setSource(s.id)}>
                     <span className="ai-source-icon">{s.icon}</span>
                     <span className="ai-source-label">{s.label}</span>
-                    <span className="ai-source-count">{count} 件</span>
+                    <span className="ai-source-count">{s.id === "meeting" ? `${count} ソース` : `${count} 件`}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Report type + month */}
-          <div className="card">
-            <div className="card-head">
-              <h3 className="card-title">2. レポートの種類</h3>
-              <span className="card-sub">TEMPLATE</span>
+          {/* Shift: 従来のタイプ選択＋プロンプト生成 */}
+          {isShift && (
+            <div className="card">
+              <div className="card-head">
+                <h3 className="card-title">2. レポートの種類</h3>
+                <span className="card-sub">TEMPLATE</span>
+              </div>
+              <div className="ai-type-pills">
+                {SHIFT_REPORT_TYPES.map((t) => (
+                  <button key={t.id} className={`ai-type-pill ${shiftType === t.id ? "active" : ""}`} onClick={() => setShiftType(t.id)}>{t.label}</button>
+                ))}
+              </div>
+              <div className="filter-bar" style={{ marginTop: 16 }}>
+                <div className="field" style={{ flex: 1 }}>
+                  <label className="field-label">対象データ件数</label>
+                  <div style={{ padding: "10px 0", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)" }}>{monthRows.length} 件</div>
+                </div>
+                <div className="actions">
+                  <button className="btn btn-ghost" onClick={copyPrompt}>📋 プロンプトのみコピー</button>
+                  <button className="btn btn-primary" onClick={generateShift} disabled={generating || !monthRows.length}>
+                    {generating ? "生成中..." : "✨ レポート作成"}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="ai-type-pills">
-              {REPORT_TYPES[source].map((t) => (
-                <button key={t.id}
-                        className={`ai-type-pill ${type === t.id ? "active" : ""}`}
-                        onClick={() => setType(t.id)}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
+          )}
 
-            <div className="filter-bar" style={{ marginTop: 16 }}>
-              <div className="field">
-                <label className="field-label">対象月</label>
+          {/* 構造化ソース（単一）：ツールバー（月フィルタ＋印刷/保存） */}
+          {!isShift && !isMeeting && (
+            <div className="card no-print" style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                {currentSource.dateKey ? (
+                  <>
+                    <label className="field-label" style={{ margin: 0 }}>対象月</label>
+                    <select className="select" style={{ width: 180 }} value={month} onChange={(e) => setMonth(e.target.value)}>
+                      <option value="">全期間</option>
+                      {availableMonths.map((m) => {
+                        const [y, mo] = m.split("-");
+                        return <option key={m} value={m}>{y}年{parseInt(mo)}月</option>;
+                      })}
+                    </select>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 12.5, color: "var(--ink-mute)" }}>全期間</span>
+                )}
+                <span style={{ fontSize: 12.5, color: "var(--ink-mute)" }}>対象 {monthRows.length} 件</span>
+                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                  <button className="btn btn-ghost" onClick={() => window.print()} title="この画面のレポートをそのまま印刷・PDF保存">🖨 印刷 / PDF保存</button>
+                  <button className="btn btn-ghost" onClick={exportHtml} title="HTMLファイルでダウンロード">HTML保存</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 会議レポート：ツールバー */}
+          {isMeeting && (
+            <div className="card no-print" style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <label className="field-label" style={{ margin: 0 }}>対象月</label>
                 <select className="select" style={{ width: 180 }} value={month} onChange={(e) => setMonth(e.target.value)}>
                   <option value="">全期間</option>
-                  {availableMonths.map((m) => {
+                  {meetingAvailableMonths.map((m) => {
                     const [y, mo] = m.split("-");
                     return <option key={m} value={m}>{y}年{parseInt(mo)}月</option>;
                   })}
                 </select>
-              </div>
-              <div className="field" style={{ flex: 1 }}>
-                <label className="field-label">対象データ件数</label>
-                <div style={{ padding: "10px 0", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)" }}>
-                  {monthRows.length} 件 / 全 {sourceRows.length} 件
+                <span style={{ fontSize: 12.5, color: "var(--ink-mute)" }}>{MEETING_IDS.length}ソース合計 {meetingTotalRows} 件</span>
+                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                  <button className="btn btn-ghost" onClick={() => window.print()} title="この画面のレポートをそのまま印刷・PDF保存">🖨 印刷 / PDF保存</button>
+                  <button className="btn btn-ghost" onClick={exportHtml} title="HTMLファイルでダウンロード">HTML保存</button>
                 </div>
               </div>
-              <div className="actions">
-                <button className="btn btn-ghost" onClick={copyPrompt}>
-                  📋 プロンプトのみコピー
-                </button>
-                <button className="btn btn-primary" onClick={generate} disabled={generating || !monthRows.length}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                       style={generating ? { animation: "spin 1s linear infinite" } : null}>
-                    {generating
-                      ? <><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/></>
-                      : <><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></>}
-                  </svg>
-                  {generating ? "生成中..." : "✨ レポート作成"}
-                </button>
-              </div>
             </div>
-          </div>
+          )}
 
-          {/* Output */}
-          {generated && (
+          {/* 印刷時のみのヘッダ */}
+          {(!isShift) && (
+            <div className="print-only">
+              <b>{reportTitle()}</b>
+              クリーニングみわ ・ {reportSub()} ・ 出力: {new Date().toLocaleDateString("ja-JP")}
+            </div>
+          )}
+
+          {/* 構造化レポート本体（単一ソース） */}
+          {!isShift && !isMeeting && structuredDef && (
+            <>
+              {structuredDef.view(structuredData, salesCtx)}
+
+              <div className={"card" + (generated ? "" : " no-print")}>
+                <div className="card-head">
+                  <h3 className="card-title">✨ AIによる考察</h3>
+                </div>
+                {generated ? (
+                  <>
+                    <div className="ai-output">{generated}</div>
+                    <div className="no-print" style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      <button className="btn btn-ghost" onClick={copyResult}>コピー</button>
+                      <button className="btn btn-ghost" onClick={generateInsight} disabled={generating}>{generating ? "生成中..." : "🔄 再生成"}</button>
+                    </div>
+                  </>
+                ) : (
+                  <button className="btn btn-primary" onClick={generateInsight} disabled={generating || !monthRows.length}>
+                    {generating ? "生成中..." : "✨ AIによる考察を追加する"}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* 会議レポート本体（複数ソースを順に列挙） */}
+          {isMeeting && (
+            <>
+              {meetingSections.map((sec, i) => (
+                <div key={sec.id} className={"meeting-section" + (i >= 3 ? " meeting-section-flow" : "")}>
+                  <div className="meeting-section-title">
+                    <span>{sec.no}</span> {sec.src.icon} {sec.src.label}
+                    <span className="meeting-section-count">{sec.rows.length} 件</span>
+                  </div>
+                  {STRUCTURED[sec.id].view(sec.data, sec.ctx)}
+                </div>
+              ))}
+
+              <div className={"card" + (generated ? "" : " no-print")}>
+                <div className="card-head">
+                  <h3 className="card-title">✨ AIによる総合考察</h3>
+                </div>
+                {generated ? (
+                  <>
+                    <div className="ai-output">{generated}</div>
+                    <div className="no-print" style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      <button className="btn btn-ghost" onClick={copyResult}>コピー</button>
+                      <button className="btn btn-ghost" onClick={generateInsight} disabled={generating}>{generating ? "生成中..." : "🔄 再生成"}</button>
+                    </div>
+                  </>
+                ) : (
+                  <button className="btn btn-primary" onClick={generateInsight} disabled={generating || !meetingTotalRows}>
+                    {generating ? "生成中..." : "✨ AIによる総合考察を追加する"}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* シフト：生成結果 */}
+          {isShift && generated && (
             <div className="card">
               <div className="card-head">
                 <h3 className="card-title">3. 生成結果</h3>
                 <div className="right" style={{ display: "flex", gap: 8 }}>
-                  <button className="btn btn-ghost" onClick={exportPdf} title="PDF（印刷ダイアログ）で保存">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                    PDF保存
-                  </button>
-                  <button className="btn btn-ghost" onClick={exportHtml} title="HTMLファイルでダウンロード">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-                    HTML保存
-                  </button>
-                  <button className="btn btn-ghost" onClick={copyResult}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2"/>
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                    </svg>
-                    コピー
-                  </button>
+                  <button className="btn btn-ghost" onClick={exportPdf}>PDF保存</button>
+                  <button className="btn btn-ghost" onClick={exportHtml}>HTML保存</button>
+                  <button className="btn btn-ghost" onClick={copyResult}>コピー</button>
                 </div>
               </div>
               <div className="ai-output">{generated}</div>
-            </div>
-          )}
-
-          {/* History */}
-          {history.length > 0 && (
-            <div className="card">
-              <div className="card-head">
-                <h3 className="card-title">📚 履歴</h3>
-                <span className="card-sub">最新 {history.length} 件</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {history.map((h) => {
-                  const s = REPORT_SOURCES.find((x) => x.id === h.source);
-                  const t = REPORT_TYPES[h.source]?.find((x) => x.id === h.type);
-                  return (
-                    <div key={h.id} className="ai-history-item">
-                      <button className="ai-history-main" onClick={() => setGenerated(h.result)}>
-                        <span className="ai-history-icon">{s?.icon}</span>
-                        <span className="ai-history-meta">
-                          <span className="ai-history-title">{s?.label} ・ {t?.label}</span>
-                          <span className="ai-history-sub">{h.month || "全期間"} ・ {fmtAIDate(h.created)}</span>
-                        </span>
-                      </button>
-                      <button className="row-action danger" onClick={() => deleteHistory(h.id)} title="削除">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
         </main>
@@ -442,5 +536,4 @@ const AiReportPage = () => {
   );
 };
 
-// auto-clear toast
 window.AiReportPage = AiReportPage;

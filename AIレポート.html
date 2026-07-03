@@ -15,6 +15,55 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="polished.css">
+<style>
+  /* 印刷（PDF保存）：構造化レポートをそのまま紙面に */
+  .print-only { display: none; }
+  .meeting-section-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 20px; font-weight: 900; color: #fff;
+    background: linear-gradient(115deg, #0a7d4a 0%, #1a9f5a 60%, #34b36c 100%);
+    padding: 10px 16px; border-radius: 10px; margin: 4px 0 12px;
+    box-shadow: 0 2px 10px rgba(15, 90, 60, .18);
+  }
+  .meeting-section-count { margin-left: auto; font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.85); }
+  @media print {
+    body { background: #fff !important; }
+    .sidebar, .mobile-menu, .mobile-scrim, .no-print, .toast, .greet { display: none !important; }
+    .app { padding: 0 !important; }
+    .shell { display: block !important; }
+    .main { padding: 0 !important; gap: 8px !important; }
+    .card { box-shadow: none !important; border: 1px solid #d8dce2 !important; padding: 8px 12px !important; border-radius: 8px !important; break-inside: avoid; page-break-inside: avoid; }
+    .card-head { margin-bottom: 6px !important; padding: 0 !important; }
+    .card-title { font-size: 9.5pt !important; }
+    .card-sub { font-size: 8pt !important; }
+    /* KPI を4列固定・コンパクト化 */
+    .kpi-row { grid-template-columns: repeat(4, 1fr) !important; gap: 6px !important; margin-bottom: 6px !important; }
+    .kpi { box-shadow: none !important; border: 1px solid #d8dce2 !important; padding: 5px 9px !important; border-radius: 8px !important; border-top-width: 2px !important; }
+    .kpi-value { font-size: 12.5pt !important; margin-top: 0 !important; }
+    .kpi-label { font-size: 8pt !important; }
+    .kpi-delta { font-size: 7.5pt !important; }
+    /* リスト項目を詰める */
+    .ai-group-list { gap: 3px !important; padding: 0 !important; }
+    .ai-item { padding: 3px 8px !important; border-radius: 5px !important; break-inside: avoid; }
+    .ai-item, .ai-item * { font-size: 9.5pt !important; line-height: 1.5 !important; margin-top: 0 !important; margin-bottom: 0 !important; }
+    .ai-output { font-size: 9.5pt !important; padding: 8px 10px !important; }
+    .store-tag { font-size: 8.5pt !important; padding: 2px 8px !important; }
+    .print-only { display: block !important; font-size: 9.5pt; color: #555; border-bottom: 2px solid #2a6fdb; padding-bottom: 6px; margin-bottom: 2px; }
+    .print-only b { font-size: 13pt; color: #1f2430; display: block; }
+    /* 会議レポート：ソースごとの見出し（つなげて印刷するため強制改ページはしない）
+    .meeting-section-title {
+      font-size: 14pt !important; padding: 6px 12px !important; margin: 6px 0 8px !important;
+      break-after: avoid; page-break-after: avoid; break-inside: avoid;
+    }
+    .meeting-section-count { font-size: 9pt !important; }
+    .meeting-section { break-inside: auto; }
+    /* \u3042\u308a\u304c\u3068\u3046\u30ab\u30fc\u30c9\u4ee5\u964d\uff08thanks/board/stain/factory\uff09\uff1a\u9014\u4e2d\u3067\u5207\u308c\u3066\u3082\u3088\u3044\u306e\u3067\u9023\u7d9a\u3057\u3066\u6d41\u3059 */
+    .meeting-section-flow .card,
+    .meeting-section-flow .ai-item {
+      break-inside: auto !important; page-break-inside: auto !important;
+    }
+  }
+</style>
 </head>
 <body>
 <div id="root"></div>
@@ -24,10 +73,13 @@
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
 <script src="polished-shift-seed.js"></script>
+<script src="polished-ai-report-data.jsx"></script>
 
 <script type="text/babel" src="tweaks-panel.jsx"></script>
 <script type="text/babel" src="polished-atoms.jsx"></script>
 <script type="text/babel" src="polished-sidebar.jsx"></script>
+<script type="text/babel" src="polished-sales-atoms.jsx"></script>
+<script type="text/babel" src="polished-ai-report-views.jsx"></script>
 <script type="text/babel" src="polished-ai-report.jsx"></script>
 
 <script type="text/babel" data-presets="env,react">

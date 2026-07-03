@@ -32,6 +32,7 @@ window.AppSidebar = ({ active = "dashboard" }) => {
     { group: "社内", items: [
       { id: "price",    label: "料金表",           icon: Ico.price, href: encodeURIComponent("料金表.html") },
       { id: "shift",     label: "シフト",           icon: Ico.store, href: encodeURIComponent("シフト.html") },
+      { id: "karte",     label: "カルテ作成",   icon: Ico.karte,   href: encodeURIComponent("カルテ.html") },
       { id: "invoice",   label: "請求書管理",       icon: Ico.invoice, href: encodeURIComponent("請求書管理.html") },
       { id: "thanks",    label: "ありがとうカード", icon: Ico.heart, href: encodeURIComponent("ありがとうカード.html") },
       { id: "notice",    label: "お知らせ",         icon: Ico.bell, href: encodeURIComponent("お知らせ.html") },

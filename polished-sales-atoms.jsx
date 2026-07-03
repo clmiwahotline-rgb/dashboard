@@ -288,6 +288,8 @@ const SalesKpiRow = ({ rows }) => {
   const totalBrand = sum("brand");
   const ratioDS = dry ? ((totalDelicate + totalStandard) / dry) * 100 : 0;
   const ratioBP = dry ? ((totalBrand + totalPremium) / dry) * 100 : 0;
+  const storeSet = new Set(rows.map((r) => r.store).filter(Boolean));
+  const isSingleStore = storeSet.size <= 1;
 
   const upDown = (n) => (n >= 0 ? "up" : "down");
   const upDownColor = (n) => (n >= 0 ? "oklch(0.55 0.16 150)" : "#e54863");
@@ -349,17 +351,19 @@ const SalesKpiRow = ({ rows }) => {
         <div className="kpi">
           <div className="kpi-label"><span className="kpi-dot" style={{ background: "#EA4335" }}></span>デリケート 累計</div>
           <div className="kpi-value">{fmtNum(totalDelicate)}<span className="kpi-unit"> 点</span></div>
-          <div className="kpi-delta">全店合計</div>
+          {!isSingleStore && <div className="kpi-delta">全店合計</div>}
         </div>
         <div className="kpi">
           <div className="kpi-label"><span className="kpi-dot" style={{ background: "#34A853" }}></span>(デリ+スタ)÷ドライ点数</div>
           <div className="kpi-value">{ratioDS.toFixed(1)}<span className="kpi-unit"> %</span></div>
           <div className="kpi-delta">{fmtNum(totalDelicate + totalStandard)} ÷ {fmtNum(dry)} 点</div>
+          <div style={{ fontSize: 10, color: "var(--ink-mute)", marginTop: 3, lineHeight: 1.4 }}>デリケート＋スタンダードの点数が、ドライ点数に占める割合</div>
         </div>
         <div className="kpi">
           <div className="kpi-label"><span className="kpi-dot" style={{ background: "#FBBC04" }}></span>(ブラ+プレ)÷ドライ点数</div>
           <div className="kpi-value">{ratioBP.toFixed(1)}<span className="kpi-unit"> %</span></div>
           <div className="kpi-delta">{fmtNum(totalBrand + totalPremium)} ÷ {fmtNum(dry)} 点</div>
+          <div style={{ fontSize: 10, color: "var(--ink-mute)", marginTop: 3, lineHeight: 1.4 }}>ブランド＋プレミアムの点数が、ドライ点数に占める割合</div>
         </div>
       </div>
     </>

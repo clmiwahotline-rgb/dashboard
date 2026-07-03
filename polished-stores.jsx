@@ -562,7 +562,7 @@ const StoresPage = () => {
           <div className="greet">
             <div>
               <h1>シフト</h1>
-              <div className="sub">2026年6月 ・ 仮シフト ・ 全{stores.length}拠点{cloudOn ? (cloudTs ? ` ・ ☁ 同期（更新 ${new Date(cloudTs).toLocaleString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}）` : " ・ ☁ 同期") : ""}</div>
+              <div className="sub">{(() => { const m = (data.month || "").split("-"); return m.length === 2 ? `${m[0]}年${parseInt(m[1], 10)}月` : data.month; })()} ・ 全{stores.length}拠点{cloudOn ? (cloudTs ? ` ・ ☁ 同期（更新 ${new Date(cloudTs).toLocaleString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}）` : " ・ ☁ 同期") : ""}</div>
             </div>
             <div className="right" style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button className={`nf-btn ${editMode ? "" : "ghost"}`} onClick={() => setEditMode((v) => !v)} title="月間表のセルをタップして時間を編集">{editMode ? "✓ 編集を終了" : "✎ シフト編集"}</button>

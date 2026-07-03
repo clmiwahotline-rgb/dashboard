@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<script src="auth-config.js"></script>
+<script src="polished-auth.js"></script>
+<script src="polished-device.js"></script>
+<script src="polished-mobile-footer.js?v=217"></script>
+<title>カルテ作成 ・ みわダッシュボード</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="icon" sizes="32x32" href="favicon-32.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="polished.css">
+<style>
+  /* ── カルテページ専用スタイル ─────────────────────── */
+  .kt-section { padding: 18px 0; border-top: 1px solid var(--line); }
+  .kt-section:first-of-type { border-top: none; padding-top: 4px; }
+  .kt-section-title { font-size: 13px; font-weight: 800; color: var(--accent-ink); margin-bottom: 12px; }
+  .kt-req { font-size: 10px; color: #e54863; font-weight: 700; margin-left: 4px; }
+
+  .kt-measure-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .kt-measure-list { display: flex; flex-direction: column; gap: 8px; }
+  .kt-measure-row { display: flex; gap: 8px; align-items: center; }
+  .kt-empty-hint { font-size: 12px; color: var(--ink-faint); }
+  .kt-measure-view { display: flex; flex-wrap: wrap; gap: 8px; }
+  .kt-measure-chip { background: var(--bg-2); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; display: flex; gap: 6px; }
+  .kt-measure-chip b { color: var(--ink-mute); font-weight: 600; }
+
+  .kt-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+  .kt-check input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .kt-request-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 16px; padding: 4px 0; }
+  .kt-custom-groups { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+  .kt-custom-group { display: flex; flex-direction: column; gap: 6px; }
+  .kt-custom-label { font-size: 11.5px; font-weight: 700; color: var(--ink-mute); }
+  .kt-custom-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kt-custom-std { font-size: 11.5px; color: var(--ink-mute); background: var(--bg-2); border-radius: 8px; padding: 8px 12px; }
+  .kt-check-row { display: flex; align-items: center; height: 100%; padding-top: 8px; }
+  .kt-check-block { display: flex; align-items: flex-start; gap: 9px; padding: 8px 0; font-size: 13px; line-height: 1.5; }
+  .kt-check-block input { margin-top: 2px; }
+  .kt-confirm-list { display: flex; flex-direction: column; }
+  .kt-check-view { display: flex; align-items: flex-start; gap: 9px; padding: 6px 0; font-size: 13px; line-height: 1.5; }
+  .kt-check-mark { width: 18px; height: 18px; flex-shrink: 0; border-radius: 5px; border: 1.5px solid var(--line-strong); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; }
+  .kt-check-mark.on { background: var(--accent); border-color: var(--accent); }
+
+  .kt-total-row { display: flex; align-items: center; gap: 10px; }
+  .kt-total-value { font-size: 22px; font-weight: 900; color: var(--accent-ink); }
+
+  .kt-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+  /* 一覧グリッド */
+  .kt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .kt-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; cursor: pointer; transition: transform .12s, box-shadow .12s; }
+  .kt-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+  .kt-card-thumb { height: 120px; background: var(--bg-2); display: flex; align-items: center; justify-content: center; }
+  .kt-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .kt-card-thumb-empty { font-size: 32px; opacity: .35; }
+  .kt-card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .kt-card-top { display: flex; align-items: center; justify-content: space-between; }
+  .kt-badge-overdue { font-size: 10.5px; font-weight: 800; color: #e54863; background: #fde8ea; padding: 2px 8px; border-radius: 999px; }
+  .kt-card-name { font-size: 14.5px; font-weight: 800; }
+  .kt-card-item { font-size: 12px; color: var(--ink-mute); }
+  .kt-card-foot { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-mute); margin-top: 2px; }
+  .kt-card-total { font-weight: 800; color: var(--accent-ink); }
+
+  /* 詳細ヘッダ */
+  .kt-detail-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; padding-bottom: 16px; }
+  .kt-detail-name { font-size: 20px; font-weight: 900; margin: 0 0 6px; }
+  .kt-detail-sub { font-size: 12.5px; color: var(--ink-mute); display: flex; align-items: center; gap: 8px; }
+  .kt-detail-dates { font-size: 12.5px; color: var(--ink-soft); text-align: right; display: flex; flex-direction: column; gap: 3px; }
+  .kt-overdue { color: #e54863; font-weight: 700; }
+  .kt-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px; font-size: 13px; }
+  .kt-detail-block { font-size: 13px; line-height: 1.6; margin-top: 8px; }
+  .kt-dl { display: block; font-size: 10.5px; color: var(--ink-mute); font-weight: 700; letter-spacing: .04em; margin-bottom: 2px; }
+
+  /* シミ・傷 診断図 */
+  .kd-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .kd-wrap.kd-multi { flex-direction: row; flex-wrap: wrap; gap: 24px; }
+  .kd-pane { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 280px; }
+  .kd-pane-label { font-size: 12.5px; font-weight: 800; color: var(--accent-ink); }
+  .kd-view-toggle { display: flex; gap: 6px; }
+  .kd-canvas { position: relative; background: var(--bg-2); border-radius: 12px; padding: 16px; max-width: 320px; }
+  .kd-svg { width: 100%; height: auto; display: block; }
+  .kd-clickable { cursor: crosshair; }
+  .kd-hint { font-size: 11px; color: var(--ink-faint); text-align: center; margin-top: 6px; }
+  .kd-pin-list { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+  .kd-pin-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .kd-pin-no { width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .kd-pin-note { flex: 1; min-width: 120px; }
+  .kd-pin-note-text { font-size: 13px; }
+  .kd-pin-x { width: 22px; height: 22px; border-radius: 6px; border: none; background: var(--bg-2); color: var(--ink-mute); cursor: pointer; font-size: 14px; flex-shrink: 0; }
+  .kd-pin-x:hover { background: #fde8ea; color: #e54863; }
+  .kd-kind-btns { display: flex; gap: 4px; }
+  .kd-kind-btn { border: 1.5px solid var(--line-strong); background: var(--card); color: var(--ink-soft); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; cursor: pointer; }
+  .kd-kind-btn.on { background: var(--kd-kind-color); border-color: var(--kd-kind-color); color: #fff; }
+  .kd-kind-tag { font-size: 10.5px; font-weight: 700; color: #fff; padding: 2px 9px; border-radius: 999px; }
+
+  @media (max-width: 700px) {
+    .kt-detail-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ── 印刷 ─────────────────────────────────────────── */
+  @media print {
+    body { background: #fff !important; }
+    .sidebar, .mobile-menu, .mobile-scrim, .no-print, .toast { display: none !important; }
+    .app { padding: 0 !important; }
+    .shell { display: block !important; }
+    .main { padding: 0 !important; }
+    .card { box-shadow: none !important; border: none !important; }
+    .kt-card { break-inside: avoid; }
+    .kt-section { break-inside: avoid; page-break-inside: avoid; padding: 10px 0 !important; }
+    .kt-section-title { font-size: 12px !important; margin-bottom: 8px !important; }
+    textarea.input { min-height: unset !important; height: auto !important; }
+    .input, .select { padding: 6px 8px !important; font-size: 12px !important; }
+    .form-grid { gap: 8px !important; }
+    .kt-detail-grid { font-size: 11.5px !important; gap: 6px 16px !important; }
+    .kt-measure-view, .kt-request-checks { gap: 5px 10px !important; }
+    .kt-measure-chip { padding: 3px 8px !important; font-size: 11px !important; }
+    .kt-check-block, .kt-check-view { padding: 3px 0 !important; font-size: 11.5px !important; }
+    /* カスタマイズ：未選択のボタンは印刷では省略し、選択済みのみ表示 */
+    .kt-custom-opts .btn-ghost { display: none !important; }
+    .kt-custom-group:has(.btn-primary) .kt-custom-opts:not(:has(.btn-primary)) { display: none; }
+    .kd-canvas { max-width: 220px !important; padding: 10px !important; }
+    .cl-pend.img { width: 56px !important; height: 56px !important; }
+    .kd-pin-x { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="polished-atoms.jsx"></script>
+<script type="text/babel" src="polished-sidebar.jsx"></script>
+<script type="text/babel" src="polished-cloud.jsx"></script>
+<script type="text/babel" src="polished-karte-data.jsx"></script>
+<script type="text/babel" src="polished-karte-diagram.jsx"></script>
+<script type="text/babel" src="polished-karte-form.jsx"></script>
+<script type="text/babel" src="polished-karte.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const root = document.documentElement;
+root.style.setProperty("--accent", "oklch(0.62 0.19 256)");
+root.style.setProperty("--accent-soft", "oklch(0.93 0.05 256)");
+root.style.setProperty("--accent-ink", "oklch(0.42 0.16 256)");
+root.style.setProperty("--accent-glow", "oklch(0.62 0.19 256 / 0.18)");
+root.style.setProperty("--bg", "#f1f3f4");
+root.style.setProperty("--bg-2", "#e8eaed");
+
+ReactDOM.createRoot(document.getElementById("root")).render(<KartePage />);
+</script>
+  <script src="polished-fontscale.js"></script>
+</body>
+</html>
