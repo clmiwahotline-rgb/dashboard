@@ -24,6 +24,17 @@ const mfMembers  = (m) => !m||!m.trim() ? 0 : m.split(/[,、\s]+/).filter(s=>s.t
 const mfFmtYen   = (n) => "¥" + Math.round(n||0).toLocaleString("ja-JP");
 const MF_RATES   = { "八潮ドライ工場": 1260, "東川口ワイシャツ工場": 1160 };
 
+// ── クラウド編集の永続化（みわ共有API・シート「工場報告」）────────
+// PC版と同じ仕組み：CSV/GAS取込は読み取り専用のソースのまま、手動修正した内容だけを
+// reportID をキーに別シートへ保存し、再同期のたびに上書きマージして復元する。
+const MF_EDIT_SHEET = "工場報告";
+const mfEditRow = (rec) => ({ id: rec.reportID, date: rec.date, factory: rec.factory, json: JSON.stringify(rec) });
+const mergeMfEdits = (rows, editsById) => rows.map((r) => {
+  const e = editsById[r.reportID];
+  if (!e) return r;
+  try { return { ...r, ...JSON.parse(e.json) }; } catch { return r; }
+});
+
 // ── CSV パーサ ────────────────────────────────────────
 const mfCsvUrl = (raw) => {
   if (!raw) return "";
@@ -527,7 +538,7 @@ const MFEditModal = ({open, record, onSave, onClose}) => {
           </div>
 
           <div style={{fontSize:11,color:"var(--ink-mute)",background:"var(--bg-2,#eef0f3)",borderRadius:10,padding:"9px 12px",marginBottom:4,lineHeight:1.5}}>
-            ⚠️ 修正はローカル保存です。次回同期で最新データに上書きされます。
+            ⚠️ 修正内容はクラウドに保存され、次回同期後も維持されます（全端末に反映）。
           </div>
         </div>
 
@@ -673,6 +684,24 @@ const MFactory = ({registerHeader, registerFab}) => {
   const [editRecord, setEditRecord] = React.useState(null);
   const [toast,    setToast]    = React.useState("");
   const [showCount, setShowCount] = React.useState(20);
+  const [cloudOn, setCloudOn] = React.useState(false);
+  const [cloudEdits, setCloudEdits] = React.useState({}); // reportID -> {id,date,factory,json}
+
+  // 起動時：クラウドに保存済みの手動修正を取得（オフライン／未設定時は何もしない）
+  React.useEffect(() => {
+    if (typeof window.cloudGet !== "function") return;
+    let cancelled = false;
+    (async () => {
+      const remote = await window.cloudGet(MF_EDIT_SHEET);
+      if (cancelled || remote == null) return;
+      setCloudOn(true);
+      const byId = {};
+      remote.forEach((r) => { if (r.id) byId[r.id] = r; });
+      setCloudEdits(byId);
+      setRows((prev) => mergeMfEdits(prev, byId));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // 同期
   const syncNow = React.useCallback(async () => {
@@ -717,7 +746,7 @@ const MFactory = ({registerHeader, registerFab}) => {
       (parsed||[]).forEach(r=>{const k=r.date+"_"+r.factory;if(!deduped[k]||r.timestamp>deduped[k].timestamp)deduped[k]=r;});
       const data=Object.values(deduped);
       if(!data.length)throw new Error("データを認識できませんでした。列名を設定画面でご確認ください");
-      setRows(data);
+      setRows(mergeMfEdits(data, cloudEdits)); // 手動修正済みの行はクラウドの内容で復元
       setLastSync(Date.now());
       setToast(`✅ ${data.length}件を同期しました`);
     } catch(e){
@@ -725,7 +754,7 @@ const MFactory = ({registerHeader, registerFab}) => {
       setToast("⚠ 同期に失敗しました");
     }
     setSyncing(false);
-  },[settings.url]);
+  },[settings.url, cloudEdits]);
 
   // 自動同期
   React.useEffect(()=>{
@@ -764,7 +793,10 @@ const MFactory = ({registerHeader, registerFab}) => {
   const handleEdit = (record) => {setEditRecord(record);setShowEdit(true);};
   const handleSaveEdit = (updated) => {
     setRows(rows.map(r=>r.reportID===editRecord.reportID?{...r,...updated}:r));
-    setToast("✅ 修正を保存しました");
+    const merged = { ...editRecord, ...updated };
+    setCloudEdits((prev) => ({ ...prev, [merged.reportID]: mfEditRow(merged) }));
+    if (cloudOn) window.cloudUpdate(MF_EDIT_SHEET, merged.reportID, mfEditRow(merged));
+    setToast("✅ 修正を保存しました" + (cloudOn ? "（全端末に反映）" : ""));
   };
 
   const counts={all:rows.length};

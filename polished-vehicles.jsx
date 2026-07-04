@@ -280,15 +280,9 @@ const AlertBanner = ({ vehicles }) => {
 
 // ── KPI ─────────────────────────────────────────────────
 const VehicleKpi = ({ vehicles, fuel, maint }) => {
-  // 保有台数：車両リスト ＋ 給油・整備に出てくる車名をユニーク合算
-  const registeredNames = new Set(vehicles.map((v) => (v.name || "").trim()).filter(Boolean));
-  const allNames = new Set([
-    ...registeredNames,
-    ...fuel.map((f) => (f.vehicle || "").trim()).filter(Boolean),
-    ...(maint || []).map((m) => (m.vehicle || "").trim()).filter(Boolean),
-  ]);
-  const count = allNames.size;
-  const unregistered = count - registeredNames.size;
+  // 保有台数：車両一覧に登録されている車両のみをカウント
+  const count = vehicles.length;
+  const unregistered = 0;
 
   // 要対応：登録済み車両のみ（期限情報があるもの）
   let needAttention = 0;
