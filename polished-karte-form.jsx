@@ -17,8 +17,8 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
       item: { ...p.item, category: cat },
       diagramType: diagram,
       pins: p.diagramType === diagram ? p.pins : [],
-      // アイテム種別とカタログの品名が一致する場合は料金・カタログ紐付けも同期する
-      pricing: match ? { ...p.pricing, catalogItemId: match.id, catalogItemName: match.name, cleaningFee: match.price } : p.pricing,
+      // アイテム種別とカタログの品名が一致する場合は料金・カタログ紐付けも同期する（カタログは税抜なので税込に換算）
+      pricing: match ? { ...p.pricing, catalogItemId: match.id, catalogItemName: match.name, cleaningFee: window.withTaxK(match.price) } : p.pricing,
     }));
     setView("front");
   };
@@ -37,6 +37,21 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
   const total = window.karteTotal(f);
   const canSave = f.customerName.trim() && f.store;
   const { items: itemCatalog } = window.useItemCatalog();
+  const { items: confirmCatalog } = window.useConfirmCatalog();
+  const [photoDrag, setPhotoDrag] = React.useState(false);
+  const [photoBusy, setPhotoBusy] = React.useState(false);
+  const photoRef = React.useRef(null);
+  const addPhotos = async (list) => {
+    const arr = Array.from(list || []).filter((x) => /^image\//.test(x.type));
+    if (!arr.length) return;
+    setPhotoBusy(true);
+    const out = [];
+    for (const x of arr) { const r = await window.readKarteFile(x); out.push({ id: window.kNewId(), name: r.name, size: r.size, url: r.url }); }
+    setF((p) => ({ ...p, photos: [...(p.photos || []), ...out] }));
+    setPhotoBusy(false);
+  };
+  const removePhoto = (id) => setF((p) => ({ ...p, photos: (p.photos || []).filter((x) => x.id !== id), printPhotoId: p.printPhotoId === id ? "" : p.printPhotoId }));
+  const setPrintPhoto = (id) => setF((p) => ({ ...p, printPhotoId: id }));
 
   const applyCatalogItem = (id) => {
     const it = itemCatalog.find((x) => x.id === id);
@@ -44,7 +59,8 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
       ...p,
       // 料金欄から選んだ場合もアイテム種別を同期させる（二つのセレクタが飨離しないように）
       item: it ? { ...p.item, category: it.name } : p.item,
-      pricing: { ...p.pricing, catalogItemId: id, catalogItemName: it ? it.name : "", cleaningFee: it ? it.price : p.pricing.cleaningFee },
+      // カタログ価格は税抜なので、クリーニング料金（税込）に換算して反映
+      pricing: { ...p.pricing, catalogItemId: id, catalogItemName: it ? it.name : "", cleaningFee: it ? window.withTaxK(it.price) : p.pricing.cleaningFee },
     }));
   };
 
@@ -220,6 +236,39 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
         </div>
       </div>
 
+      {/* 写真 */}
+      <div className="kt-section">
+        <div className="kt-section-title">写真</div>
+        <div className={`cl-drop ${photoDrag ? "dragging" : ""}`}
+             onDragEnter={(e) => { if (Array.from(e.dataTransfer.types || []).includes("Files")) { e.preventDefault(); setPhotoDrag(true); } }}
+             onDragOver={(e) => { if (Array.from(e.dataTransfer.types || []).includes("Files")) { e.preventDefault(); } }}
+             onDragLeave={() => setPhotoDrag(false)}
+             onDrop={(e) => { e.preventDefault(); setPhotoDrag(false); addPhotos(e.dataTransfer.files); }}
+             onClick={() => photoRef.current && photoRef.current.click()}>
+          <input ref={photoRef} type="file" accept="image/*" multiple style={{ display: "none" }}
+                 onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
+          {photoBusy ? "読み込み中…" : "クリックまたはドラッグ＆ドロップで写真を追加（複数可）"}
+        </div>
+        {(f.photos || []).length > 0 && (
+          <div className="cl-pending">
+            {f.photos.map((p) => {
+              const isPrint = (f.printPhotoId || f.photos[0].id) === p.id;
+              return (
+                <div key={p.id} className="cl-pend img kt-photo-pend">
+                  <img src={p.url || window.kPhotoThumb(p, 200)} alt={p.name} />
+                  <button className="cl-pend-x" onClick={(e) => { e.stopPropagation(); removePhoto(p.id); }}>×</button>
+                  <button type="button" className={`kt-photo-star ${isPrint ? "on" : ""}`} title="印刷シートに使用する写真"
+                          onClick={(e) => { e.stopPropagation(); setPrintPhoto(p.id); }}>
+                    {isPrint ? "★ 印刷用" : "☆"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="kt-hint7" style={{ marginTop: 8 }}>※★を付けた写真が印刷シートの仕上がり写真として使用されます（未選択時は最初の1枚）</div>
+      </div>
+
       {/* 採寸 */}
       <div className="kt-section">
         <div className="kt-section-title">採寸</div>
@@ -269,14 +318,14 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
         <div className="kt-section-title">料金</div>
         <div className="form-grid">
           <div className="field full">
-            <label className="field-label">アイテムから選択（任意・選択するとクリーニング料金とアイテム種別に自動反映）</label>
+            <label className="field-label">アイテムから選択（任意・選択するとクリーニング料金〈税込〉とアイテム種別に自動反映）</label>
             <select className="select" value={f.pricing.catalogItemId || ""} onChange={(e) => applyCatalogItem(e.target.value)}>
               <option value="">— 選択しない —</option>
-              {itemCatalog.map((it) => <option key={it.id} value={it.id}>{it.name}（{window.yenK(it.price)}）</option>)}
+              {itemCatalog.map((it) => <option key={it.id} value={it.id}>{it.name}（税抜{window.yenK(it.price)} ・ 税込{window.yenK(window.withTaxK(it.price))}）</option>)}
             </select>
           </div>
           <div className="field">
-            <label className="field-label">クリーニング料金</label>
+            <label className="field-label">クリーニング料金（税込）</label>
             <input className="input" type="number" value={f.pricing.cleaningFee} onChange={(e) => setPricing("cleaningFee", e.target.value)} />
           </div>
           <div className="field">
@@ -311,7 +360,7 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
         <div className="field full">
           <label className="field-label">現状確認項目（該当するものを選択・省略可）</label>
           <div className="kt-request-checks">
-            {window.CONFIRM_CHECK_ITEMS.map((item) => (
+            {window.confirmLabels(confirmCatalog).map((item) => (
               <label key={item} className="kt-check">
                 <input type="checkbox" checked={(f.confirmations.checks || []).includes(item)}
                        onChange={(e) => setConfirm("checks", e.target.checked

@@ -56,6 +56,7 @@ const dateSlashWdK = (s) => {
 const KartePrintSheet = ({ karte, onBack }) => {
   const total = window.karteTotal(karte);
   const custom = karte.custom || {};
+  const { items: confirmCatalog } = window.useConfirmCatalog();
   const customParts = [];
   window.CUSTOMIZE_GROUPS.forEach((g) => { if (custom[g.key]) customParts.push({ label: g.label, value: custom[g.key] }); });
   const optionParts = (custom.options || []).map((o) =>
@@ -138,11 +139,11 @@ const KartePrintSheet = ({ karte, onBack }) => {
           {/* 採寸 */}
           <div className="kp-group-title">【お品物情報】</div>
           <div className="kp-section">
-            <div className="kp-section-title">採寸</div>
+            <div className="kp-section-title">採寸 <span className="kp-section-note">【クリーニング前/クリーニング後】</span></div>
             {karte.measurements.length > 0 ? (
               <div className="kp-measure-table">
                 {karte.measurements.map((m) => (
-                  <div key={m.id} className="kp-measure-cell"><span>{m.label}</span><b>前{m.before || "—"} / 後{m.after || "—"} cm</b></div>
+                  <div key={m.id} className="kp-measure-cell"><span>{m.label}</span><b>前{m.before || "—"}/後{m.after || "—"}cm</b></div>
                 ))}
               </div>
             ) : <div className="kp-empty">未計測</div>}
@@ -180,7 +181,7 @@ const KartePrintSheet = ({ karte, onBack }) => {
           <div className="kp-head">
             <div className="kp-head-brand">クリーニングみわ ハイブランドコース専用カルテ</div>
             <div className="kp-head-dates">
-              <span>{karte.store} ／ タグ{karte.tagNo || "—"} ／ {karte.item.brand || karte.item.category}</span>
+              <span>{karte.store} ／ タグ{karte.tagNo || "—"} ／ {karte.item.category || "—"}</span>
             </div>
           </div>
           <div className="kp-page-no-only">2 / 2</div>
@@ -189,7 +190,11 @@ const KartePrintSheet = ({ karte, onBack }) => {
           <div className="kp-section">
             <div className="kp-section-title">了解確認事項</div>
             {(karte.confirmations.checks || []).length > 0 ? (
-              <div className="kp-note">{karte.confirmations.checks.join("、")}</div>
+              <ul className="kp-confirm-list">
+                {karte.confirmations.checks.map((c) => (
+                  <li key={c}>{window.confirmTextOf(confirmCatalog, c)}</li>
+                ))}
+              </ul>
             ) : <div className="kp-empty">該当項目なし</div>}
           </div>
 
@@ -204,7 +209,7 @@ const KartePrintSheet = ({ karte, onBack }) => {
           {/* クリーニング後のお客様へのアドバイス（お客様が読む＝9pt） */}
           {karte.confirmations.advice && (
             <div className="kp-section kp-advice">
-              <div className="kp-section-title">クリーニング後のお客様へのアドバイス</div>
+              <div className="kp-section-title">お仕上がり品についてのお客様へのご案内</div>
               <div className="kp-note kp-note-cust">{karte.confirmations.advice}</div>
             </div>
           )}
@@ -212,15 +217,26 @@ const KartePrintSheet = ({ karte, onBack }) => {
           {/* 商品情報 */}
           <div className="kp-section">
             <div className="kp-section-title">商品情報</div>
-            <div className="kp-grid2">
-              <KpField label="種別" value={karte.item.category} />
-              <KpField label="ブランド" value={karte.item.brand} />
-              <KpField label="製造番号" value={karte.item.serialNo} />
-              <KpField label="色" value={karte.item.color} />
-              {karte.item.showPurchasePrice !== false && (
-                <KpField label="参考購入価格" value={karte.item.purchasePrice ? window.yenK(karte.item.purchasePrice) : ""} />
-              )}
-              <KpField label="購入時期" value={karte.item.purchaseTime} />
+            <div className="kp-product-row">
+              <div className="kp-grid2 kp-product-fields">
+                <KpField label="種別" value={karte.item.category} />
+                <KpField label="ブランド" value={karte.item.brand} />
+                <KpField label="製造番号" value={karte.item.serialNo} />
+                <KpField label="色" value={karte.item.color} />
+                {karte.item.showPurchasePrice !== false && (
+                  <KpField label="参考購入価格" value={karte.item.purchasePrice ? window.yenK(karte.item.purchasePrice) : ""} />
+                )}
+                <KpField label="購入時期" value={karte.item.purchaseTime} />
+              </div>
+              {karte.photos && karte.photos.length > 0 && (() => {
+                const printPhoto = karte.photos.find((p) => p.id === karte.printPhotoId) || karte.photos[0];
+                return (
+                  <div className="kp-product-photo">
+                    <img src={window.kPhotoOpen(printPhoto)} alt="仕上がり写真" referrerPolicy="no-referrer" />
+                    <div className="kp-product-photo-cap">仕上がり写真</div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

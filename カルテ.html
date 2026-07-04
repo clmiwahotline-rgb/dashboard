@@ -67,8 +67,18 @@
   .kt-card-row1 { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
   .kt-card-no { font-size: 11px; font-weight: 700; color: var(--ink-mute); margin-right: auto; }
   .kt-item-table { display: flex; flex-direction: column; gap: 8px; }
+  .kt-confirm-row { display: flex; gap: 10px; align-items: flex-start; }
   .kt-item-row { display: flex; gap: 10px; align-items: center; }
+  .kt-item-row-head { font-size: 11px; font-weight: 700; color: var(--ink-mute); padding: 0 2px; }
+  .kt-item-reorder { display: flex; flex-direction: column; gap: 2px; width: 44px; }
+  .kt-item-move { width: 20px; height: 16px; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; font-size: 9px; line-height: 1; cursor: pointer; color: var(--ink-mute); }
+  .kt-item-move:disabled { opacity: .3; cursor: default; }
+  .kt-item-move:not(:disabled):hover { background: var(--panel-2, #f4f4f4); }
   .kt-item-yen { font-size: 13px; font-weight: 800; color: var(--accent, #14306b); min-width: 90px; text-align: right; }
+  .kt-tax-hint { font-size: 11px; color: var(--ink-mute); margin-top: 4px; }
+  .kt-photo-pend { position: relative; }
+  .kt-photo-star { position: absolute; bottom: 3px; left: 3px; right: 3px; font-size: 9px; font-weight: 700; padding: 2px 4px; border-radius: 6px; border: none; background: rgba(0,0,0,0.55); color: #fff; cursor: pointer; text-align: center; }
+  .kt-photo-star.on { background: #d9a300; color: #fff; }
   .kt-badge-overdue { font-size: 10.5px; font-weight: 800; color: #e54863; background: #fde8ea; padding: 2px 8px; border-radius: 999px; }
   .kt-card-row2 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
   .kt-card-name { font-size: 14.5px; font-weight: 800; }
@@ -138,11 +148,18 @@
   .kp-section { border-top: 0.6pt solid #ccc; padding-top: 1.8mm; }
   .kp-section:first-of-type { border-top: none; }
   .kp-section-title { font-size: 8.5pt; font-weight: 800; color: #14306b; margin-bottom: 1.2mm; }
+  .kp-section-note { font-size: 7pt; font-weight: 700; color: #777; }
   .kp-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 4mm; }
+  .kp-product-row { display: flex; gap: 3mm; align-items: flex-start; }
+  .kp-product-fields { flex: 1; min-width: 0; }
+  .kp-product-photo { flex: 0 0 30mm; width: 30mm; }
+  .kp-product-photo img { width: 100%; height: 26mm; object-fit: cover; border-radius: 1.5mm; border: 0.3mm solid #ccc; display: block; }
+  .kp-product-photo-cap { font-size: 6.3pt; color: #888; text-align: center; margin-top: 0.8mm; }
   .kp-field { display: flex; flex-direction: column; gap: 0.3mm; min-width: 0; }
   .kp-field-label { font-size: 7pt; color: #777; font-weight: 700; }
   .kp-field-value { font-size: 8.5pt; font-weight: 600; overflow-wrap: break-word; }
   .kp-cust .kp-field-value { font-size: 9pt; }
+  .kp-cust { grid-template-columns: repeat(3, 1fr); gap: 0.6mm 3mm; }
   .kp-field-emph { background: #fff4e5; border: 0.6pt solid #e8a33d; border-radius: 1.2mm; padding: 0.8mm 2mm; }
   .kp-field-value-emph { font-size: 10.5pt; font-weight: 900; color: #9a5b00; }
   .kp-chips { display: flex; flex-wrap: wrap; gap: 1.2mm; }
@@ -152,10 +169,11 @@
   .kp-chip-warn { background: #fff2e2; border-color: #f0c98a; color: #7a4a06; }
   .kp-hint7 { font-size: 7pt; color: #888; margin-top: 1mm; }
   .kp-note { font-size: 8pt; white-space: pre-wrap; }
+  .kp-confirm-list { margin: 0; padding-left: 3.2mm; font-size: 7.5pt; line-height: 1.5; display: flex; flex-direction: column; gap: 0.8mm; }
   .kp-note-cust { font-size: 9pt; }
   .kp-empty { font-size: 7.5pt; color: #999; }
-  .kp-measure-table { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1mm 3mm; }
-  .kp-measure-cell { display: flex; justify-content: space-between; gap: 4px; font-size: 7.5pt; border-bottom: 0.4pt dotted #ccc; padding-bottom: 0.4mm; }
+  .kp-measure-table { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1mm 2mm; }
+  .kp-measure-cell { display: flex; justify-content: flex-start; align-items: baseline; gap: 1.5mm; font-size: 7.5pt; border-bottom: 0.4pt dotted #ccc; padding-bottom: 0.4mm; white-space: nowrap; }
   .kp-measure-cell b { font-size: 8pt; }
   .kp-foot { margin-top: auto; text-align: center; font-size: 7pt; color: #999; padding-top: 1.6mm; border-top: 0.6pt solid #ccc; }
   .kp-diagram-row { display: flex; align-items: flex-start; gap: 3mm; }
@@ -218,6 +236,7 @@
 <script type="text/babel" src="polished-cloud.jsx"></script>
 <script type="text/babel" src="polished-karte-data.jsx"></script>
 <script type="text/babel" src="polished-karte-items.jsx"></script>
+<script type="text/babel" src="polished-karte-confirm.jsx"></script>
 <script type="text/babel" src="polished-karte-diagram.jsx"></script>
 <script type="text/babel" src="polished-karte-form.jsx"></script>
 <script type="text/babel" src="polished-karte-print.jsx"></script>

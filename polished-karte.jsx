@@ -1,6 +1,6 @@
 // カルテ（ハイブランドコース）── メインページ：一覧・検索・詳細・作成/編集
 
-const KarteDetail = ({ karte, onEdit, onDelete, onBack, onOpenPrintSheet }) => {
+const KarteDetail = ({ karte, onEdit, onDelete, onBack, onOpenPrintSheet, onOpenImg }) => {
   const total = window.karteTotal(karte);
   const overdue = karte.deliveryDate && karte.deliveryDate < window.kToday();
   return (
@@ -38,6 +38,15 @@ const KarteDetail = ({ karte, onEdit, onDelete, onBack, onOpenPrintSheet }) => {
           <div><span className="kt-dl">参考購入価格</span>{karte.item.purchasePrice ? window.yenK(karte.item.purchasePrice) : "—"}</div>
           <div><span className="kt-dl">購入時期</span>{karte.item.purchaseTime || "—"}</div>
         </div>
+        {(karte.photos || []).length > 0 && (
+          <div className="cl-attach">
+            {karte.photos.map((p) => (
+              <button key={p.id} className="cl-thumb" onClick={() => onOpenImg({ url: window.kPhotoOpen(p), name: p.name })} title={p.name}>
+                <img src={window.kPhotoThumb(p, 300)} alt={p.name} loading="lazy" referrerPolicy="no-referrer" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {((karte.requestChecks || []).length > 0 || karte.request || karte.proposal || karte.customization) && (
@@ -145,12 +154,27 @@ const KarteCard = ({ karte, onOpen }) => {
   );
 };
 
+const KarteLightbox = ({ url, name, onClose }) => {
+  React.useEffect(() => {
+    const k = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k);
+  }, [onClose]);
+  return (
+    <div className="lb-backdrop" onClick={onClose}>
+      <button className="lb-close" onClick={onClose}>✕</button>
+      <img className="lb-img" src={url} alt={name} referrerPolicy="no-referrer" onClick={(e) => e.stopPropagation()} />
+      {name && <div className="lb-cap">{name}</div>}
+    </div>
+  );
+};
+
 const KartePage = () => {
-  const { list, upsertKarte, removeKarte, cloudOn, cloudTs } = window.useKarteData();
+  const { list, upsertKarte, removeKarte, cloudOn, cloudTs, syncStatus } = window.useKarteData();
   const [mode, setMode] = React.useState("list"); // list | form | detail
   const [selectedId, setSelectedId] = React.useState(null);
   const [query, setQuery] = React.useState("");
   const [storeFilter, setStoreFilter] = React.useState("");
+  const [lightbox, setLightbox] = React.useState(null);
 
   const selected = list.find((k) => k.id === selectedId) || null;
 
@@ -172,6 +196,7 @@ const KartePage = () => {
   const openEdit = (k) => { setSelectedId(k.id); setMode("form"); };
   const backToList = () => { setMode("list"); setSelectedId(null); };
   const openItems = () => setMode("items");
+  const openConfirmSettings = () => setMode("confirm");
   const openPrintSheet = () => setMode("print");
   const handleSave = (karte) => { upsertKarte(karte); setSelectedId(karte.id); setMode("detail"); };
   const handleDelete = (id) => {
@@ -194,6 +219,18 @@ const KartePage = () => {
       </div>
     );
   }
+  if (mode === "confirm") {
+    return (
+      <div className="app">
+        <div className="shell">
+          <AppSidebar active="karte" />
+          <main className="main">
+            <window.KarteConfirmSettings onBack={backToList} />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -203,11 +240,17 @@ const KartePage = () => {
           <div className="greet no-print">
             <div>
               <h1>カルテ作成</h1>
-              <div className="sub">ハイブランドコース ・ 全{window.KARTE_STORES.length}店舗共通 ・ 全{list.length}件{cloudOn ? (cloudTs ? ` ・ ☁ 同期（更新 ${new Date(cloudTs).toLocaleString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}）` : " ・ ☁ 同期") : ""}</div>
+              <div className="sub">
+                ハイブランドコース ・ 全{window.KARTE_STORES.length}店舗共通 ・ 全{list.length}件
+                {syncStatus === "saving" && <span style={{ marginLeft: 8, color: "var(--ink-mute)" }}>・ ☁ 保存中…</span>}
+                {syncStatus === "error" && <span style={{ marginLeft: 8, color: "#e54863", fontWeight: 700 }}>・ ⚠ クラウドへ保存できませんでした（再度お試しください）</span>}
+                {syncStatus !== "saving" && syncStatus !== "error" && cloudOn ? (cloudTs ? ` ・ ☁ 同期（更新 ${new Date(cloudTs).toLocaleString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}）` : " ・ ☁ 同期") : ""}
+              </div>
             </div>
             {mode === "list" && (
               <div className="right">
                 <button className="btn btn-ghost" onClick={openItems}>⚙ アイテム設定</button>
+                <button className="btn btn-ghost" onClick={openConfirmSettings}>⚙ 了解設定</button>
                 <button className="btn btn-primary" onClick={openNew}>＋ 新規カルテ作成</button>
               </div>
             )}
@@ -246,10 +289,11 @@ const KartePage = () => {
           )}
 
           {mode === "detail" && selected && (
-            <KarteDetail karte={selected} onEdit={openEdit} onDelete={handleDelete} onBack={backToList} onOpenPrintSheet={openPrintSheet} />
+            <KarteDetail karte={selected} onEdit={openEdit} onDelete={handleDelete} onBack={backToList} onOpenPrintSheet={openPrintSheet} onOpenImg={setLightbox} />
           )}
         </main>
       </div>
+      {lightbox && <KarteLightbox url={lightbox.url} name={lightbox.name} onClose={() => setLightbox(null)} />}
     </div>
   );
 };
