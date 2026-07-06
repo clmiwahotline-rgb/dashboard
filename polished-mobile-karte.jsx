@@ -62,7 +62,7 @@ const MKarteLightbox = ({ url, name, onClose }) => {
 
 const MKarteDetail = ({ karte, onBack }) => {
   const total = window.karteTotal ? window.karteTotal(karte) : 0;
-  const custom = karte.customize || {};
+  const custom = karte.custom || {};
   const customLine = ["wash", "button", "hanger", "wrap"].map((k) => custom[k]).filter(Boolean).join(" ・ ");
   const [lightbox, setLightbox] = React.useState(null);
   return (
@@ -81,12 +81,12 @@ const MKarteDetail = ({ karte, onBack }) => {
 
           <MKarteDetailField label="お預かり日" value={`${mkYmd(karte.receivedDate)} ${mkWd(karte.receivedDate)}`} />
           <MKarteDetailField label="お渡し予定日" value={`${mkYmd(karte.deliveryDate)} ${mkWd(karte.deliveryDate)}`} />
-          <MKarteDetailField label="連絡先" value={karte.phone} />
-          <MKarteDetailField label="ご連絡希望" value={karte.contactPref} />
+          <MKarteDetailField label="連絡先" value={karte.contactPhone} />
+          <MKarteDetailField label="ご連絡希望" value={[karte.contactPrefDay, karte.contactPrefTime].filter(Boolean).join(" ・ ")} />
 
           <div style={{ borderTop: "1px solid var(--line)", margin: "14px 0" }}></div>
           <MKarteDetailField label="お品物情報" value={[karte.item.brand, karte.item.category, karte.item.serialNo, karte.item.color].filter(Boolean).join(" ・ ")} />
-          {karte.item.showPrice !== false && karte.item.purchasePrice ? <MKarteDetailField label="参考購入価格" value={window.yenK ? window.yenK(karte.item.purchasePrice) : karte.item.purchasePrice} /> : null}
+          {karte.item.showPurchasePrice !== false && karte.item.purchasePrice ? <MKarteDetailField label="参考購入価格" value={window.yenK ? window.yenK(karte.item.purchasePrice) : karte.item.purchasePrice} /> : null}
           <MKarteDetailField label="購入時期" value={karte.item.purchaseTime} />
           {(karte.photos || []).length > 0 && (
             <div className="cl-attach" style={{ marginTop: 4 }}>
@@ -99,10 +99,10 @@ const MKarteDetail = ({ karte, onBack }) => {
           )}
 
           <div style={{ borderTop: "1px solid var(--line)", margin: "14px 0" }}></div>
-          <MKarteDetailField label="お客様からのご要望" value={(karte.requests || []).join(" / ")} />
+          <MKarteDetailField label="お客様からのご要望" value={(karte.requestChecks || []).join(" / ") || karte.request} />
           <MKarteDetailField label="マイスターからの提案" value={karte.proposal} />
-          <MKarteDetailField label="クリーニングカスタマイズ" value={customLine || custom.note} />
-          {custom.note && customLine ? <MKarteDetailField label="カスタマイズ補足" value={custom.note} /> : null}
+          <MKarteDetailField label="クリーニングカスタマイズ" value={customLine || "指定なし（標準仕上げ）"} />
+          {karte.customization && <MKarteDetailField label="カスタマイズ補足" value={karte.customization} />}
 
           {karte.measurements && karte.measurements.length > 0 && (
             <React.Fragment>
@@ -117,7 +117,7 @@ const MKarteDetail = ({ karte, onBack }) => {
           )}
 
           <div style={{ borderTop: "1px solid var(--line)", margin: "14px 0" }}></div>
-          <MKarteDetailField label="了解確認事項" value={(karte.confirmations && karte.confirmations.items || []).join(" / ")} />
+          <MKarteDetailField label="了解確認事項" value={(karte.confirmations && karte.confirmations.checks || []).join(" / ")} />
           <MKarteDetailField label="事前の検品時に気になった点" value={karte.confirmations && karte.confirmations.note} />
           <MKarteDetailField label="クリーニング後のお客様へのアドバイス" value={karte.confirmations && karte.confirmations.advice} />
 

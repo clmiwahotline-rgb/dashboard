@@ -361,12 +361,9 @@ const SalesReport = () => {
     (async () => {
       const remote = await cloudGet(IMPORTS_SHEET);
       if (cancelled || !remote || !remote.length) return;
-      setImports((prev) => {
-        const localIds = new Set(prev.map((r) => r.id));
-        const remoteOnly = remote.filter((r) => !localIds.has(r.id));
-        if (!remoteOnly.length) return prev;
-        return [...remote.filter((r) => localIds.has(r.id) || true)].sort((a, b) => (b.ts || 0) - (a.ts || 0));
-      });
+      // クラウド（シート）経由だと数値も文字列で返るため、ts/countを数値に戻す（Invalid Date表示・ソート崩れの防止）
+      const coerced = remote.map((r) => ({ ...r, ts: Number(r.ts) || 0, count: Number(r.count) || 0 }));
+      setImports(() => coerced.sort((a, b) => (b.ts || 0) - (a.ts || 0)));
     })();
     return () => { cancelled = true; };
   }, [cloudOn]); // eslint-disable-line

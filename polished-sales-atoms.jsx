@@ -718,8 +718,7 @@ const ImportModal = ({ onImport, onClose }) => {
           className="input"
           placeholder={SAMPLE_CSV}
           value={pasted}
-          onChange={(e) => setPasted(e.target.value)}
-          onBlur={() => handleText(pasted)}
+          onChange={(e) => { setPasted(e.target.value); handleText(e.target.value); }}
         />
       )}
 
