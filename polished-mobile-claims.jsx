@@ -7,12 +7,112 @@ const M_CLAIM_FILTERS = [
   { id: "解決", label: "解決" }, { id: "弁償", label: "弁償" },
 ];
 
+// ── 新規登録: 種類選択シート ─────────────────────────
+const MCategoryChooserSheet = ({ onChoose, onClose }) => (
+  <div className="m-sheet-backdrop" onClick={onClose}>
+    <div className="m-sheet" style={{ maxHeight: "none" }} onClick={(e) => e.stopPropagation()}>
+      <div className="m-sheet-grab"></div>
+      <div className="m-sheet-head">
+        <span className="m-sheet-title">新規登録</span>
+        <button className="m-sheet-close" onClick={onClose}>×</button>
+      </div>
+      <div className="m-sheet-body">
+        <button className="m-choice-btn" onClick={() => onChoose("claim")}>
+          <span className="m-choice-emoji">⚠️</span>
+          <span><b>クレーム・事故品</b><span className="m-choice-sub">お客様からの苦情・破損／紛失／変色など</span></span>
+        </button>
+        <button className="m-choice-btn" onClick={() => onChoose("trouble")}>
+          <span className="m-choice-emoji">📋</span>
+          <span><b>トラブル</b><span className="m-choice-sub">お渡し忘れ・お渡し違い・納期遅れなど</span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ── トラブル 入力/編集 ボトムシート ─────────────────
+const MTroubleSheet = ({ initial, onClose, onSave, onDelete }) => {
+  const isNew = !initial;
+  const TROUBLE_TYPES = window.TROUBLE_TYPES || ["お渡し忘れ", "お渡し違い", "納期遅れ", "その他"];
+  const [f, setF] = React.useState(() => initial ? { ...initial } : {
+    id: Date.now(), ts: Date.now(), category: "trouble",
+    occurredOn: window.cToday, receivedOn: window.cToday, store: "", type: TROUBLE_TYPES[0],
+    customer: "", customer2: "", memberNo: "", maker: "", makerContact: "",
+    item: "", detail: "", status: "受付", amount: 0, staff: "", files: [], comments: [],
+  });
+  const [busy, setBusy] = React.useState(false);
+  const [dateErr, setDateErr] = React.useState(false);
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
+  const STATUS = window.CLAIM_STATUS || [];
+  const STORES = window.CLAIM_STORES || [];
+
+  const save = async () => {
+    if (!String(f.occurredOn || "").trim()) { setDateErr(true); return; }
+    setBusy(true);
+    await onSave(f, isNew);
+    setBusy(false);
+    onClose();
+  };
+
+  return (
+    <div className="m-sheet-backdrop" onClick={onClose}>
+      <div className="m-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="m-sheet-grab"></div>
+        <div className="m-sheet-head">
+          <span className="m-sheet-title">{isNew ? "トラブル 新規登録" : "トラブル 編集"}</span>
+          <button className="m-sheet-close" onClick={onClose}>×</button>
+        </div>
+        <div className="m-sheet-body">
+          <div className="m-field">
+            <label className="m-label">発生日 <span style={{ color: "#c5221f" }}>必須</span></label>
+            <input className="m-input" type="date" value={f.occurredOn} onChange={(e) => { set("occurredOn", e.target.value); setDateErr(false); }} style={dateErr ? { borderColor: "#c5221f" } : null} />
+            {dateErr && <div style={{ fontSize: 12, color: "#c5221f", marginTop: 4, fontWeight: 700 }}>発生日を入力してください</div>}
+          </div>
+          <div className="m-field">
+            <label className="m-label">店舗</label>
+            <select className="m-select" value={f.store} onChange={(e) => set("store", e.target.value)}>
+              <option value="">選択してください</option>
+              {STORES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="m-field">
+            <label className="m-label">種別</label>
+            <div className="m-seg">
+              {TROUBLE_TYPES.map((t) => { const tc = (window.CLAIM_TYPE_BY && window.CLAIM_TYPE_BY[t]) || {}; return <button key={t} className={`m-seg-opt ${f.type === t ? "active" : ""}`} style={f.type === t ? { background: tc.color || "var(--accent)" } : null} onClick={() => set("type", t)}>{t}</button>; })}
+            </div>
+          </div>
+          <div className="m-field-row">
+            <div className="m-field"><label className="m-label">顧客名１</label><input className="m-input" value={f.customer} onChange={(e) => set("customer", e.target.value)} placeholder="例：佐藤 様" /></div>
+            <div className="m-field"><label className="m-label">顧客名２（相手がいる場合）</label><input className="m-input" value={f.customer2} onChange={(e) => set("customer2", e.target.value)} placeholder="例：山田 様" /></div>
+          </div>
+          <div className="m-field"><label className="m-label">品目</label><input className="m-input" value={f.item} onChange={(e) => set("item", e.target.value)} placeholder="例：ワイシャツ" /></div>
+          <div className="m-field"><label className="m-label">内容の状況と詳細</label><textarea className="m-textarea" value={f.detail} onChange={(e) => set("detail", e.target.value)} placeholder="発生状況・対応方針などを記入…" /></div>
+          <div className="m-field">
+            <label className="m-label">対応状況</label>
+            <div className="m-seg">
+              {STATUS.map((s) => <button key={s.id} className={`m-seg-opt ${f.status === s.id ? "active" : ""}`} style={f.status === s.id ? { background: s.color } : null} onClick={() => set("status", s.id)}>{s.id}</button>)}
+            </div>
+          </div>
+          <div className="m-field"><label className="m-label">担当者</label><input className="m-input" value={f.staff} onChange={(e) => set("staff", e.target.value)} placeholder="例：鈴木" /></div>
+
+          {!isNew && <button className="m-btn m-btn-ghost" style={{ width: "100%", color: "#c5221f", marginTop: 4 }} onClick={() => { if (confirm("この案件を削除しますか？")) { onDelete(f.id); onClose(); } }}>削除する</button>}
+        </div>
+        <div className="m-sheet-foot">
+          <button className="m-btn m-btn-ghost" onClick={onClose}>キャンセル</button>
+          <button className="m-btn m-btn-primary" onClick={save} disabled={busy}>{busy ? "保存中…" : (isNew ? "登録する" : "保存する")}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── 入力/編集 ボトムシート ───────────────────────────
 const MClaimSheet = ({ initial, onClose, onSave, onDelete }) => {
   const isNew = !initial;
   const [f, setF] = React.useState(() => initial ? { ...initial, files: initial.files || [] } : {
-    id: Date.now(), ts: Date.now(), occurredOn: window.cToday, receivedOn: window.cToday,
-    store: "", type: "クレーム", customer: "", memberNo: "", maker: "", makerContact: "",
+    id: Date.now(), ts: Date.now(), category: "claim", occurredOn: window.cToday, receivedOn: window.cToday,
+    store: "", type: "クレーム", customer: "", customer2: "", memberNo: "", maker: "", makerContact: "",
     item: "", detail: "", status: "受付", amount: 0, staff: "", files: [], comments: [],
   });
   const [pending, setPending] = React.useState(initial ? (initial.files || []) : []);
@@ -193,7 +293,7 @@ const MClaimCard = ({ claim, onEdit, onOpenImg }) => {
         <span className="m-claim-date">{claim.receivedOn ? claim.receivedOn.replaceAll("-", "/") : ""}</span>
       </div>
       <div className="m-claim-item">{claim.item || "（品目未記入）"}</div>
-      <div className="m-claim-cust">{claim.store}{claim.customer ? ` ・ ${claim.customer}` : ""}{claim.memberNo ? ` ・ 会員No. ${claim.memberNo}` : ""}</div>
+      <div className="m-claim-cust">{claim.store}{claim.customer ? ` ・ ${claim.customer}` : ""}{claim.memberNo ? ` ・ 会員No. ${claim.memberNo}` : ""}{claim.customer2 ? ` ・ 相手: ${claim.customer2}` : ""}</div>
       {(claim.maker || claim.makerContact) && <div className="m-claim-cust">メーカー: {claim.maker || "—"}{claim.makerContact ? `（${claim.makerContact}）` : ""}</div>}
       {claim.detail && <div className="m-claim-detail">{claim.detail}</div>}
       {imgs.length > 0 && (
@@ -213,7 +313,9 @@ const MClaimCard = ({ claim, onEdit, onOpenImg }) => {
 const MClaims = ({ registerFab, registerHeader }) => {
   const { claims, upsert, remove, cloudOn, cloudState, pull, uploadWarn, clearUploadWarn, saveStatus } = window.useClaimData();
   const [filter, setFilter] = React.useState("all");
-  const [editing, setEditing] = React.useState(null); // claim | "new" | null
+  const [editing, setEditing] = React.useState(null); // claim record | null (編集対象)
+  const [newCategory, setNewCategory] = React.useState(null); // "claim" | "trouble" | null (新規作成中)
+  const [chooserOpen, setChooserOpen] = React.useState(false);
   const [lightbox, setLightbox] = React.useState(null);
   const [importing, setImporting] = React.useState(false);
   const [importMsg, setImportMsg] = React.useState(null);
@@ -231,7 +333,7 @@ const MClaims = ({ registerFab, registerHeader }) => {
 
   React.useEffect(() => {
     registerHeader && registerHeader({ title: "クレーム・事故品", sub: cloudOn ? (cloudState === "ok" ? "☁ 全店で共有中" : cloudState === "loading" ? "☁ 接続中…" : "☁ 端末内表示") : "" });
-    registerFab && registerFab(() => setEditing("new"));
+    registerFab && registerFab(() => setChooserOpen(true));
     return () => { registerFab && registerFab(null); };
   }, [cloudState]);
 
@@ -285,7 +387,17 @@ const MClaims = ({ registerFab, registerHeader }) => {
       {sorted.length === 0 ? <div className="m-empty" style={{ marginTop: 30 }}>該当する案件はありません</div> : sorted.map((c) => <MClaimCard key={c.id} claim={c} onEdit={setEditing} onOpenImg={setLightbox} />)}
       <div style={{ height: 12 }}></div>
 
-      {editing && <MClaimSheet initial={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSave={upsert} onDelete={remove} />}
+      {editing && (editing.category === "trouble"
+        ? <MTroubleSheet initial={editing} onClose={() => setEditing(null)} onSave={upsert} onDelete={remove} />
+        : <MClaimSheet initial={editing} onClose={() => setEditing(null)} onSave={upsert} onDelete={remove} />
+      )}
+      {newCategory === "trouble" && <MTroubleSheet initial={null} onClose={() => setNewCategory(null)} onSave={upsert} onDelete={remove} />}
+      {newCategory === "claim" && <MClaimSheet initial={null} onClose={() => setNewCategory(null)} onSave={upsert} onDelete={remove} />}
+      {chooserOpen && (
+        <MCategoryChooserSheet
+          onClose={() => setChooserOpen(false)}
+          onChoose={(cat) => { setChooserOpen(false); setNewCategory(cat); }} />
+      )}
       {lightbox && (
         <div className="m-lb" onClick={() => setLightbox(null)}>
           <button className="m-lb-x" onClick={() => setLightbox(null)}>×</button>

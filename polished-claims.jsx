@@ -108,7 +108,7 @@ const ClaimCard = ({ claim, onEdit, onDelete, onAddComment, onOpenImg }) => {
             <span className="cl-item">{claim.item || "（品目未記入）"}</span>
             {claim.amount > 0 && <span className="cl-amount">{yenC(claim.amount)}</span>}
           </div>
-          <div className="cl-customer">{claim.customer}{claim.memberNo ? ` ・ 会員No. ${claim.memberNo}` : ""}</div>
+          <div className="cl-customer">{claim.customer}{claim.memberNo ? ` ・ 会員No. ${claim.memberNo}` : ""}{claim.customer2 ? ` ・ 相手: ${claim.customer2}` : ""}</div>
           {(claim.maker || claim.makerContact) && (
             <div className="cl-maker">メーカー: {claim.maker || "—"}{claim.makerContact ? ` （${claim.makerContact}）` : ""}</div>
           )}
@@ -127,12 +127,107 @@ const ClaimCard = ({ claim, onEdit, onDelete, onAddComment, onOpenImg }) => {
   );
 };
 
+// ── 新規登録の種類選択 ──────────────────────────────────
+const CategoryChooserModal = ({ onChoose, onClose }) => (
+  <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal" style={{ maxWidth: 400, width: "100%" }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-head">
+        <div>
+          <h2>新規登録</h2>
+          <div className="sub">登録する内容の種類を選んでください</div>
+        </div>
+        <button className="modal-close" onClick={onClose} aria-label="閉じる">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 10, padding: "6px 26px 24px" }}>
+        <button className="cl-choice-btn" onClick={() => onChoose("claim")}>
+          <span className="cl-choice-emoji">⚠️</span>
+          <span><b>クレーム・事故品</b><span className="cl-choice-sub">お客様からの苦情・破損／紛失／変色など</span></span>
+        </button>
+        <button className="cl-choice-btn" onClick={() => onChoose("trouble")}>
+          <span className="cl-choice-emoji">📋</span>
+          <span><b>トラブル</b><span className="cl-choice-sub">お渡し忘れ・お渡し違い・納期遅れなど</span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ── トラブル 入力／編集フォーム（モーダル）────────────
+const TroubleFormModal = ({ initial, onSave, onClose }) => {
+  const blank = {
+    id: Date.now(), ts: Date.now(), category: "trouble",
+    occurredOn: cToday, receivedOn: cToday, store: CLAIM_STORES[0], type: TROUBLE_TYPES[0],
+    customer: "", customer2: "", memberNo: "", maker: "", makerContact: "",
+    item: "", detail: "", status: "受付", amount: 0, staff: "",
+    files: [], comments: [],
+  };
+  const [f, setF] = React.useState(initial ? { ...initial } : blank);
+  const [dateErr, setDateErr] = React.useState(false);
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
+  const save = () => {
+    if (!String(f.occurredOn || "").trim()) { setDateErr(true); return; }
+    onSave(f, !initial);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal cl-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h2>{initial ? "トラブルの編集" : "トラブルの登録"}</h2>
+            <div className="sub">発生日以外は未入力でも登録できます</div>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="閉じる">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div className="modal-body">
+          <div className="form-grid">
+            <div className="field">
+              <label className="field-label">発生日 <span style={{ color: "#c5221f" }}>必須</span></label>
+              <input className="input" type="date" value={f.occurredOn} onChange={(e) => { set("occurredOn", e.target.value); setDateErr(false); }} style={dateErr ? { borderColor: "#c5221f" } : null} />
+              {dateErr && <div style={{ fontSize: 12, color: "#c5221f", marginTop: 4, fontWeight: 700 }}>発生日を入力してください</div>}
+            </div>
+            <div className="field"><label className="field-label">店舗</label>
+              <select className="select" value={f.store} onChange={(e) => set("store", e.target.value)}>
+                {CLAIM_STORES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="field"><label className="field-label">種別</label>
+              <select className="select" value={f.type} onChange={(e) => set("type", e.target.value)}>
+                {TROUBLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="field"><label className="field-label">対応状況</label>
+              <select className="select" value={f.status} onChange={(e) => set("status", e.target.value)}>
+                {CLAIM_STATUS.map((s) => <option key={s.id} value={s.id}>{s.id}</option>)}
+              </select>
+            </div>
+            <div className="field"><label className="field-label">顧客名１</label><input className="input" placeholder="例：佐藤 様" value={f.customer} onChange={(e) => set("customer", e.target.value)} /></div>
+            <div className="field"><label className="field-label">顧客名２（相手がいる場合）</label><input className="input" placeholder="例：山田 様" value={f.customer2} onChange={(e) => set("customer2", e.target.value)} /></div>
+            <div className="field full"><label className="field-label">品目</label><input className="input" placeholder="例：ワイシャツ" value={f.item} onChange={(e) => set("item", e.target.value)} /></div>
+            <div className="field full"><label className="field-label">内容の状況と詳細</label><textarea className="input" rows={3} placeholder="発生状況・対応方針などを記入…" value={f.detail} onChange={(e) => set("detail", e.target.value)} /></div>
+            <div className="field"><label className="field-label">担当者</label><input className="input" placeholder="例：鈴木" value={f.staff} onChange={(e) => set("staff", e.target.value)} /></div>
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button className="btn btn-ghost" onClick={onClose}>キャンセル</button>
+          <button className="btn btn-primary" onClick={save}>{initial ? "保存" : "登録"}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── 入力／編集フォーム（モーダル）──────────────────────
 const ClaimFormModal = ({ initial, onSave, onClose }) => {
   const blank = {
-    id: Date.now(), ts: Date.now(),
+    id: Date.now(), ts: Date.now(), category: "claim",
     occurredOn: cToday, receivedOn: cToday, store: CLAIM_STORES[0], type: "クレーム",
-    customer: "", memberNo: "", maker: "", makerContact: "", item: "", detail: "", status: "受付", amount: 0, staff: "",
+    customer: "", customer2: "", memberNo: "", maker: "", makerContact: "", item: "", detail: "", status: "受付", amount: 0, staff: "",
     files: [], comments: [],
   };
   const [f, setF] = React.useState(initial ? { ...initial } : blank);
@@ -270,12 +365,13 @@ const ClaimLightbox = ({ url, name, onClose }) => {
 
 // ── KPI ─────────────────────────────────────────────────
 const ClaimKpi = ({ claims }) => {
-  const unresolved = claims.filter((c) => isUnresolved(c.status)).length;
+  const list = claims.filter((c) => c.category !== "trouble");
+  const unresolved = list.filter((c) => isUnresolved(c.status)).length;
   const thisMonth = cToday.slice(0, 7);
-  const monthCnt = claims.filter((c) => (c.receivedOn || "").startsWith(thisMonth)).length;
-  const amount = claims.reduce((s, c) => s + (parseInt(c.amount) || 0), 0);
-  const resolved = claims.filter((c) => !isUnresolved(c.status)).length;
-  const rate = claims.length ? Math.round((resolved / claims.length) * 100) : 0;
+  const monthCnt = list.filter((c) => (c.receivedOn || "").startsWith(thisMonth)).length;
+  const amount = list.reduce((s, c) => s + (parseInt(c.amount) || 0), 0);
+  const resolved = list.filter((c) => !isUnresolved(c.status)).length;
+  const rate = list.length ? Math.round((resolved / list.length) * 100) : 0;
 
   const card = (label, value, sub, accent, vColor) => (
     <div className="kpi" style={{ borderTop: `3px solid ${accent}`, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
@@ -289,7 +385,32 @@ const ClaimKpi = ({ claims }) => {
       {card("⚠ 未解決", unresolved + " 件", "受付・対応中", unresolved > 0 ? "#d9730a" : "#34A853", unresolved > 0 ? "#d9730a" : "#34A853")}
       {card("📥 今月の件数", monthCnt + " 件", "受付ベース", "var(--accent)")}
       {card("💸 弁償・返金", yenC(amount), "累計", "#8430ce")}
-      {card("✅ 解決率", rate + " %", `${resolved}/${claims.length} 件`, "#34A853")}
+      {card("✅ 解決率", rate + " %", `${resolved}/${list.length} 件`, "#34A853")}
+    </div>
+  );
+};
+
+// ── KPI（トラブル）───────────────────────────────────────
+const TroubleKpi = ({ claims }) => {
+  const list = claims.filter((c) => c.category === "trouble");
+  const unresolved = list.filter((c) => isUnresolved(c.status)).length;
+  const thisMonth = cToday.slice(0, 7);
+  const monthCnt = list.filter((c) => (c.occurredOn || "").startsWith(thisMonth)).length;
+  const resolved = list.filter((c) => !isUnresolved(c.status)).length;
+  const rate = list.length ? Math.round((resolved / list.length) * 100) : 0;
+
+  const card = (label, value, sub, accent, vColor) => (
+    <div className="kpi" style={{ borderTop: `3px solid ${accent}`, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+      <div className="kpi-label"><span className="kpi-dot" style={{ background: accent }}></span>{label}</div>
+      <div className="kpi-value" style={{ color: vColor || accent, fontSize: 30 }}>{value}</div>
+      <div className="kpi-delta">{sub}</div>
+    </div>
+  );
+  return (
+    <div className="kpi-row kpi-row-3">
+      {card("📋 未解決トラブル", unresolved + " 件", "受付・対応中", unresolved > 0 ? "#d9730a" : "#34A853", unresolved > 0 ? "#d9730a" : "#34A853")}
+      {card("🗓 今月のトラブル", monthCnt + " 件", "発生日ベース", "var(--accent)")}
+      {card("✅ 解決率", rate + " %", `${resolved}/${list.length} 件`, "#34A853")}
     </div>
   );
 };
@@ -298,7 +419,8 @@ const ClaimKpi = ({ claims }) => {
 const ClaimPage = () => {
   const { claims, upsert, remove, cloudOn, cloudState, lastSync, pull, uploadWarn, clearUploadWarn, saveStatus } = useClaimData();
   const [filter, setFilter] = React.useState("未解決");
-  const [editing, setEditing] = React.useState(null); // claim or {} for new
+  const [editing, setEditing] = React.useState(null); // claim or {category} for new
+  const [chooserOpen, setChooserOpen] = React.useState(false);
   const [lightbox, setLightbox] = React.useState(null);
   const [importing, setImporting] = React.useState(false);
   const [importMsg, setImportMsg] = React.useState(null); // {ok, text}
@@ -386,7 +508,7 @@ const ClaimPage = () => {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={importing ? { animation: "spin 1s linear infinite" } : null}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 {importing ? "取込中…" : "フォームから取込"}
               </button>
-              <button className="btn btn-primary" onClick={() => setEditing({})}>
+              <button className="btn btn-primary" onClick={() => setChooserOpen(true)}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14"/></svg>
                 新規登録
               </button>
@@ -400,6 +522,8 @@ const ClaimPage = () => {
           )}
 
           <ClaimKpi claims={claims} />
+          <div className="cl-kpi-sub-label">📋 トラブル</div>
+          <TroubleKpi claims={claims} />
 
           {uploadWarn && (
             <div className="cl-upload-warn">
@@ -438,11 +562,20 @@ const ClaimPage = () => {
         </main>
       </div>
 
-      {editing && (
-        <ClaimFormModal
-          initial={editing.id ? editing : null}
-          onSave={(c, isNew) => { upsert(c, isNew); setEditing(null); }}
-          onClose={() => setEditing(null)} />
+      {editing && (editing.category === "trouble"
+        ? <TroubleFormModal
+            initial={editing.id ? editing : null}
+            onSave={(c, isNew) => { upsert(c, isNew); setEditing(null); }}
+            onClose={() => setEditing(null)} />
+        : <ClaimFormModal
+            initial={editing.id ? editing : null}
+            onSave={(c, isNew) => { upsert(c, isNew); setEditing(null); }}
+            onClose={() => setEditing(null)} />
+      )}
+      {chooserOpen && (
+        <CategoryChooserModal
+          onClose={() => setChooserOpen(false)}
+          onChoose={(cat) => { setChooserOpen(false); setEditing({ category: cat }); }} />
       )}
       {lightbox && <ClaimLightbox url={lightbox.url} name={lightbox.name} onClose={() => setLightbox(null)} />}
     </div>

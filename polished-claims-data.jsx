@@ -18,9 +18,16 @@ const CLAIM_TYPES = [
   { id: "紛失",     color: "#8430ce", bg: "#f3e8fd" },
   { id: "変色",     color: "#9a6700", bg: "#fef3cd" },
   { id: "付着",     color: "#1a73e8", bg: "#e3f0fd" },
+  // トラブル専用の種別
+  { id: "お渡し忘れ", color: "#0f766e", bg: "#d7f3ef" },
+  { id: "お渡し違い", color: "#be185d", bg: "#fce4ef" },
+  { id: "納期遅れ",   color: "#4338ca", bg: "#e6e5fc" },
   { id: "その他",   color: "#5f6368", bg: "#eef0f2" },
 ];
 const CLAIM_TYPE_BY = Object.fromEntries(CLAIM_TYPES.map((t) => [t.id, t]));
+
+// トラブル種別（新規登録フォーム用の並び）
+const TROUBLE_TYPES = ["お渡し忘れ", "お渡し違い", "納期遅れ", "その他"];
 
 // 対応状況
 const CLAIM_STATUS = [
@@ -120,9 +127,10 @@ const CLAIM_SHEET = "クレーム";
 const normalizeClaim = (r) => ({
   id: Number(r.id) || r.id,
   ts: Number(r.ts) || (r.ts ? Date.parse(r.ts) : Date.now()),
+  category: r.category === "trouble" ? "trouble" : "claim",
   occurredOn: r.occurredOn || "", receivedOn: r.receivedOn || "",
   store: r.store || "", type: r.type || "その他",
-  customer: r.customer || "", memberNo: r.memberNo || r.contact || "",
+  customer: r.customer || "", customer2: r.customer2 || "", memberNo: r.memberNo || r.contact || "",
   maker: r.maker || "", makerContact: r.makerContact || "",
   item: r.item || "", detail: r.detail || "",
   status: r.status || "受付", amount: Number(r.amount) || 0, staff: r.staff || "",
@@ -151,8 +159,9 @@ const hydrateClaims = (rows, fm) => rows.map((r) => {
 
 // 送信用：ファイルは軽量メタのみ（fileId 付き）
 const stripClaim = (c, cloudFiles) => ({
-  id: c.id, ts: c.ts, occurredOn: c.occurredOn, receivedOn: c.receivedOn,
-  store: c.store, type: c.type, customer: c.customer, memberNo: c.memberNo,
+  id: c.id, ts: c.ts, category: c.category === "trouble" ? "trouble" : "claim",
+  occurredOn: c.occurredOn, receivedOn: c.receivedOn,
+  store: c.store, type: c.type, customer: c.customer, customer2: c.customer2 || "", memberNo: c.memberNo,
   maker: c.maker, makerContact: c.makerContact,
   item: c.item, detail: c.detail, status: c.status, amount: c.amount, staff: c.staff,
   files: cloudFiles || (c.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size, isImg: !!f.isImg, fileId: f.fileId || "" })),
@@ -267,7 +276,7 @@ const useClaimData = () => {
 };
 
 Object.assign(window, {
-  CLAIM_STORES, CLAIM_TYPES, CLAIM_TYPE_BY, CLAIM_STATUS, CLAIM_STATUS_BY, isUnresolved,
+  CLAIM_STORES, CLAIM_TYPES, CLAIM_TYPE_BY, CLAIM_STATUS, CLAIM_STATUS_BY, isUnresolved, TROUBLE_TYPES,
   yenC, dateSlash, relTimeC, fullTimeC, fileExtC, fmtBytesC, readClaimFile, cToday,
   useClaimData,
 });
