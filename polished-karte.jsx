@@ -105,6 +105,7 @@ const KarteDetail = ({ karte, onEdit, onDelete, onBack, onOpenPrintSheet, onOpen
         <div className="kt-detail-grid">
           <div><span className="kt-dl">クリーニング料金</span>{window.yenK(karte.pricing.cleaningFee)}</div>
           <div><span className="kt-dl">オプション料金</span>{window.yenK(karte.pricing.optionFee)}</div>
+          <div><span className="kt-dl">割引・値引き</span>{karte.pricing.discountFee ? `− ${window.yenK(karte.pricing.discountFee)}` : "なし"}</div>
           <div><span className="kt-dl">追加補償</span>{karte.pricing.hasCompensation ? `あり（${window.yenK(karte.pricing.compensationFee)}）` : "なし"}</div>
           <div className="kt-total-row"><span className="kt-dl">合計金額</span><span className="kt-total-value">{window.yenK(total)}</span></div>
         </div>

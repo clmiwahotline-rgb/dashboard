@@ -329,8 +329,12 @@ const KarteForm = ({ initial, onCancel, onSave }) => {
             <input className="input" type="number" value={f.pricing.cleaningFee} onChange={(e) => setPricing("cleaningFee", e.target.value)} />
           </div>
           <div className="field">
-            <label className="field-label">オプション料金</label>
+            <label className="field-label">オプション料金（税込）</label>
             <input className="input" type="number" value={f.pricing.optionFee} onChange={(e) => setPricing("optionFee", e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="field-label">割引・値引き額</label>
+            <input className="input" type="number" value={f.pricing.discountFee} onChange={(e) => setPricing("discountFee", e.target.value)} />
           </div>
           <div className="field">
             <label className="field-label">追加補償</label>

@@ -279,10 +279,11 @@ const KartePrintSheet = ({ karte, onBack }) => {
           {/* 料金（お客様が読む＝9pt） */}
           <div className="kp-group-title">【お支払い明細】</div>
           <div className="kp-section kp-price">
-            <div className="kp-section-title">料金</div>
+            <div className="kp-section-title">料金 税込み表示 ※値引きがある場合は値引き後の金額が表示されます</div>
             <div className="kp-price-rows">
               <div className="kp-price-row"><span>クリーニング料金</span><span>{window.yenK(karte.pricing.cleaningFee)}</span></div>
               <div className="kp-price-row"><span>オプション料金</span><span>{window.yenK(karte.pricing.optionFee)}</span></div>
+              {karte.pricing.discountFee > 0 && <div className="kp-price-row"><span>割引・値引き</span><span>− {window.yenK(karte.pricing.discountFee)}</span></div>}
               <div className="kp-price-row"><span>追加補償</span><span>{karte.pricing.hasCompensation ? window.yenK(karte.pricing.compensationFee) : "なし"}</span></div>
               <div className="kp-price-total"><span>合計金額</span><span>{window.yenK(total)}</span></div>
             </div>

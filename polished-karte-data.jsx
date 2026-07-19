@@ -125,13 +125,14 @@ const blankKarte = (store) => ({
   pins: [],
   photos: [],
   printPhotoId: "",
-  pricing: { cleaningFee: 0, hasCompensation: false, compensationFee: 0, optionFee: 0, catalogItemId: "", catalogItemName: "" },
+  pricing: { cleaningFee: 0, hasCompensation: false, compensationFee: 0, optionFee: 0, discountFee: 0, catalogItemId: "", catalogItemName: "" },
   confirmations: { checks: [], colorChange: false, shapeChange: false, stainNotFull: false, customerConfirmed: false, note: "", advice: "" },
 });
 
 const karteTotal = (k) => {
   const p = k.pricing || {};
-  return (Number(p.cleaningFee) || 0) + (p.hasCompensation ? (Number(p.compensationFee) || 0) : 0) + (Number(p.optionFee) || 0);
+  const sum = (Number(p.cleaningFee) || 0) + (p.hasCompensation ? (Number(p.compensationFee) || 0) : 0) + (Number(p.optionFee) || 0) - (Number(p.discountFee) || 0);
+  return Math.max(0, sum);
 };
 
 // ── localStorage 入出力 ──────────────────────────────────
