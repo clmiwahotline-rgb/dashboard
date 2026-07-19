@@ -203,6 +203,13 @@ async function syncKBFromCloud() {
       (knowledgeBase || []).forEach(function(item) {
         if (item && item.approved) localApproved[String(item.id || '')] = true;
       });
+      // クラウドにまだ届いていないローカル限定の項目（追加直後にpushが完了する前に
+      // pullが走ると全上書きで消えてしまう既知バグの対策）を退避しておき、
+      // クラウド側の内容とマージする。
+      const cloudIds = new Set(kbData.map(function(item) { return String(item.id || ''); }));
+      const localOnly = (knowledgeBase || []).filter(function(item) {
+        return item && !cloudIds.has(String(item.id || ''));
+      });
       knowledgeBase = kbData.map(function(item) {
         const id = String(item.id || '');
         const v = item.images;
@@ -219,12 +226,21 @@ async function syncKBFromCloud() {
         obj.approved = cloudApproved || !!localApproved[id];
         return obj;
       });
+      if (localOnly.length > 0) {
+        knowledgeBase = knowledgeBase.concat(localOnly);
+        // マージ結果をクラウドにも反映して他端末に伝播させる
+        faqCloudReplaceAll('知識ベース', knowledgeBase).catch(function(e) { console.warn('FAQ知識ベースマージ後の再送信失敗:', e); });
+      }
     // クラウドKBが空の場合は自動プッシュしない
     }
     if (Array.isArray(uaData) && uaData.length > 0) {
-      unansweredList = uaData
+      const mergedUa = uaData
         .filter(item => !_suppressedUAQuestions.has((item.q || '').trim()))
         .map(item => ({ ...item, answered: item.status === '回答済み' }));
+      // 未回答リストも同様に、クラウド未反映のローカル限定項目を保護する
+      const uaCloudQs = new Set(mergedUa.map(u => (u.q || '').trim()));
+      const uaLocalOnly = (unansweredList || []).filter(u => u && !uaCloudQs.has((u.q || '').trim()) && !_suppressedUAQuestions.has((u.q || '').trim()));
+      unansweredList = uaLocalOnly.length > 0 ? mergedUa.concat(uaLocalOnly) : mergedUa;
     }
     try { localStorage.setItem(FAQ_LS_KEY, JSON.stringify({ knowledgeBase, unansweredList, nextId, statsAnswered })); } catch(e) {}
     _cldSt = 'ok'; _cldBadge();
@@ -1090,11 +1106,16 @@ function loadFaqDocs() {
     if (faqCloudEnabled()) {
       faqCloudGet('FAQ資料').then(remote => {
         if (Array.isArray(remote) && remote.length) {
-          // クラウドにデータあり → ローカルを上書き
-          faqDocs = remote;
+          // クラウドにデータあり → ローカルとマージ（クラウド未反映のローカル限定資料を保護）
+          const cloudIds = new Set(remote.map(d => String(d.id || '')));
+          const localOnly = (faqDocs || []).filter(d => d && !cloudIds.has(String(d.id || '')));
+          faqDocs = localOnly.length > 0 ? remote.concat(localOnly) : remote;
           try { localStorage.setItem(FAQ_DOCS_KEY, JSON.stringify(faqDocs)); } catch(e) {}
           if (typeof renderDocs === 'function') renderDocs();
           console.log('[FAQ] 知識資料をクラウドから同期:', faqDocs.length, '件');
+          if (localOnly.length > 0) {
+            faqCloudReplaceAll('FAQ資料', faqDocs).catch(e => console.warn('FAQ資料マージ後の再送信失敗:', e));
+          }
         // クラウドが空の場合は自動プッシュしない（手動で「クラウドへ送信」ボタンを使うこと）
         }
       }).catch(() => {});
