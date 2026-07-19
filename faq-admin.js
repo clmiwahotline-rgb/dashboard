@@ -403,6 +403,7 @@ function renderUnanswered() {
         <input class="form-input" id="ua-cat-${item.id}" placeholder="例：受付・料金・素材確認">
         <label style="font-size:12px;font-weight:600;color:var(--success)">参考画像URL（任意・最大5枚・改行かカンマ区切り）</label>
         <textarea class="form-textarea" id="ua-img-${item.id}" placeholder="https://..." style="min-height:48px"></textarea>
+        <div id="ua-dup-${item.id}"></div>
         <div class="form-row">
           <button class="btn btn-success btn-sm" onclick="approveAnswer(${item.id})">✅ 知識ベースに追加</button>
           <button class="btn btn-outline btn-sm" onclick="toggleUAForm(${item.id})">キャンセル</button>
@@ -421,17 +422,68 @@ function approveAnswer(id) {
   const item = unansweredList.find(u => u.id === id);
   if (!item) return;
   const a = document.getElementById(`ua-a-${id}`).value.trim();
+  if (!a) { alert('回答内容を入力してください'); return; }
+  if (!_uaDup[id]) {
+    const dup = findSimilarKnowledge(item.q);
+    if (dup) { _uaDup[id] = dup; renderUaDupWarning(id, dup); return; }
+  }
+  commitApproveAnswer(id, 'new');
+}
+
+let _uaDup = {};
+function renderUaDupWarning(id, dup) {
+  const el = document.getElementById(`ua-dup-${id}`);
+  if (!el) return;
+  const ex = dup.item;
+  const exPreview = escHtml((ex.a || '').replace(/【.*?】/g, '').replace(/\n/g, ' ').slice(0, 80));
+  el.innerHTML = `<div class="dup-warn">
+    <div class="dup-warn-title">⚠️ 既存の知識と似ています（類似度${dup.score}%）</div>
+    <div class="dup-compare">
+      <div style="color:var(--text-muted);margin-bottom:2px">既存（旧）：</div>
+      <div style="font-weight:600">${escHtml(ex.q)}</div>
+      <div style="color:var(--text-sub)">${exPreview}…</div>
+      <div style="color:var(--text-muted);font-size:11px;margin-top:3px">追加日: ${escHtml(ex.addedAt || '—')}｜カテゴリ: ${escHtml(ex.category || '—')}</div>
+    </div>
+    <div style="color:var(--text-sub)">どう扱いますか？</div>
+    <div class="dup-actions">
+      <button class="sel-separate" onclick="commitApproveAnswer(${id},'new')">＋ 別物として追加</button>
+      <button onclick="commitApproveAnswer(${id},'overwrite')">↻ 上書き更新（既存を置き換え）</button>
+      <button onclick="cancelUaDup(${id})">キャンセル</button>
+    </div>
+  </div>`;
+}
+function cancelUaDup(id) {
+  delete _uaDup[id];
+  const el = document.getElementById(`ua-dup-${id}`); if (el) el.innerHTML = '';
+}
+function commitApproveAnswer(id, decision) {
+  const item = unansweredList.find(u => u.id === id);
+  if (!item) return;
+  const a = document.getElementById(`ua-a-${id}`).value.trim();
   const cat = document.getElementById(`ua-cat-${id}`).value.trim();
   const imgs = parseImageUrls(document.getElementById(`ua-img-${id}`).value);
   if (!a) { alert('回答内容を入力してください'); return; }
 
-  const newKb = {
-    id: nextId++, q: item.q, a,
-    category: cat || '未分類', source: '未回答リストから追加',
-    images: imgs, addedAt: nowStr()
-  };
-  knowledgeBase.push(newKb);
+  const dup = _uaDup[id];
+  if (decision === 'overwrite' && dup) {
+    const target = knowledgeBase.find(k => k.id === dup.item.id);
+    if (target) {
+      target.q = item.q; target.a = a;
+      target.category = cat || target.category || '未分類';
+      if (imgs.length) target.images = imgs;
+      target.source = '未回答リストから追加（更新）';
+      target.addedAt = nowStr();
+    }
+  } else {
+    const newKb = {
+      id: nextId++, q: item.q, a,
+      category: cat || '未分類', source: '未回答リストから追加',
+      images: imgs, addedAt: nowStr()
+    };
+    knowledgeBase.push(newKb);
+  }
 
+  delete _uaDup[id];
   item.answered = true;
   // 回答済みはクラウド同期後も未回答リストに戻らないよう抑制
   _suppressedUAQuestions.add((item.q || '').trim());
@@ -530,22 +582,36 @@ function existingCategories() {
 }
 
 // 質問文ベースの類似既存知識を探す（重複検出用）
+// 2文字bigramのDice係数で類似度(0〜1)を算出し、しきい値以上を「類似」と判定する
+// （以前は「部分文字列を含むか」で+40点、短い共通部分文字列でも加点する方式で、
+// 　助詞や短い共通語だけでもすぐ閾値を超えてしまい判定が甘すぎた）
+function _kbBigrams(s) {
+  const arr = [];
+  for (let i = 0; i < s.length - 1; i++) arr.push(s.slice(i, i + 2));
+  return arr;
+}
+function _kbDiceSim(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const A = _kbBigrams(a), B = _kbBigrams(b);
+  if (A.length === 0 || B.length === 0) return 0;
+  const bCount = {};
+  B.forEach(g => { bCount[g] = (bCount[g] || 0) + 1; });
+  let inter = 0;
+  A.forEach(g => { if (bCount[g] > 0) { inter++; bCount[g]--; } });
+  return (2 * inter) / (A.length + B.length);
+}
+const KB_SIMILARITY_THRESHOLD = 0.55; // bigram一致率がこれ以上で「似ている」と判定（55%）
 function findSimilarKnowledge(question) {
   const q = (question || '').replace(/[？。、！\s]/g, '').toLowerCase();
   if (!q) return null;
-  let best = null, bestScore = 0;
+  let best = null, bestSim = 0;
   for (const item of knowledgeBase) {
-    const qT = item.q.replace(/[？。、！\s]/g, '').toLowerCase();
-    let score = 0;
-    if (qT.includes(q) || q.includes(qT)) score += 40;
-    for (let len = Math.min(q.length, 6); len >= 2; len--) {
-      for (let i = 0; i <= q.length - len; i++) {
-        if (qT.includes(q.slice(i, i + len))) score += len * 2;
-      }
-    }
-    if (score > bestScore) { bestScore = score; best = item; }
+    const qT = (item.q || '').replace(/[？。、！\s]/g, '').toLowerCase();
+    const sim = _kbDiceSim(q, qT);
+    if (sim > bestSim) { bestSim = sim; best = item; }
   }
-  return bestScore >= 12 ? { item: best, score: bestScore } : null;
+  return bestSim >= KB_SIMILARITY_THRESHOLD ? { item: best, score: Math.round(bestSim * 100) } : null;
 }
 
 // 「AIで仕分け」
@@ -629,7 +695,7 @@ JSONの配列だけを返す。前置き・説明・コードフェンス(\`\`\`
       image: '',
       catMode: cats.includes(c.category) ? 'existing' : (c.category ? 'new' : 'existing'),
       dup,
-      decision: dup ? 'overwrite' : 'new'
+      decision: 'new'
     };
   });
 
@@ -686,7 +752,7 @@ function renderImport() {
       const ex = c.dup.item;
       const exPreview = escHtml((ex.a || '').replace(/【.*?】/g, '').replace(/\n/g, ' ').slice(0, 80));
       dupHtml = `<div class="dup-warn">
-        <div class="dup-warn-title">⚠️ 既存の知識と似ています</div>
+        <div class="dup-warn-title">⚠️ 既存の知識と似ています（類似度${c.dup.score}%）</div>
         <div class="dup-compare">
           <div style="color:var(--text-muted);margin-bottom:2px">既存（旧）：</div>
           <div style="font-weight:600">${escHtml(ex.q)}</div>
@@ -1069,18 +1135,68 @@ function removeNewImg(i) {
 function addKB() {
   const q = document.getElementById('new-q').value.trim();
   const a = document.getElementById('new-a').value.trim();
+  if (!q || !a) { alert('質問と回答は必須です'); return; }
+  if (!_newKbDup) {
+    const dup = findSimilarKnowledge(q);
+    if (dup) { _newKbDup = dup; renderNewKbDupWarning(dup); return; }
+  }
+  commitAddKB('new');
+}
+
+let _newKbDup = null;
+function renderNewKbDupWarning(dup) {
+  const el = document.getElementById('new-dup-warn');
+  if (!el) return;
+  const ex = dup.item;
+  const exPreview = escHtml((ex.a || '').replace(/【.*?】/g, '').replace(/\n/g, ' ').slice(0, 80));
+  el.innerHTML = `<div class="dup-warn">
+    <div class="dup-warn-title">⚠️ 既存の知識と似ています（類似度${dup.score}%）</div>
+    <div class="dup-compare">
+      <div style="color:var(--text-muted);margin-bottom:2px">既存（旧）：</div>
+      <div style="font-weight:600">${escHtml(ex.q)}</div>
+      <div style="color:var(--text-sub)">${exPreview}…</div>
+      <div style="color:var(--text-muted);font-size:11px;margin-top:3px">追加日: ${escHtml(ex.addedAt || '—')}｜カテゴリ: ${escHtml(ex.category || '—')}</div>
+    </div>
+    <div style="color:var(--text-sub)">どう扱いますか？</div>
+    <div class="dup-actions">
+      <button class="sel-separate" onclick="commitAddKB('new')">＋ 別物として追加</button>
+      <button onclick="commitAddKB('overwrite')">↻ 上書き更新（既存を置き換え）</button>
+      <button onclick="cancelNewKbDup()">キャンセル</button>
+    </div>
+  </div>`;
+}
+function cancelNewKbDup() {
+  _newKbDup = null;
+  const el = document.getElementById('new-dup-warn'); if (el) el.innerHTML = '';
+}
+function commitAddKB(decision) {
+  const q = document.getElementById('new-q').value.trim();
+  const a = document.getElementById('new-a').value.trim();
   const cat = document.getElementById('new-cat').value.trim();
   const src = document.getElementById('new-src').value.trim();
   const imgs = parseImageUrls(document.getElementById('new-img').value);
   if (!q || !a) { alert('質問と回答は必須です'); return; }
 
-  const addedKb = {
-    id: nextId++, q, a,
-    category: cat || '未分類', source: src || '手動追加',
-    images: imgs, addedAt: nowStr()
-  };
-  knowledgeBase.push(addedKb);
+  if (decision === 'overwrite' && _newKbDup) {
+    const target = knowledgeBase.find(k => k.id === _newKbDup.item.id);
+    if (target) {
+      target.q = q; target.a = a;
+      target.category = cat || target.category || '未分類';
+      target.source = src || '手動追加（更新）';
+      if (imgs.length) target.images = imgs;
+      target.addedAt = nowStr();
+    }
+  } else {
+    const addedKb = {
+      id: nextId++, q, a,
+      category: cat || '未分類', source: src || '手動追加',
+      images: imgs, addedAt: nowStr()
+    };
+    knowledgeBase.push(addedKb);
+  }
 
+  _newKbDup = null;
+  const dw = document.getElementById('new-dup-warn'); if (dw) dw.innerHTML = '';
   document.getElementById('new-q').value = '';
   document.getElementById('new-a').value = '';
   document.getElementById('new-cat').value = '';
@@ -2153,6 +2269,7 @@ const FAQ_ADMIN_MARKUP = `
           </div>
           <div id="new-img-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px"></div>
           <textarea class="form-textarea" id="new-img" placeholder="https://... （直接URLや既存のGoogleドライブ共有リンクを貼ってもOK・改行かカンマ区切り）" style="min-height:48px" oninput="renderNewImgPreview()"></textarea>
+          <div id="new-dup-warn"></div>
           <div class="form-row">
             <button class="btn btn-primary btn-sm" onclick="addKB()">登録する</button>
             <button class="btn btn-outline btn-sm" onclick="toggleAddForm()">キャンセル</button>
