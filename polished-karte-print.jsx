@@ -16,8 +16,8 @@ const KartePrintDiagram = ({ type, view, pins }) => {
         : <path d={def.path} fill="none" stroke="#555" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" />}
       {scoped.map((p, i) => (
         <g key={p.id} transform={`translate(${vbX + (p.x / 100) * vbW}, ${vbY + (p.y / 100) * vbH})`}>
-          <circle r={vbW * 0.03} fill={window.pinColor(p.kind)} stroke="#fff" strokeWidth={vbW * 0.006} />
-          <text y={vbW * 0.011} textAnchor="middle" fontSize={vbW * 0.036} fill="#fff" fontWeight="700">{i + 1}</text>
+          <circle r={vbW * 0.045} fill={window.pinColor(p.kind)} stroke="#fff" strokeWidth={vbW * 0.007} />
+          <text y={vbW * 0.016} textAnchor="middle" fontSize={vbW * 0.05} fill="#fff" fontWeight="700">{i + 1}</text>
         </g>
       ))}
     </svg>
@@ -53,6 +53,27 @@ const dateSlashWdK = (s) => {
   return `${base}(${wd})`;
 };
 
+// ページ内容が210mmの版面に収まらない場合、自動でフォント/余白を縮小して1枚(表裏)に収める
+const KP_MIN_ZOOM = 0.8; // これ以上は縮小しない下限
+const useFitPage = (minZoom = KP_MIN_ZOOM) => {
+  const outerRef = React.useRef(null);
+  const innerRef = React.useRef(null);
+  const fit = React.useCallback(() => {
+    const outer = outerRef.current, inner = innerRef.current;
+    if (!outer || !inner) return;
+    inner.style.zoom = "";
+    inner.style.width = "";
+    const avail = outer.clientHeight;
+    const need = inner.scrollHeight;
+    if (need > avail && need > 0) {
+      const z = Math.max(minZoom, avail / need);
+      inner.style.zoom = z;
+      inner.style.width = (100 / z) + "%";
+    }
+  }, [minZoom]);
+  return [outerRef, innerRef, fit];
+};
+
 const KartePrintSheet = ({ karte, onBack }) => {
   const total = window.karteTotal(karte);
   const custom = karte.custom || {};
@@ -64,6 +85,18 @@ const KartePrintSheet = ({ karte, onBack }) => {
   );
   const hasBack = karte.diagramType === "garment";
 
+  const [page1Outer, page1Inner, fitPage1] = useFitPage();
+  const [page2Outer, page2Inner, fitPage2] = useFitPage();
+
+  React.useLayoutEffect(() => {
+    fitPage1();
+    fitPage2();
+    const refit = () => { fitPage1(); fitPage2(); };
+    window.addEventListener("resize", refit);
+    window.addEventListener("beforeprint", refit);
+    return () => { window.removeEventListener("resize", refit); window.removeEventListener("beforeprint", refit); };
+  }, [karte, confirmCatalog]);
+
   return (
     <div className="kp-outer">
       <div className="kp-toolbar no-print">
@@ -74,7 +107,8 @@ const KartePrintSheet = ({ karte, onBack }) => {
 
       <div className="kp-root">
         {/* ══════════ PAGE 1（表）══════════ */}
-        <div className="kp-page">
+        <div className="kp-page" ref={page1Outer}>
+          <div className="kp-page-inner" ref={page1Inner}>
           <div className="kp-head">
             <div className="kp-head-brand">クリーニングみわ ハイブランドコース専用カルテ</div>
           </div>
@@ -96,7 +130,7 @@ const KartePrintSheet = ({ karte, onBack }) => {
               <KpField label="連絡希望" value={karte.contactPrefDay} />
               <KpField label="お預かり日" value={dateSlashWdK(karte.receivedDate)} />
               <div className="kp-field kp-field-emph">
-                <span className="kp-field-label">お渡し日</span>
+                <span className="kp-field-label">お渡し予定日</span>
                 <span className="kp-field-value kp-field-value-emph">{karte.deliveryDate ? `${dateSlashWdK(karte.deliveryDate)} 17時お渡し` : "—"}</span>
               </div>
             </div>
@@ -175,9 +209,11 @@ const KartePrintSheet = ({ karte, onBack }) => {
             </div>
           </div>
 
+          </div>
           <div className="kp-foot">お問い合わせ：ご来店の際は本票をお持ちください</div>
         </div>
-        <div className="kp-page">
+        <div className="kp-page" ref={page2Outer}>
+          <div className="kp-page-inner" ref={page2Inner}>
           <div className="kp-head">
             <div className="kp-head-brand">クリーニングみわ ハイブランドコース専用カルテ</div>
             <div className="kp-head-dates">
@@ -232,7 +268,7 @@ const KartePrintSheet = ({ karte, onBack }) => {
                 const printPhoto = karte.photos.find((p) => p.id === karte.printPhotoId) || karte.photos[0];
                 return (
                   <div className="kp-product-photo">
-                    <img src={window.kPhotoOpen(printPhoto)} alt="仕上がり写真" referrerPolicy="no-referrer" />
+                    <img src={window.kPhotoOpen(printPhoto)} alt="仕上がり写真" referrerPolicy="no-referrer" onLoad={fitPage2} />
                     <div className="kp-product-photo-cap">仕上がり写真</div>
                   </div>
                 );
@@ -250,6 +286,7 @@ const KartePrintSheet = ({ karte, onBack }) => {
               <div className="kp-price-row"><span>追加補償</span><span>{karte.pricing.hasCompensation ? window.yenK(karte.pricing.compensationFee) : "なし"}</span></div>
               <div className="kp-price-total"><span>合計金額</span><span>{window.yenK(total)}</span></div>
             </div>
+          </div>
           </div>
         </div>
       </div>

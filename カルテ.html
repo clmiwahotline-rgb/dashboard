@@ -131,12 +131,13 @@
   .kp-toolbar-hint { font-size: 12px; color: var(--ink-mute); }
   .kp-root { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
   .kp-page {
-    width: 148mm; min-height: 210mm; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15);
-    padding: 6mm; box-sizing: border-box; display: flex; flex-direction: column; gap: 2.6mm;
+    width: 148mm; height: 210mm; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15);
+    padding: 6mm; box-sizing: border-box; display: flex; flex-direction: column; gap: 2mm;
     font-family: "Zen Kaku Gothic New", "Plus Jakarta Sans", sans-serif; color: #1a1a1a;
-    font-size: 8pt; line-height: 1.35;
+    font-size: 8pt; line-height: 1.35; overflow: hidden;
   }
-  .kp-head { display: flex; align-items: center; gap: 8px; padding-bottom: 1.6mm; border-bottom: 1.4pt solid #1a1a1a; }
+  .kp-page-inner { display: flex; flex-direction: column; gap: 2mm; }
+  .kp-head { display: flex; align-items: center; gap: 8px; padding-bottom: 1.1mm; border-bottom: 1.4pt solid #1a1a1a; }
   .kp-head-brand { font-size: 9.5pt; font-weight: 900; letter-spacing: .02em; }
   .kp-head-mid { display: flex; align-items: center; gap: 6px; }
   .kp-head-tag { font-size: 7.5pt; font-weight: 700; color: #444; }
@@ -145,15 +146,15 @@
   .kp-page-label { font-size: 11pt; font-weight: 900; }
   .kp-page-no { font-size: 7pt; color: #888; }
   .kp-page-no-only { font-size: 7pt; color: #888; text-align: right; }
-  .kp-section { border-top: 0.6pt solid #ccc; padding-top: 1.8mm; }
+  .kp-section { border-top: 0.6pt solid #ccc; padding-top: 1.3mm; }
   .kp-section:first-of-type { border-top: none; }
   .kp-section-title { font-size: 8.5pt; font-weight: 800; color: #14306b; margin-bottom: 1.2mm; }
   .kp-section-note { font-size: 7pt; font-weight: 700; color: #777; }
   .kp-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 4mm; }
   .kp-product-row { display: flex; gap: 3mm; align-items: flex-start; }
   .kp-product-fields { flex: 1; min-width: 0; }
-  .kp-product-photo { flex: 0 0 30mm; width: 30mm; }
-  .kp-product-photo img { width: 100%; height: 26mm; object-fit: cover; border-radius: 1.5mm; border: 0.3mm solid #ccc; display: block; }
+  .kp-product-photo { flex: 0 0 26mm; width: 26mm; }
+  .kp-product-photo img { width: 100%; height: 22mm; object-fit: cover; border-radius: 1.5mm; border: 0.3mm solid #ccc; display: block; }
   .kp-product-photo-cap { font-size: 6.3pt; color: #888; text-align: center; margin-top: 0.8mm; }
   .kp-field { display: flex; flex-direction: column; gap: 0.3mm; min-width: 0; }
   .kp-field-label { font-size: 7pt; color: #777; font-weight: 700; }
@@ -163,7 +164,7 @@
   .kp-field-emph { background: #fff4e5; border: 0.6pt solid #e8a33d; border-radius: 1.2mm; padding: 0.8mm 2mm; }
   .kp-field-value-emph { font-size: 10.5pt; font-weight: 900; color: #9a5b00; }
   .kp-chips { display: flex; flex-wrap: wrap; gap: 1.2mm; }
-  .kp-chip { font-size: 7.5pt; background: #f0f0f0; border: 0.5pt solid #ccc; border-radius: 3mm; padding: 0.6mm 2.2mm; }
+  .kp-chip { font-size: 7.5pt; background: #f0f0f0; border: 0.5pt solid #ccc; border-radius: 3mm; padding: 0.5mm 2mm; }
   .kp-chip b { font-weight: 800; margin-right: 2px; }
   .kp-chip-accent { background: #e7f0fd; border-color: #b7d0f7; color: #14306b; }
   .kp-chip-warn { background: #fff2e2; border-color: #f0c98a; color: #7a4a06; }
@@ -172,19 +173,19 @@
   .kp-confirm-list { margin: 0; padding-left: 3.2mm; font-size: 7.5pt; line-height: 1.5; display: flex; flex-direction: column; gap: 0.8mm; }
   .kp-note-cust { font-size: 9pt; }
   .kp-empty { font-size: 7.5pt; color: #999; }
-  .kp-measure-table { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1mm 2mm; }
+  .kp-measure-table { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8mm 2mm; }
   .kp-measure-cell { display: flex; justify-content: flex-start; align-items: baseline; gap: 1.5mm; font-size: 7.5pt; border-bottom: 0.4pt dotted #ccc; padding-bottom: 0.4mm; white-space: nowrap; }
   .kp-measure-cell b { font-size: 8pt; }
   .kp-foot { margin-top: auto; text-align: center; font-size: 7pt; color: #999; padding-top: 1.6mm; border-top: 0.6pt solid #ccc; }
   .kp-diagram-row { display: flex; align-items: flex-start; gap: 3mm; }
-  .kp-diagram-col { display: flex; flex-direction: column; align-items: center; gap: 0.6mm; width: 45mm; }
+  .kp-diagram-col { display: flex; flex-direction: column; align-items: center; gap: 0.6mm; width: 36mm; }
   .kp-diagram-cap { font-size: 7pt; font-weight: 700; color: #555; }
-  .kp-diagram-svg { width: 45mm; height: auto; }
+  .kp-diagram-svg { width: 36mm; height: auto; }
   .kp-pin-legend { flex: 1; display: flex; flex-direction: column; gap: 0.8mm; min-width: 0; }
   .kp-pin-item { display: flex; align-items: center; gap: 1.5mm; font-size: 7.5pt; }
   .kp-pin-dot { width: 3.2mm; height: 3.2mm; border-radius: 50%; color: #fff; font-size: 6pt; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .kp-price { margin-top: 0; }
-  .kp-price-rows { display: flex; flex-direction: column; gap: 0.8mm; }
+  .kp-price-rows { display: flex; flex-direction: column; gap: 0.5mm; }
   .kp-price-row { display: flex; justify-content: space-between; font-size: 9pt; }
   .kp-price-total { display: flex; justify-content: space-between; font-size: 12pt; font-weight: 900; color: #14306b; border-top: 1pt solid #1a1a1a; margin-top: 1mm; padding-top: 1.2mm; }
   .kp-group-title { font-size: 9.5pt; font-weight: 900; color: #1a1a1a; letter-spacing: .02em; margin-top: 0.6mm; }
