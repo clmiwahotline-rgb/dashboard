@@ -143,24 +143,26 @@ const useVehicleData = () => {
   React.useEffect(() => { vehSave("miwa.maint.v1", maint); }, [maint]);
 
   const pull = React.useCallback(async () => {
-    if (!cloudOn) return;
+    if (!cloudOn) return null;
     setCloudState("loading");
     const [v, f, m] = await Promise.all([cloudGet("車両"), cloudGet("給油"), cloudGet("整備")]);
-    if (v == null && f == null && m == null) { setCloudState("error"); return; }
+    if (v == null && f == null && m == null) { setCloudState("error"); return null; }
+    let nextFuel = fuel, nextMaint = maint;
     if (Array.isArray(v)) {
       if (v.length) setVehicles(v.map((r) => ({ ...r, odometer: parseFloat(r.odometer) || 0 })));
       else if (vehicles.length) await cloudReplaceAll("車両", vehicles);
     }
     if (Array.isArray(f)) {
-      if (f.length) setFuel(f);
+      if (f.length) { setFuel(f); nextFuel = f; }
       else if (fuel.length) await cloudReplaceAll("給油", fuel);
     }
     if (Array.isArray(m)) {
-      if (m.length) setMaint(m);
+      if (m.length) { setMaint(m); nextMaint = m; }
       else if (maint.length) await cloudReplaceAll("整備", maint);
     }
     setCloudState("ok");
     setLastSync(Date.now());
+    return { fuel: nextFuel, maint: nextMaint };
   }, [cloudOn]);
 
   React.useEffect(() => { pull(); }, [pull]);
@@ -546,7 +548,12 @@ async function vehImportCsvDirect(fuelState, maintState) {
     const shop=cShop>=0?r[cShop]:'';
     const isWash=/洗車/.test(typeRaw);
     const isFuel=/給油/.test(typeRaw);
-    const isMaint=isWash||/整備|修理|点検|車検|タイヤ|オイル/.test(typeRaw)||!!maintType||!!detail;
+    // 「どのような報告か」の選択を優先する。未選択（typeRawが空）の場合のみ、
+    // 備考・整備区分欄の有無で補助判定する（給油を選んでいても備考欄に何か書いただけで
+    // 整備側にも二重登録されていた既知バグの対策）。
+    const isMaint = typeRaw
+      ? (isWash || /整備|修理|点検|車検|タイヤ|オイル/.test(typeRaw))
+      : (isWash || !!maintType || !!detail);
     const isoTs = normTs(ts);
     if(isFuel&&!seenF.has(isoTs)){
       newFuel.push({id:'VF'+Date.now()+Math.floor(Math.random()*100),formTs:isoTs,date:isoDate,vehicle,liters,amount,odometer:odo});
@@ -693,7 +700,13 @@ const VehiclePage = () => {
         // GAS失敗時はフォールバックに続行
       }
       // フォールバック：CSVダイレクト取込（車両回答スプレットシートから直接）
-      const result = await vehImportCsvDirect(fuel, maint);
+      // 直前に必ず最新state（pull）を取得してから重複チェックする。
+      // 古いローカルstateのまま比較すると、GAS側トリガーが裏で既に取り込んでいた行を
+      // 「新規」と誤認して二重登録してしまう既知バグの対策。
+      const fresh = await pull();
+      const freshFuel = (fresh && fresh.fuel) || fuel;
+      const freshMaint = (fresh && fresh.maint) || maint;
+      const result = await vehImportCsvDirect(freshFuel, freshMaint);
       if (result.fuel > 0 || result.maint > 0) {
         if (result.newFuel && result.newFuel.length > 0) {
           result.newFuel.forEach(r => fuelMut.upsert(r, true));
